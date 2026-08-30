@@ -23,11 +23,12 @@
   </PropertyGroup>
   <!-- Codeer.LowCode.Blazor resolves field/design types by reflection (TypeFinder, FieldDesignManager), so the
        app and library assemblies must not be trimmed. "partial" trims only the framework, the same setting the
-       Blazor WebAssembly client publishes with. AOT is also kept off on Android (iOS always AOT-compiles, but
-       reflection keeps working there as long as the types survive trimming). -->
+       Blazor WebAssembly client publishes with. AOT is a separate matter from trimming and does not affect
+       reflection: iOS always AOT-compiles, and on Android the MAUI default (profiled AOT of the startup path,
+       JIT for the rest) is kept because it is what makes startup fast on low-end devices. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <TrimMode>partial</TrimMode>
-    <RunAOTCompilation>false</RunAOTCompilation>
+    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
   </PropertyGroup>
   <ItemGroup>
     <!-- App Icon -->
