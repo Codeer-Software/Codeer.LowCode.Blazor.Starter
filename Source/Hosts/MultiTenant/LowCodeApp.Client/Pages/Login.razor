@@ -1,0 +1,6 @@
+@page "/Login"
+@using Codeer.LowCode.Blazor.RequestInterfaces
+@inject INavigationService NavigationService
+@code {
+  protected override void OnInitialized() => NavigationService.Logout();
+}

@@ -1,0 +1,81 @@
+@page "/login"
+@layout Shared.EmptyLayout
+@inject HttpClient HttpClient
+@inject ServerConnection Server
+@inject NavigationManager NavigationManager
+
+<div class="login-center">
+  <div>
+    <h1>Login</h1>
+    <EditForm Model="_login" OnValidSubmit="LoginAsync">
+      <div class="mb-2">
+        User ID
+        <InputText @bind-Value="_login.Id" class="form-control" autocomplete="username" />
+      </div>
+      <div class="mb-2">
+        Password
+        <InputText @bind-Value="_login.Password" type="password" class="form-control" autocomplete="current-password" />
+      </div>
+      <div class="mb-3">
+        <InputCheckbox @bind-Value="_login.IsPersistent" id="IsPersistent" />
+        <label for="IsPersistent" class="ms-1">Remember me?</label>
+      </div>
+      <button type="submit" class="btn btn-primary" disabled="@_busy">Login</button>
+      @if (_failed)
+      {
+        <div class="text-danger mt-3">Login failed.</div>
+      }
+    </EditForm>
+  </div>
+</div>
+
+@code {
+  [SupplyParameterFromQuery]
+  public string? ReturnUrl { get; set; }
+
+  class LoginInfo
+  {
+    public string? Id { get; set; }
+    public string? Password { get; set; }
+    public bool IsPersistent { get; set; }
+  }
+
+  readonly LoginInfo _login = new();
+  bool _busy;
+  bool _failed;
+
+  async Task LoginAsync()
+  {
+    if (string.IsNullOrEmpty(_login.Id) || string.IsNullOrEmpty(_login.Password))
+    {
+      _failed = true;
+      return;
+    }
+
+    _busy = true;
+    _failed = false;
+    try
+    {
+      var response = await HttpClient.PostAsJsonAsync("api/account/login", _login);
+      if (!response.IsSuccessStatusCode)
+      {
+        _failed = true;
+        return;
+      }
+
+      //The antiforgery token issued before login belongs to the anonymous user.
+      Server.ResetAntiforgeryToken();
+
+      var returnUrl = string.IsNullOrEmpty(ReturnUrl) || ReturnUrl.StartsWith("login") ? "/" : "/" + ReturnUrl.TrimStart('/');
+      NavigationManager.NavigateTo(returnUrl, true);
+    }
+    catch
+    {
+      _failed = true;
+    }
+    finally
+    {
+      _busy = false;
+    }
+  }
+}
