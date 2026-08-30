@@ -43,6 +43,15 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(VsixTargetMajor)' != ''">
+    <_SplitVsixRange Condition="'$(VsixTargetMajor)' == '17'">[17.0, 18.0)</_SplitVsixRange>
+    <_SplitVsixRange Condition="'$(VsixTargetMajor)' == '18'">[18.0, 20.0)</_SplitVsixRange>
+    <_SplitVsixSuffix Condition="'$(VsixTargetMajor)' == '17'">VS2022</_SplitVsixSuffix>
+    <_SplitVsixSuffix Condition="'$(VsixTargetMajor)' == '18'">VS2026</_SplitVsixSuffix>
+    <!-- Not $(IntermediateOutputPath): it is defined later, by Microsoft.Common.targets. -->
+    <_SplitVsixManifest>obj\$(Configuration)\$(_SplitVsixSuffix)\source.extension.vsixmanifest</_SplitVsixManifest>
+    <TargetVsixContainerName>$(AssemblyName).$(_SplitVsixSuffix).vsix</TargetVsixContainerName>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <PackageReference Include="System.Collections.Immutable" Version="9.0.0" />
@@ -76,9 +85,11 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <None Include="source.extension.vsixmanifest">
+    <None Include="source.extension.vsixmanifest" Condition="'$(VsixTargetMajor)' == ''">
       <SubType>Designer</SubType>
     </None>
+    <!-- Split build (see below): the VSSDK targets pick the manifest from the None items, so hand them the generated one. -->
+    <None Include="$(_SplitVsixManifest)" Condition="'$(VsixTargetMajor)' != ''" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.13.40008" ExcludeAssets="runtime">
@@ -94,6 +105,32 @@
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!--
+    Split VSIX per Visual Studio major version.
+    source.extension.vsixmanifest targets [17.0, 20.0) and is what a plain Build / F5 uses. Shipping that single file
+    is a problem on machines with both VS 2022 and VS 2026: double-clicking it makes VSIXInstaller install to both in one
+    run, and the second target (VS 2026) fails inside PerformSetupEngineInstall ("the stream must be seekable" - the
+    payload stream is already consumed by the first install). Running the installer again then succeeds because only
+    one target is left. Shipping one VSIX per major version keeps every install a single-target install.
+      msbuild Codeer.LowCode.Blazor.Templates.csproj -t:BuildSplitVsix -p:Configuration=Release
+    produces bin\Release\Codeer.LowCode.Blazor.Templates.VS2022.vsix ([17.0, 18.0)) and
+    bin\Release\Codeer.LowCode.Blazor.Templates.VS2026.vsix ([18.0, 20.0)).
+  -->
+  <Target Name="_WriteSplitVsixManifest" BeforeTargets="FindSourceVsixManifest;ValidateVsixManifest;MergeVsixManifestFile" Condition="'$(VsixTargetMajor)' != ''">
+    <Error Condition="'$(_SplitVsixRange)' == ''" Text="VsixTargetMajor must be 17 or 18 (got '$(VsixTargetMajor)')." />
+    <PropertyGroup>
+      <_SplitVsixSource>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\source.extension.vsixmanifest'))</_SplitVsixSource>
+      <_SplitVsixText>$(_SplitVsixSource.Replace('[17.0, 20.0)', '$(_SplitVsixRange)').Replace('[17.0,20.0)', '$(_SplitVsixRange)'))</_SplitVsixText>
+    </PropertyGroup>
+    <Error Condition="'$(_SplitVsixText)' == '$(_SplitVsixSource)'" Text="source.extension.vsixmanifest no longer contains the [17.0, 20.0) range; update the split logic." />
+    <MakeDir Directories="obj\$(Configuration)\$(_SplitVsixSuffix)" />
+    <WriteLinesToFile File="$(_SplitVsixManifest)" Lines="$(_SplitVsixText)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+  <Target Name="BuildSplitVsix">
+    <!-- Separate obj per variant: a shared obj would make the second build's clean step delete the first VSIX. -->
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Rebuild" Properties="VsixTargetMajor=17;Configuration=$(Configuration);IntermediateOutputPath=obj\$(Configuration)\VS2022\" />
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Rebuild" Properties="VsixTargetMajor=18;Configuration=$(Configuration);IntermediateOutputPath=obj\$(Configuration)\VS2026\" />
+  </Target>
   <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets" Condition="'$(VSToolsPath)' != ''" />
-  
+
 </Project>

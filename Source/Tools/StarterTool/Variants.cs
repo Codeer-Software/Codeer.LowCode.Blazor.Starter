@@ -1,4 +1,4 @@
-namespace StarterTool
+﻿namespace StarterTool
 {
     public enum ProjectSource
     {
@@ -59,19 +59,16 @@ namespace StarterTool
         {
             Web("Normal", "Codeer.LowCode.Blazor", "Codeer.LowCode.Blazor.Template.zip", "No"),
             Web("Cookie", "Codeer.LowCode.Blazor.Cookie", "Codeer.LowCode.Blazor.Template.Cookie.zip", "Cookie"),
-            //Cookie authentication server + WebAssembly client + .NET MAUI (Android/iOS) client. The MAUI app is a thin
-            //client of the same server as the browser client, so the app content follows the design files without a store release.
+            //.NET MAUI (Android/iOS) client only. It is a thin client of an existing Cookie-variant server, so the app content
+            //follows the server's design files without a store release. The server, designer and license tools come from the
+            //Cookie template; this one adds just the mobile app (and Client.Shared, which it references).
             new("Maui", "Codeer.LowCode.Blazor.Maui", "Codeer.LowCode.Blazor.Template.Maui.zip",
-                "Create Codeer.LowCode.Blazor with Cookie authorization and a .NET MAUI (Android/iOS) client.",
-                new[] { "android", "ios" }, new[] { "web", "mobile" },
+                "Create a .NET MAUI (Android/iOS) client for a Codeer.LowCode.Blazor server with Cookie authorization.",
+                new[] { "android", "ios" }, new[] { "mobile" },
                 new[]
                 {
-                    From("Cookie", "Server", "WebApp"),
-                    From("Cookie", "Client", "WebApp"),
                     Own("Maui", "MobileApp", deploy: true),
-                    Common("LicenseRegisterCli", "Tools"),
-                    Common("Designer", "Tools"),
-                    Common("Client.Shared", "WebApp"),
+                    Common("Client.Shared", "MobileApp"),
                 }),
             Desktop("Wpf"),
             Desktop("WinForms"),

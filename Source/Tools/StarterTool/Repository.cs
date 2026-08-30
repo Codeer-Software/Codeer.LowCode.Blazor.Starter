@@ -1,4 +1,4 @@
-namespace StarterTool
+﻿namespace StarterTool
 {
     public static class Repository
     {
@@ -9,6 +9,8 @@ namespace StarterTool
         public const string HostsDir = "Hosts";
         public const string CommonDir = "Common";
         public const string ToolsDir = "Tools";
+        /// <summary>The Visual Studio extension project (legacy VSSDK csproj; Visual Studio / msbuild only).</summary>
+        public const string TemplatesProject = "Codeer.LowCode.Blazor.Templates";
         /// <summary>Maintainer solution with every project of every variant.</summary>
         public const string AllSolutionName = "Codeer.LowCode.Blazor.Starter";
 
