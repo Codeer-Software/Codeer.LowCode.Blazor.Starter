@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.23" />
+    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.25" />
     <ProjectReference Include="..\..\Common\LowCodeApp.Client.Shared\LowCodeApp.Client.Shared.csproj" />
   </ItemGroup>
   
