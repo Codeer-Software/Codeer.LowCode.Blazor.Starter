@@ -42,6 +42,8 @@
                 Common("LicenseRegisterCli", "Tools"),
                 Common("Designer", "Tools"),
                 Common("Client.Shared", "WebApp"),
+                //Selenium (NUnit) tests of the running application. Same content as the designer's `selenium-test-init` template.
+                Common("SeleniumTest", "Tests"),
             });
 
         static Variant Desktop(string name) => new(
@@ -82,6 +84,7 @@
                     Own("Client", "WebApp"),
                     Common("Designer", "Tools"),
                     Common("Client.Shared", "WebApp"),
+                    Common("SeleniumTest", "Tests"),
                 },
                 IsTemplate: false),
         };
@@ -90,6 +93,6 @@
         public static readonly string[] DebugVariants = { "Normal", "Cookie" };
 
         /// <summary>Common projects that are not needed for debugging the framework (license registration front ends).</summary>
-        public static readonly string[] NotForDebug = { "LicenseRegister", "LicenseRegisterCli" };
+        public static readonly string[] NotForDebug = { "LicenseRegister", "LicenseRegisterCli", "SeleniumTest" };
     }
 }

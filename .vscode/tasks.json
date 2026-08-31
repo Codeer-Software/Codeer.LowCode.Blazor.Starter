@@ -1,0 +1,46 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/Source/Hosts/Cookie/LowCodeApp.sln",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "run server",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Source/Hosts/Cookie/LowCodeApp.Server",
+        "--launch-profile",
+        "https"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "selenium test",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "test",
+        "${workspaceFolder}/Source/Hosts/Common/LowCodeApp.SeleniumTest"
+      ],
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

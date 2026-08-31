@@ -1,0 +1,46 @@
+# Maintainers
+
+This repository is the source of truth for the application templates. Everything below is for people who maintain it;
+users of the templates do not need any of it.
+
+| Path | Role |
+|---|---|
+| `Source/` | Everything that is built; the repository root holds documentation. `Source/Codeer.LowCode.Blazor.Starter.sln` opens every project of every variant (needs the MAUI workloads) |
+| `Source/Hosts/` | The host applications: the C# solutions that run a low-code design project. (The design project itself — screens, data, scripts — is created with the designer and is not part of this repository.) |
+| `Source/Hosts/Common/` | Masters of the projects every variant shares (`Client.Shared`, `Designer`, `LicenseRegister`, `LicenseRegisterCli`) |
+| `Source/Hosts/<Variant>/LowCodeApp.<Own>` | Masters of the projects that belong to one variant (`Normal`/`Cookie` server and client, `Maui`, `Wpf`, `WinForms`) |
+| `Source/Hosts/<Variant>/LowCodeApp.sln` | **Generated**; references the variant's projects and `Source/Hosts/Common/` in place |
+| `Source/Tools/StarterTool` | `assemble` (regenerate the solutions), `pack-vsix` (Visual Studio template zips), `export-debug` (debug copies for the framework repository) |
+| `Source/Tools/Codeer.LowCode.Blazor.Templates` | The Visual Studio extension (VSIX) that ships the variants as project templates |
+| `docs/claude-code-setup.md` | The step-by-step procedure Claude Code executes when a user points it at this repository. Keep it in sync with the package versions referenced by the hosts (it names the minimum Designer / Designer.Standard versions it relies on) |
+| `.vscode/` | Launch and build settings for VS Code (default variant: Cookie). Part of the repository, not of the VSIX templates |
+| `Source/Hosts/Common/LowCodeApp.SeleniumTest` | Selenium test project shared by the web variants. Its master is the `SeleniumTestTemplate/LowCodeApp.SeleniumTest` folder of the Codeer.LowCode.Blazor.Designer.Standard repository (what the designer's `selenium-test-init` extracts); copy it here when it changes |
+
+```
+dotnet run --project Source/Tools/StarterTool -- assemble
+dotnet run --project Source/Tools/StarterTool -- pack-vsix
+dotnet run --project Source/Tools/StarterTool -- export-debug <Codeer.LowCode.Blazor/Source>
+```
+
+Run `assemble` after adding or removing a project. Pull requests are welcome against the masters.
+
+`pack-vsix` only refreshes the template zips. The extension itself is built with MSBuild (Visual Studio required):
+
+```
+msbuild Source/Tools/Codeer.LowCode.Blazor.Templates/Codeer.LowCode.Blazor.Templates.csproj -t:BuildSplitVsix -p:Configuration=Release
+```
+
+This produces one VSIX per Visual Studio major version — `Codeer.LowCode.Blazor.Templates.VS2022.vsix` and
+`Codeer.LowCode.Blazor.Templates.VS2026.vsix` in `bin/Release` — in addition to the combined
+`Codeer.LowCode.Blazor.Templates.vsix`. The split builds exist as a workaround for older VS Installers
+(VSIXInstaller 18.3 and earlier): on a machine with both VS 2022 and VS 2026, a single VSIX targeting both made the
+second install fail with "the stream must be seekable" until run a second time. VSIXInstaller 18.9 (VS 2026 18.9+)
+installs the combined VSIX to both instances in one run, so shipping the single file is fine for up-to-date machines.
+
+## Release checklist
+
+1. Bump the `Codeer.LowCode.Blazor*` package versions in the host `.csproj` files once the packages are on nuget.org.
+2. `dotnet build` every variant solution.
+3. Walk through `docs/claude-code-setup.md` on a clean Windows machine (Windows Sandbox works) with an empty folder and Claude Code.
+4. `pack-vsix`, build the VSIX, `export-debug` into the framework repository.
+5. Tag with the framework version (`v1.3.24`).
