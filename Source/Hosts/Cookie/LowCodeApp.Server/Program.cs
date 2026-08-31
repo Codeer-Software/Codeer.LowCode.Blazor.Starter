@@ -43,6 +43,7 @@ SystemConfig.Instance.Mail = builder.Configuration.GetSection("Mail").Get<MailCo
 //メールのプロバイダ設定はそれぞれ独立したセクション (使うものだけ書けばよい)
 SystemConfig.Instance.Smtp = builder.Configuration.GetSection("Smtp").Get<SmtpSettings>() ?? new();
 SystemConfig.Instance.GraphApi = builder.Configuration.GetSection("GraphApi").Get<GraphApiSettings>() ?? new();
+SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Get<SendGridSettings>() ?? new();
 SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
 SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
 SystemConfig.Instance.PasswordCheckUserTableInfo = builder.Configuration.GetSection("PasswordCheckUserTableInfo").Get<PasswordCheckUserTableInfo>() ?? new();

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="Codeer.LowCode.Blazor.Templates" Version="1.3.25" Language="en-US" Publisher="Codeer" />
+    <Identity Id="Codeer.LowCode.Blazor.Templates" Version="1.3.25.1" Language="en-US" Publisher="Codeer" />
     <DisplayName>Codeer.LowCode.Blazor.Templates</DisplayName>
     <Description xml:space="preserve">Codeer.LowCode.Blazor templates.</Description>
     <License>License.txt</License>

@@ -9,7 +9,7 @@
     <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.1.0" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Codeer.LowCode.Blazor.Extras.Server" Version="0.8.2" />
+    <PackageReference Include="Codeer.LowCode.Blazor.Extras.Server" Version="0.8.3" />
     <PackageReference Include="Azure.Identity" Version="1.13.2" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.8" />
