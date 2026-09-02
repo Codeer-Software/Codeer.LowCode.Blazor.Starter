@@ -14,7 +14,7 @@
 | `ClaudeCodeForDeveloper/` | C# ホストを触る Claude Code セッション向けの文書。`claude-code-setup.md` は、ユーザーがこのリポジトリの URL を渡したときに Claude Code が実行する手順書。ホストが参照するパッケージのバージョンと同期を保つ（前提にする Designer / Designer.Standard の最低バージョンを明記している）。`_` で始まるエントリ（`_specs/`）はデザイナの `developer-workspace` verb が生成するもので gitignore 対象 |
 | `DesignProjects/<name>/` | リポジトリには含まれない。セットアップ手順（またはユーザー）が作る。デザインプロジェクト 1 つにつき 1 フォルダ: `design/`（デザイナが開き、デプロイされるデザインプロジェクト本体）、`Project.md`、`ddl/`、`docs/`、そしてデザイナの `claude-workspace` verb がその隣に展開する Claude Code ワークスペース |
 | `.vscode/` | VS Code 用の起動・ビルド設定（既定バリアント: Cookie）。リポジトリの一部であり、VSIX テンプレートには含まない |
-| `Source/Hosts/Common/LowCodeApp.SeleniumTest` | Web バリアント共通の Selenium テストプロジェクト。マスタは Codeer.LowCode.Blazor.Designer.Standard リポジトリの `SeleniumTestTemplate/LowCodeApp.SeleniumTest`（デザイナの `selenium-test-init` が展開するもの）。変わったらここへコピーする |
+| `Source/Hosts/Common/LowCodeApp.SeleniumTest` | Web バリアント共通の Selenium テストプロジェクト（`Variants.cs` で `InVsix: false`＝リポジトリの sln には入るが VSIX テンプレートには入れない。顧客がテストするのは自分のデザインプロジェクトで、デザイナの `selenium-test-init` が雛形を出す）。マスタは Codeer.LowCode.Blazor.Designer.Standard リポジトリの `SeleniumTestTemplate/LowCodeApp.SeleniumTest`（デザイナの `selenium-test-init` が展開するもの）。変わったらここへコピーする |
 
 ```
 dotnet run --project Source/Tools/StarterTool -- assemble

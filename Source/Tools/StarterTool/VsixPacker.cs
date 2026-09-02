@@ -47,7 +47,7 @@ namespace StarterTool
         void BuildTemplate(Variant variant, string templateDir)
         {
             Directory.CreateDirectory(templateDir);
-            foreach (var project in variant.Projects)
+            foreach (var project in variant.Projects.Where(p => p.InVsix))
             {
                 var src = project.MasterDir(_root, variant.Name);
                 var dst = Path.Combine(templateDir, project.Name);
@@ -146,7 +146,7 @@ namespace StarterTool
             sb.AppendLine(@"  </TemplateData>");
             sb.AppendLine(@"  <TemplateContent PreferredSolutionConfiguration=""Debug|Any CPU"">");
             sb.AppendLine(@"    <ProjectCollection>");
-            foreach (var group in variant.Projects.GroupBy(p => p.SolutionFolder))
+            foreach (var group in variant.Projects.Where(p => p.InVsix).GroupBy(p => p.SolutionFolder))
             {
                 sb.AppendLine($@"      <SolutionFolder Name=""{group.Key}"">");
                 foreach (var project in group)

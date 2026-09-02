@@ -112,7 +112,7 @@ Move-Item "$env:TEMP\starter\Codeer.LowCode.Blazor.Starter-main\*" "<ROOT>" -For
    - `FontFileDirectory` → `<ROOT>\\Local\\Font`
    - 他の項目は触らない
 
-要するに、文字列 `C:\\Codeer.LowCode.Blazor.Local` を `<ROOT>\\Local` に置換し、`Designs.Cookie` は `Designs` に揃える。
+要するに、文字列 `C:\\Codeer.LowCode.Blazor.Local` を `<ROOT>\\Local` に置換する（`DesignFileDirectory` は全ホストで `...\\Designs`）。
 `ConnectionStrings` には全テンプレート分（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）が入っているので、どのテンプレートで
 デザインプロジェクトを作ってもサーバー側の追加設定は要らない（`template-create --data-dir` が置く DB ファイル名と一致している）。
 DB は SQLite（ファイル）なので DB サーバーのインストールは不要。PostgreSQL 等に変えたいという話が出たら、
@@ -264,6 +264,6 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 ## この手順が前提にしているもの（保守メモ）
 
 - Codeer.LowCode.Blazor.Designer **1.3.24 以降**（`template-create` / `deploy` / `api` サブコマンド、起動引数でのプロジェクトオープン）
-- Codeer.LowCode.Blazor.Designer.Standard **0.8.4 以降**（全テンプレートが Cookie 認証ホスト向け = AppUser + admin/admin 同梱、`template-create --data-dir` によるサンプル DB 配置、`developer-workspace`、デザインプロジェクトのフォルダ名の既定 `design`）
+- Codeer.LowCode.Blazor.Designer.Standard **0.8.5 以降**（全テンプレートが Cookie 認証ホスト向け = AppUser + admin/admin 同梱、`template-create --data-dir` によるサンプル DB 配置、`developer-workspace`、デザインプロジェクトのフォルダ名の既定 `design`）
 - 各バリアントの `appsettings.Development.json` の既定パスが `C:\Codeer.LowCode.Blazor.Local\...`（Step 4 の置換の前提）
 - ポート: `Properties/launchSettings.json` の `https` プロファイル（Cookie 7137）

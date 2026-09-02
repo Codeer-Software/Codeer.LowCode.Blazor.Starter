@@ -10,8 +10,10 @@
         Borrowed
     }
 
-    /// <summary>One project of a variant. Name is the suffix after "LowCodeApp." (project "LowCodeApp.Server" has Name "Server").</summary>
-    public record VariantProject(string Name, ProjectSource Source, string SolutionFolder, string? BorrowedFrom = null, bool Deploy = false)
+    /// <summary>One project of a variant. Name is the suffix after "LowCodeApp." (project "LowCodeApp.Server" has Name "Server").
+    /// InVsix = false keeps the project in the repository solutions but out of the Visual Studio template
+    /// (the Selenium test project tests this repository's hosts; customers test their design projects with the designer's selenium-test-init).</summary>
+    public record VariantProject(string Name, ProjectSource Source, string SolutionFolder, string? BorrowedFrom = null, bool Deploy = false, bool InVsix = true)
     {
         public string ProjectName => $"{Repository.AppName}.{Name}";
 
@@ -30,7 +32,7 @@
     public record Variant(string Name, string TemplateName, string ZipName, string Description, string[] PlatformTags, string[] ProjectTypeTags, VariantProject[] Projects, bool IsTemplate = true)
     {
         static VariantProject Own(string name, string folder, bool deploy = false) => new(name, ProjectSource.Own, folder, Deploy: deploy);
-        static VariantProject Common(string name, string folder) => new(name, ProjectSource.Common, folder);
+        static VariantProject Common(string name, string folder, bool inVsix = true) => new(name, ProjectSource.Common, folder, InVsix: inVsix);
         static VariantProject From(string variant, string name, string folder) => new(name, ProjectSource.Borrowed, folder, variant);
 
         static Variant Web(string name, string templateName, string zipName, string authType, bool isTemplate = true) => new(
@@ -44,7 +46,8 @@
                 Common("Designer", "Tools"),
                 Common("Client.Shared", "WebApp"),
                 //Selenium (NUnit) tests of the running application. Same content as the designer's `selenium-test-init` template.
-                Common("SeleniumTest", "Tests"),
+                //Repository only: not shipped in the VS template (customers test their own design project, not this host).
+                Common("SeleniumTest", "Tests", inVsix: false),
             },
             IsTemplate: isTemplate);
 
