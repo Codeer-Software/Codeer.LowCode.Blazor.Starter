@@ -25,14 +25,15 @@
     }
 
     /// <summary>One application variant and how the VS template describes it.</summary>
-    /// <param name="IsTemplate">false = kept in the repository (solution generated) but not shipped as a VS template yet.</param>
+    /// <param name="IsTemplate">false = kept in the repository (solution generated, debug copy exported) but not shipped as a VS template.
+    /// Public templates are Cookie (the default, no suffix) and Maui only; Normal / Wpf / WinForms / MultiTenant stay as hosts for maintenance.</param>
     public record Variant(string Name, string TemplateName, string ZipName, string Description, string[] PlatformTags, string[] ProjectTypeTags, VariantProject[] Projects, bool IsTemplate = true)
     {
         static VariantProject Own(string name, string folder, bool deploy = false) => new(name, ProjectSource.Own, folder, Deploy: deploy);
         static VariantProject Common(string name, string folder) => new(name, ProjectSource.Common, folder);
         static VariantProject From(string variant, string name, string folder) => new(name, ProjectSource.Borrowed, folder, variant);
 
-        static Variant Web(string name, string templateName, string zipName, string authType) => new(
+        static Variant Web(string name, string templateName, string zipName, string authType, bool isTemplate = true) => new(
             name, templateName, zipName, $"Create Codeer.LowCode.Blazor with {authType} authorization.",
             Array.Empty<string>(), new[] { "web" },
             new[]
@@ -44,7 +45,8 @@
                 Common("Client.Shared", "WebApp"),
                 //Selenium (NUnit) tests of the running application. Same content as the designer's `selenium-test-init` template.
                 Common("SeleniumTest", "Tests"),
-            });
+            },
+            IsTemplate: isTemplate);
 
         static Variant Desktop(string name) => new(
             name, $"Codeer.LowCode.Blazor.{name}", $"Codeer.LowCode.Blazor.Template.{name}.zip", $"Create Codeer.LowCode.Blazor on {name}",
@@ -55,12 +57,16 @@
                 Common("LicenseRegister", "Tools"),
                 Common("Designer", "Tools"),
                 Common("Client.Shared", "DesktopApp"),
-            });
+            },
+            IsTemplate: false);
 
         public static readonly Variant[] All =
         {
-            Web("Normal", "Codeer.LowCode.Blazor", "Codeer.LowCode.Blazor.Template.zip", "No"),
-            Web("Cookie", "Codeer.LowCode.Blazor.Cookie", "Codeer.LowCode.Blazor.Template.Cookie.zip", "Cookie"),
+            //No authentication. Kept as a host (debug copy for the framework repository's Selenium tests), not shipped as a template:
+            //an application without a login is made by removing the authentication from Cookie (see CLAUDE.md), not by starting here.
+            Web("Normal", "Codeer.LowCode.Blazor.Normal", "Codeer.LowCode.Blazor.Template.Normal.zip", "No", isTemplate: false),
+            //The default template: no suffix in the template name / zip.
+            Web("Cookie", "Codeer.LowCode.Blazor", "Codeer.LowCode.Blazor.Template.zip", "Cookie"),
             //.NET MAUI (Android/iOS) client only. It is a thin client of an existing Cookie-variant server, so the app content
             //follows the server's design files without a store release. The server, designer and license tools come from the
             //Cookie template; this one adds just the mobile app (and Client.Shared, which it references).

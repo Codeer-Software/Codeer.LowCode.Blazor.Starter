@@ -11,8 +11,8 @@ AI の動作は決定的ではなく、ソフトウェアのインストール�
 
 ## 進め方の原則
 
-- **一本道で進める。迷ったらこの文書の既定値を採用する。** ユーザーに聞くのは下の「聞いてよいこと」の 2 つだけ。
-  それ以外（フォルダ名・バリアント・テンプレート・ポート・DB の種類）は聞かずに既定値で進める
+- **一本道で進める。迷ったらこの文書の既定値を採用する。** ユーザーに聞くのは下の「聞いてよいこと」の 1 つだけ。
+  それ以外（フォルダ名・テンプレート・ポート・DB の種類）は聞かずに既定値で進める
 - **難しいことを聞かない。** 「NuGet のソースをどうしますか」「証明書を信頼しますか」のような質問はしない。この文書に書いてある通りに処理する
 - **失敗したら止まらず、この文書の「うまくいかないとき」を見て自分でリカバリする。** それでも無理なときだけ、ユーザーに「何を」「どう」してほしいか 1 行で頼む
 - **各ステップの終わりに 1 行で進捗を報告する**（「.NET SDK 8 を確認しました」など）。長い説明はしない
@@ -20,10 +20,11 @@ AI の動作は決定的ではなく、ソフトウェアのインストール�
 - **Windows 専用。** macOS / Linux では「デザイナが Windows 専用のため、このセットアップは Windows で行ってください」と伝えて終了する
 - 作業フォルダの外（`C:\` 直下や他のプロジェクト）には何も作らない
 
-### 聞いてよいこと（この 2 つだけ・どちらも既定値を提示して Yes/No で答えられる形で）
+### 聞いてよいこと（この 1 つだけ・既定値を提示して Yes/No で答えられる形で）
 
 1. 不足しているソフト（.NET SDK / Git / VS Code）を **winget でインストールしてよいか**（不足しているものがあるときだけ聞く）
-2. **ログイン画面のあるアプリにするか**（既定: はい）。「はい」→ Cookie バリアント + 認証パターン集、「いいえ」→ Normal バリアント + 入門サンプル
+
+アプリはログイン画面のある `Cookie` ホスト 1 種類（認証なしの構成は作らない。前段で認証済みなどの事情で不要なら、セットアップ後に `CLAUDE.md` の「認証を外す」で外す）。
 
 ---
 
@@ -88,16 +89,15 @@ Move-Item "$env:TEMP\starter\Codeer.LowCode.Blazor.Starter-main\*" "<ROOT>" -For
 
 > ユーザー自身のリポジトリにしたい場合は `.git` を削除して `git init` すればよい（聞かれたときだけ案内する。聞かない）。
 
-## Step 3. バリアントを決める（質問 2）
+## Step 3. 使う値を固定する（質問はしない）
 
-ここで 2 つ目の質問: 「**ログイン画面のあるアプリにしますか？**（はい: ユーザー名/パスワードでログインする業務アプリ向け・既定 / いいえ: 認証なしで即画面が出る）」
+| 名前 | 値 |
+|---|---|
+| `<VARIANT>` | `Cookie`（ログイン画面のある Web アプリ。公開しているホストはこれと、その Android/iOS クライアントの `Maui` だけ） |
+| `<TEMPLATE>` | `PatternShowcase`（標準パターン集。ログイン `admin` / `admin`。alice / bob / carol / dave はパスワード `test`） |
+| `<URL>` | `https://localhost:7137` |
 
-| 答え | バリアント（VARIANT） | テンプレート（TEMPLATE） | サーバー URL |
-|---|---|---|---|
-| はい（既定） | `Cookie` | `PatternShowcaseAuth`（認証パターン集。ログイン `admin` / `admin`） | `https://localhost:7137` |
-| いいえ | `Normal` | `GettingStarted`（入門サンプル） | `https://localhost:7169` |
-
-以降 `<VARIANT>` `<TEMPLATE>` `<URL>` はこの表の値。ソリューションは `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.sln`。
+ソリューションは `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.sln`。`Source\Hosts\` には保守用に他のホスト（`Normal` / `Wpf` / `WinForms` / `MultiTenant`）も入っているが、この手順では使わない。
 
 ## Step 4. ローカルの置き場を作り、appsettings を書き換える
 
@@ -113,6 +113,8 @@ Move-Item "$env:TEMP\starter\Codeer.LowCode.Blazor.Starter-main\*" "<ROOT>" -For
    - 他の項目は触らない
 
 要するに、文字列 `C:\\Codeer.LowCode.Blazor.Local` を `<ROOT>\\Local` に置換し、`Designs.Cookie` は `Designs` に揃える。
+`ConnectionStrings` には全テンプレート分（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）が入っているので、どのテンプレートで
+デザインプロジェクトを作ってもサーバー側の追加設定は要らない（`template-create --data-dir` が置く DB ファイル名と一致している）。
 DB は SQLite（ファイル）なので DB サーバーのインストールは不要。PostgreSQL 等に変えたいという話が出たら、
 セットアップ完了後に `CLAUDE.md` の「appsettings リファレンス」を見て対応する（今はやらない）。
 
@@ -191,7 +193,7 @@ dotnet dev-certs https --check --trust
 
 `A valid certificate was found` と `trusted` が出れば OK。信頼されていなければ `dotnet dev-certs https --trust` を実行する。
 **Windows がセキュリティ警告のダイアログを出す**ので、ユーザーに「証明書のダイアログが出たら『はい』を押してください」と伝える。
-押されなくても http（`<URL>` の代わりに `http://localhost:5085`（Cookie）/ `http://localhost:5140`（Normal））で動くので、そこで詰まらない。
+押されなくても http（`<URL>` の代わりに `http://localhost:5085`）で動くので、そこで詰まらない。
 
 ## Step 9. サーバーとデザイナを起動する
 
@@ -212,8 +214,7 @@ Start-Process -FilePath "<DESIGNER_EXE>" -ArgumentList @("<ROOT>\DesignProjects\
 （PowerShell 5.1 には `-SkipCertificateCheck` が無い。その場合は `http://localhost:<httpポート>` で確認する）。
 ブラウザが開かなければ `Start-Process "<URL>"` で開く。
 
-- Cookie: ログイン画面が出る。`admin` / `admin`
-- Normal: そのままサンプルの画面が出る
+- ログイン画面が出る。`admin` / `admin`
 - デザイナ右上に「トライアル」と表示されるのは正常（ライセンス登録は不要。試用できる）
 
 **起動がうまくいかないときはユーザーにやってもらってよい**: 「Visual Studio で `Source\Hosts\<VARIANT>\LowCodeApp.sln` を開き、
@@ -223,7 +224,7 @@ VS が無いときは VS Code（次項）。
 ## Step 10. VS 2026 が無いとき: VS Code で開ける状態にする
 
 ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同梱されている（このリポジトリの一部）。
-`launch.json` の既定は Cookie + `DesignProjects/PatternShowcaseAuth/design`。Normal を選んだ場合は `launch.json` 内の `Cookie` を `Normal` に、`PatternShowcaseAuth` を `GettingStarted` に置換する。
+`launch.json` の既定は Cookie + `DesignProjects/PatternShowcase/design`（この手順の値と同じ。そのまま使える）。
 
 1. 拡張機能: `code --install-extension ms-dotnettools.csdevkit`（VS Code があるとき。無ければ `extensions.json` の推奨が VS Code 側で提示される）
 2. 開く: `code "<ROOT>"`
@@ -234,7 +235,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 
 以下を短く伝える（この文書の URL や内部手順は説明しない）:
 
-- アプリの URL（`<URL>`）とログイン情報（Cookie のとき `admin` / `admin`）
+- アプリの URL（`<URL>`）とログイン情報（`admin` / `admin`）
 - デザインプロジェクトの場所（`<ROOT>\DesignProjects\<TEMPLATE>\design`）と、デザイナで編集 → 「送信」でサーバーに反映されること（サーバーの再起動は不要。スクリプトを変えたときだけ再起動）
 - **次にできること**: 「Claude Code を再起動すると、画面の追加や変更を私（Claude）に頼めます。例:『商品マスタの画面を追加して』。デザインだけを扱うなら `DesignProjects\<TEMPLATE>` フォルダで起動するとホストのソースが視界に入らず身軽です」
 - 今入っているのは**サンプル集**であること。**自分の業務アプリを作るときは、サンプルに増築せず、空のプロジェクトから別のデザインプロジェクト（`DesignProjects\<アプリ名>`）を作るのが既定**で、Claude に「自分のアプリを作りたい」と言えば確認しながら進めること
@@ -263,6 +264,6 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 ## この手順が前提にしているもの（保守メモ）
 
 - Codeer.LowCode.Blazor.Designer **1.3.24 以降**（`template-create` / `deploy` / `api` サブコマンド、起動引数でのプロジェクトオープン）
-- Codeer.LowCode.Blazor.Designer.Standard **0.8.3 以降**（`template-create --data-dir` によるサンプル DB 配置、`developer-workspace` によるルート用の許可・フック生成、デザインプロジェクトのフォルダ名の既定 `design`）
+- Codeer.LowCode.Blazor.Designer.Standard **0.8.4 以降**（全テンプレートが Cookie 認証ホスト向け = AppUser + admin/admin 同梱、`template-create --data-dir` によるサンプル DB 配置、`developer-workspace`、デザインプロジェクトのフォルダ名の既定 `design`）
 - 各バリアントの `appsettings.Development.json` の既定パスが `C:\Codeer.LowCode.Blazor.Local\...`（Step 4 の置換の前提）
-- ポート: `Properties/launchSettings.json` の `https` プロファイル（Cookie 7137 / Normal 7169）
+- ポート: `Properties/launchSettings.json` の `https` プロファイル（Cookie 7137）

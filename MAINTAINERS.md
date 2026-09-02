@@ -7,7 +7,7 @@
 | `Source/` | ビルド対象のすべて。リポジトリのルートは文書。`Source/Codeer.LowCode.Blazor.Starter.sln` は全バリアントの全プロジェクトを開く（MAUI ワークロードが必要） |
 | `Source/Hosts/` | ホストアプリケーション＝ローコードのデザインプロジェクトを動かす C# ソリューション（デザインプロジェクト本体＝画面・データ・スクリプトはデザイナで作り、このリポジトリには含まれない） |
 | `Source/Hosts/Common/` | 全バリアント共通プロジェクトのマスタ（`Client.Shared`、`Designer`、`LicenseRegister`、`LicenseRegisterCli`） |
-| `Source/Hosts/<Variant>/LowCodeApp.<Own>` | バリアント固有プロジェクトのマスタ（`Normal` / `Cookie` のサーバーとクライアント、`Maui`、`Wpf`、`WinForms`） |
+| `Source/Hosts/<Variant>/LowCodeApp.<Own>` | バリアント固有プロジェクトのマスタ（`Normal` / `Cookie` のサーバーとクライアント、`Maui`、`Wpf`、`WinForms`）。公開テンプレートは `Cookie`（接尾辞なし・既定）と `Maui` だけ。`Normal` / `Wpf` / `WinForms` / `MultiTenant` は `Variants.cs` で `IsTemplate: false`（ソリューション生成とデバッグ用コピーの対象だが VSIX には入れない） |
 | `Source/Hosts/<Variant>/LowCodeApp.sln` | **生成物**。バリアントのプロジェクトと `Source/Hosts/Common/` をその場で参照する |
 | `Source/Tools/StarterTool` | `assemble`（ソリューション再生成）、`pack-vsix`（Visual Studio テンプレートの zip）、`export-debug`（フレームワーク本体リポジトリ向けのデバッグ用コピー） |
 | `Source/Tools/Codeer.LowCode.Blazor.Templates` | バリアントをプロジェクトテンプレートとして配布する Visual Studio 拡張機能（VSIX） |

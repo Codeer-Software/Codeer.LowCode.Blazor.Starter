@@ -47,7 +47,7 @@
    などローコードの範囲で不可能と確定したときだけ。やり方は下の「ホストのカスタマイズ」と `ClaudeCodeForDeveloper/_specs/HostCustomization.md`
 
 **サンプルを土台にしない**: セットアップ直後の `DesignProjects/<テンプレート名>/` はサンプル集（ショーケース）。ユーザーが自分の業務アプリを求めたら、
-サンプルに増築せず、空のプロジェクト（`Empty` / 認証付きは `EmptyAuth`）から別のデザインプロジェクトを作ることを提案して確認する（下の「デザインプロジェクトの切り替え」）。
+サンプルに増築せず、空のプロジェクト（`Empty` / 認証付きは `Empty`）から別のデザインプロジェクトを作ることを提案して確認する（下の「デザインプロジェクトの切り替え」）。
 
 **自動テスト (Selenium)**: ユーザーが求めたら `DesignProjects/<デザイン名>/ClaudeCodeForDesigner/Docs/SeleniumTestGuide.md` の手順で。テストプロジェクトは
 `Source/Hosts/Common/LowCodeApp.SeleniumTest`（Web バリアントの `LowCodeApp.sln` に含まれている。`selenium-test-init` で新規展開しなくてよい）。
@@ -59,15 +59,23 @@
 
 ## バリアントの選び方
 
+公開しているホストは 2 つ。**既定は `Cookie`**（Visual Studio テンプレート名も接尾辞なしの `Codeer.LowCode.Blazor`）。
+
 | フォルダ | 用途 | 選ぶ基準 |
 |---|---|---|
-| `Source/Hosts/Normal/` | Web（WASM クライアント + ASP.NET Core サーバー）、認証なし | 社内 LAN・前段で認証済み・デモ |
-| `Source/Hosts/Cookie/` | Web、Cookie 認証（ユーザーテーブルでパスワード検証） | ログインが必要な業務アプリの既定 |
+| `Source/Hosts/Cookie/` | Web（WASM クライアント + ASP.NET Core サーバー）、Cookie 認証（ユーザーテーブルでパスワード検証） | 業務アプリの既定。Entra ID / OIDC / TOTP など独自の認証を組むときもここを土台にする（cookie スキームと `[Authorize]`、現在ユーザー解決はそのまま使え、ログインの発行方法だけ差し替える） |
 | `Source/Hosts/Maui/` | `Cookie` + .NET MAUI（Android/iOS）クライアント | スマホアプリとして配布したい。デザイン変更はストア更新なしで反映される |
-| `Source/Hosts/MultiTenant/` | Web、マルチテナント（ASP.NET Core Identity、テナント別デザイン/データ） | 複数組織を 1 サーバーで。VS テンプレ化はまだ |
-| `Source/Hosts/Wpf/` `Source/Hosts/WinForms/` | デスクトップ単体（サーバー機能を同一プロセスに内包） | サーバーを立てない・オフライン寄り |
 
-迷ったら `Source/Hosts/Cookie/`。認証は後から足すより最初からある方が楽。
+`Source/Hosts/` にはほかに `Normal`（認証なし）/ `Wpf` `WinForms`（デスクトップ単体）/ `MultiTenant`（マルチテナント）も**保守用**に置いてあるが、
+テンプレートとしては提供していない。ユーザーに勧めない（認証なしが要るときは下の「認証を外す」）。
+
+### 認証を外す（前段のリバースプロキシや Easy Auth で守られている等、ログイン画面が要らないとき）
+
+`Cookie` から引き算する。触るのは 6 か所: `Server/CookieAuthentication.cs`（cookie スキームの登録。`Program.cs` の呼び出しごと）、
+`Server/Controllers/AccountController.cs`、`Server/PasswordCheckUser.cs`（+ `appsettings*.json` の `PasswordCheckUserTableInfo` と `SystemConfig` の該当プロパティ）、
+各 Controller の `[Authorize]`、`Client/wwwroot/login.html` と `Client/LoginInfo.cs`（`Program.cs` / `NavigationService.cs` のログイン遷移）、
+`Services/DataService.cs` の現在ユーザー解決（前段認証のヘッダから取るか固定値にする）。
+差分の正解は `Source/Hosts/Normal/` にあるので、迷ったら `git diff --no-index Source/Hosts/Cookie/LowCodeApp.Server Source/Hosts/Normal/LowCodeApp.Server` で見比べる。
 
 ## 共通の構成
 
@@ -93,12 +101,12 @@
 
 ```powershell
 dotnet build Source/Hosts/Cookie/LowCodeApp.sln                                   # 初回は NuGet 復元で数分
-dotnet run --project Source/Hosts/Cookie/LowCodeApp.Server --launch-profile https  # https://localhost:7137 (Normal は 7169)
+dotnet run --project Source/Hosts/Cookie/LowCodeApp.Server --launch-profile https  # https://localhost:7137
 Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe DesignProjects/<デザイン名>/design   # 引数のフォルダのプロジェクトを開いて起動
 ```
 
 - Visual Studio 2026: `LowCodeApp.sln` を開き `LowCodeApp.Server` を F5。デザイナは `LowCodeApp.Designer` を「新しいインスタンスを開始」
-- VS Code: ルートの `.vscode/launch.json` に **Server** / **Designer** 構成がある（既定は Cookie と `DesignProjects/PatternShowcaseAuth/design`。バリアント名とデザインのフォルダは置換する）。拡張は C# Dev Kit
+- VS Code: ルートの `.vscode/launch.json` に **Server** / **Designer** 構成がある（Cookie と `DesignProjects/PatternShowcase/design`。別のデザインを使うならフォルダを置換する）。拡張は C# Dev Kit
 - **サーバーは Claude Code が勝手に再起動しない**（ユーザーが VS / VS Code で起動していることが多い）。再起動が必要なときはその旨を伝える
 - C# を変えたら Server / Designer の再ビルドと再起動が必要。デザインの変更はデプロイだけで反映（スクリプト変更はサーバー再起動）
 
@@ -110,7 +118,7 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Desi
 | キー | 型 | 意味 |
 |---|---|---|
 | `ConnectionStrings:<Name>` | string | `DataSources[].Name` と同名で接続文字列。SQLite なら `Data Source=<パス>;`、PostgreSQL なら `Host=...;Username=...;Password=...;Database=...` 等（Npgsql / SqlClient / MySqlConnector / Oracle の書式） |
-| `DataSources[]` | `{ Name, DataSourceType }` | データソース。`DataSourceType` は `SQLite` / `PostgreSQL` / `SQLServer` / `MySQL` / `Oracle`。デザインプロジェクトの `designer.settings.json` の `DataSources[].Name` と一致させる |
+| `DataSources[]` | `{ Name, DataSourceType }` | データソース。`DataSourceType` は `SQLite` / `PostgreSQL` / `SQLServer` / `MySQL` / `Oracle`。デザインプロジェクトの `designer.settings.json` の `DataSources[].Name` と一致させる。テンプレの既定には標準テンプレート 6 種のデータソース名（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）が入っている |
 | `DesignFileDirectory` | string | デザイン（`App.zip`）を読むフォルダ。デザイナのデプロイ先と同じにする |
 | `FontFileDirectory` | string | PDF 出力用フォント（`NotoSansJP.ttf` 等）。PDF を使わないなら空フォルダでよい |
 | `FileSystemStorages[]` | `{ Name, Directory }` | FileField の保存先（ローカルフォルダ）。`designer.settings.json` の `FileStorageNames` と `Name` を一致させる |
@@ -135,10 +143,10 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 ホストが配信するデザインは 1 つ（`DesignFileDirectory` の `App.zip`）。デザインプロジェクトは `DesignProjects/` にいくつ置いてもよいが、
 サーバーが読むのは最後にデプロイしたもの。新しいデザインプロジェクトを作って切り替える手順（DESIGNER_EXE = `Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe`。GUI 系 exe なので `Start-Process -Wait` + `--out`）:
 
-1. 作る: `template-create --name EmptyAuth --out-dir DesignProjects/<アプリ名>/design --data-dir Local/Data --deploy-dir Local/Designs --out Local/tc.json`
-   （認証なしなら `Empty`。テンプレート付属の SQLite が `Local/Data` に置かれ、`design/designer.settings.Development.json` の接続文字列がそこを指し、`Local/Designs/App.zip` が**この新しいデザインで上書き**される）
+1. 作る: `template-create --name Empty --out-dir DesignProjects/<アプリ名>/design --data-dir Local/Data --deploy-dir Local/Designs --out Local/tc.json`
+   （テンプレートはすべて Cookie 認証向けで AppUser と admin/admin を含む。`template-list` で一覧。テンプレート付属の SQLite が `Local/Data` に置かれ、`design/designer.settings.Development.json` の接続文字列がそこを指し、`Local/Designs/App.zip` が**この新しいデザインで上書き**される）
 2. ワークスペースを展開: `claude-workspace DesignProjects/<アプリ名> --project design --out Local/cw.json`（`CLAUDE.md` / `ClaudeCodeForDesigner/` / `Project.md` / `ddl/` / `docs/` ができる）
-3. サーバーの `appsettings.Development.json` の `ConnectionStrings` を、新しいデザインの `design/designer.settings.Development.json` と同じ DB ファイルに向ける（`DataSources[].Name` はデザイン側 `designer.settings.json` と一致させる）。サーバーを再起動
+3. サーバーの `appsettings.Development.json` の `ConnectionStrings` を確認する。標準テンプレートのデータソース名（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）と DB ファイル名は既に入っているので、標準テンプレートから作ったデザインなら変更不要。自前のデータソース名や DB にしたときだけ、`DataSources[]`（`appsettings.json`）と接続文字列を足す。サーバーを再起動
 4. 以後のデザイン作業は `DesignProjects/<アプリ名>/` で Claude Code を起動して行う。`.vscode/launch.json` の Designer 構成のフォルダも差し替える
 
 元のサンプルに戻すときは、そのデザインを `deploy "DesignProjects/<テンプレート名>/design"` し直し、接続文字列を戻す。サンプルのデザインプロジェクトが不要なら `DesignProjects/<テンプレート名>/` ごと削除してよい（`Local/Data` の DB ファイルはそのままでも害はない）。
