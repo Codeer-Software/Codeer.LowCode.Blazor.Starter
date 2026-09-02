@@ -45,7 +45,7 @@
 3. **C#（このリポジトリの `Source/`）を触るのは最後の手段。** フィールド型そのものが無い・性能をコードで改善したい・独自 API / 外部連携が要る、
    などローコードの範囲で不可能と確定したときだけ。やり方は下の「ホストのカスタマイズ」と `ClaudeCodeForDeveloper/_specs/HostCustomization.md`
 
-**サンプルを土台にしない・頼まれていないものを作らない**: ユーザーのアプリは `Empty` から作った `DesignProjects/<アプリ名>/`（セットアップ既定 `App`）。
+**サンプルを土台にしない・頼まれていないものを作らない**: ユーザーのアプリは `Empty` から作った `DesignProjects/Project/`（セットアップ既定。フォルダはリネームしてよい）。
 サンプル集（`DesignProjects/PatternShowcase/`）はユーザーが希望したときだけ別のデザインプロジェクトとして展開し、そこに増築しない。参考実装は各ワークスペースの `ClaudeCodeForDesigner/_samples/` に常にある。
 既存のデザインがサンプル由来なのにユーザーが自分のアプリを求めたら、空のプロジェクトから作り直すことを提案して確認する（下の「デザインプロジェクトの切り替え」）。
 
@@ -107,7 +107,7 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Desi
 
 - 前提: .NET 10 SDK（Visual Studio 2026 に同梱）。<!-- maintainer-only -->リポジトリのホストは .NET 8（フレームワークの対象）。`export-app` が書き出すアプリは net10.0 と最新パッケージに上げる。<!-- /maintainer-only -->
 - Visual Studio 2026: `LowCodeApp.sln` を開き `LowCodeApp.Server` を F5。デザイナは `LowCodeApp.Designer` を「新しいインスタンスを開始」
-- VS Code: ルートの `.vscode/launch.json` に **Server** / **Designer** 構成がある（Cookie と `DesignProjects/App/design`。アプリのフォルダ名が違うなら `App` を置換する）。拡張は C# Dev Kit
+- VS Code: ルートの `.vscode/launch.json` に **Server** / **Designer** 構成がある（Cookie と `DesignProjects/Project/design`。デザインプロジェクトをリネームしたら `Project` を置換する）。拡張は C# Dev Kit
 - **サーバーは Claude Code が勝手に再起動しない**（ユーザーが VS / VS Code で起動していることが多い）。再起動が必要なときはその旨を伝える
 - C# を変えたら Server / Designer の再ビルドと再起動が必要。デザインの変更はデプロイだけで反映（スクリプト変更はサーバー再起動）
 

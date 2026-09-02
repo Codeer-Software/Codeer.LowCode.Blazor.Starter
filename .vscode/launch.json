@@ -1,7 +1,7 @@
 {
   // VS Code launch settings (C# Dev Kit / ms-dotnettools.csharp). Default variant: Cookie.
   // The public host is Cookie. Using another host under Source/Hosts (maintenance only)? Replace "Cookie" in this file (the Designer entry is shared).
-  // The Designer entry opens DesignProjects/App/design; replace "App" with your design project folder.
+  // The Designer entry opens DesignProjects/Project/design; replace "Project" if you renamed the design project folder.
   "version": "0.2.0",
   "configurations": [
     {
@@ -31,7 +31,7 @@
       "request": "launch",
       "preLaunchTask": "build",
       "program": "${workspaceFolder}/Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe",
-      "args": ["${workspaceFolder}/DesignProjects/App/design"],
+      "args": ["${workspaceFolder}/DesignProjects/Project/design"],
       "cwd": "${workspaceFolder}/Source/Hosts/Common/LowCodeApp.Designer",
       "stopAtEntry": false,
       "console": "internalConsole"
