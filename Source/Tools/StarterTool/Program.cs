@@ -4,6 +4,7 @@ using StarterTool;
 //   dotnet run --project Source/Tools/StarterTool -- assemble
 //   dotnet run --project Source/Tools/StarterTool -- pack-vsix
 //   dotnet run --project Source/Tools/StarterTool -- export-debug <path to Codeer.LowCode.Blazor/Source>
+//   dotnet run --project Source/Tools/StarterTool -- export-app <destination folder> [--maui] [--no-upgrade]   (customer-shaped application folder = Cookie host + Claude Code documents; moved to net10.0 + latest packages unless --no-upgrade)
 //
 // Every project exists once:
 //   Source/Hosts/Common/*                        projects shared by every variant
@@ -29,6 +30,10 @@ switch (command)
         if (args.Length < 2) return Usage();
         new DebugExporter(root).Run(Path.GetFullPath(args[1]));
         break;
+    case "export-app":
+        if (args.Length < 2) return Usage();
+        new AppExporter(root).Run(Path.GetFullPath(args[1]), args.Contains("--maui"), upgrade: !args.Contains("--no-upgrade"));
+        break;
     default:
         return Usage();
 }
@@ -36,6 +41,6 @@ return 0;
 
 static int Usage()
 {
-    Console.Error.WriteLine("usage: StarterTool assemble | pack-vsix | export-debug <Codeer.LowCode.Blazor/Source>");
+    Console.Error.WriteLine("usage: StarterTool assemble | pack-vsix | export-debug <Codeer.LowCode.Blazor/Source> | export-app <dest> [--maui] [--no-upgrade]");
     return 1;
 }

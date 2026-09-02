@@ -87,7 +87,7 @@
             File.WriteAllLines(slnPath, lines);
         }
 
-        static string CreateSolution(string dir, string name, List<(string csproj, string folder, bool deploy)> entries)
+        internal static string CreateSolution(string dir, string name, List<(string csproj, string folder, bool deploy)> entries)
         {
             var slnName = name + ".sln";
             var slnPath = Path.Combine(dir, slnName);

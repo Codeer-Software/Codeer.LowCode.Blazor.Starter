@@ -10,13 +10,13 @@
 > このURLを見て指示に従って https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter
 
 Claude Code が [ClaudeCodeForDeveloper/claude-code-setup.md](ClaudeCodeForDeveloper/claude-code-setup.md) を読んで、残りを実行します。
-.NET SDK の確認（無ければ承諾のうえ winget でインストール）、このリポジトリの取得、ソリューションのビルド、サンプルデータ付きテンプレートからのデザインプロジェクト作成、
-デザイン編集用のワークスペース展開、サーバー起動（ブラウザが開く）とデザイナの起動まで通ります。
+.NET 10 SDK の確認（無ければ承諾のうえ winget でインストール）、このリポジトリからアプリのフォルダ（Cookie ホスト 1 つと Claude Code 用の文書だけ。リポジトリ全体は置かない）の書き出し、ソリューションのビルド、あなたのアプリ用の空のデザインプロジェクト（ログインとユーザー管理だけ）の作成、
+デザイン編集用のワークスペース展開、サーバー起動（ブラウザが開く）とデザイナの起動まで通ります。聞かれるのはアプリの名前と、参考用のサンプル集も展開するかだけです（既定は展開しない）。
 Windows 専用です（デザイナが WPF アプリケーション）。Visual Studio は必須ではなく、VS Code 用の起動設定を同梱しています。
 試用にライセンス登録は不要で、デザイナはトライアルとして動作します。
 
-そのあとは Claude Code に画面の追加・変更を頼めます（「商品マスタの画面を追加して」など）。起動する場所は `DesignProjects/<デザイン名>/`
-（デザインプロジェクトごとの作業場。セットアップで作られるサンプルは `DesignProjects/PatternShowcase/`）です。
+そのあとは Claude Code に作りたいアプリの内容を伝えます（「商品マスタと受注入力の画面を作って」など）。起動する場所は `DesignProjects/<アプリ名>/`
+（デザインプロジェクトごとの作業場。サンプル集を展開した場合は `DesignProjects/PatternShowcase/` が隣にできます）です。
 C# のホスト側を変えたいときはリポジトリのルートで起動します。配置は、`DesignProjects/<名前>/design/` がデザインプロジェクト本体で、隣に `Project.md`・`ddl/`・`docs/` が並びます。
 `ClaudeCodeForDeveloper/` にはセットアップ手順と、ホスト開発向けに生成されるリファレンスが入ります。
 
@@ -51,14 +51,14 @@ Entra ID / OIDC / TOTP など独自の認証を組む場合も `Cookie` を土�
 ## 手動で始める
 
 1. リポジトリをクローンします（バリアントのフォルダ単体では不足です。ソリューションが `Source/Hosts/Common/` を参照しています）。
-   代わりに Visual Studio 拡張機能をインストールすれば、そのテンプレートは自己完結しています。
-2. `LowCodeApp.sln` を開きます。必要なもの: .NET 8 SDK（全バリアント）、`Source/Hosts/Maui/` は .NET 10 SDK と `maui-android` / `maui-ios` ワークロード。
+   自分のアプリ用に自己完結したフォルダが欲しいときは `dotnet run --project Source/Tools/StarterTool -- export-app <出力先> [--maui] [--no-upgrade]`（Claude Code のセットアップが使うのもこれ。書き出したアプリは .NET 10 と最新の NuGet パッケージに上げる。`--no-upgrade` でリポジトリのまま）か、Visual Studio 拡張機能のテンプレートを使います。
+2. `LowCodeApp.sln` を開きます。必要なもの: .NET 8 SDK（リポジトリのホストは .NET 8。`export-app` で書き出したアプリは .NET 10 と最新パッケージに上がるので .NET 10 SDK）、`Source/Hosts/Maui/` は .NET 10 SDK と `maui-android` / `maui-ios` ワークロード。
    Visual Studio が無い場合は `dotnet build Source/Hosts/Cookie/LowCodeApp.sln`。`.vscode/` に VS Code（C# Dev Kit）用の起動設定があります。
 3. サーバープロジェクト（`LowCodeApp.Server`）の `appsettings.Development.json` を確認します:
    接続文字列、`DesignFileDirectory`、ファイル保存先。既定は `C:\Codeer.LowCode.Blazor.Local\...` を指しているので、そのフォルダを作るかパスを変えます。
    各設定の意味は `CLAUDE.md` にあります。
 4. デザインプロジェクトを作ります。`LowCodeApp.Designer` を起動してテンプレートを選ぶか、GUI なしなら
-   `LowCodeApp.Designer.exe template-create --name PatternShowcase --out-dir DesignProjects\<名前>\design --data-dir <Local\Data> --deploy-dir <DesignFileDirectory>`。
+   `LowCodeApp.Designer.exe template-create --name Empty --out-dir DesignProjects\<名前>\design --data-dir <Local\Data> --deploy-dir <DesignFileDirectory>`（テンプレート一覧は `template-list`。サンプル集は `PatternShowcase`）。
    そのあとサーバーを起動します。`Source/Hosts/Maui/` は先に `Cookie` サーバーを起動し、アプリからその URL を指定します。
 
 リネーム: ソリューションとプロジェクトの名前は `LowCodeApp` です。ファイル名・フォルダ名・ファイル内容（名前空間、`x:Class`、`*.styles.css` のリンク）の
