@@ -1,6 +1,7 @@
 {
   // VS Code launch settings (C# Dev Kit / ms-dotnettools.csharp). Default variant: Cookie.
   // For Normal replace "Cookie" with "Normal" in this file (the Designer entry is shared).
+  // The Designer entry opens DesignProjects/PatternShowcaseAuth/design; replace the folder with your design project.
   "version": "0.2.0",
   "configurations": [
     {
@@ -30,7 +31,7 @@
       "request": "launch",
       "preLaunchTask": "build",
       "program": "${workspaceFolder}/Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe",
-      "args": ["${workspaceFolder}/Design"],
+      "args": ["${workspaceFolder}/DesignProjects/PatternShowcaseAuth/design"],
       "cwd": "${workspaceFolder}/Source/Hosts/Common/LowCodeApp.Designer",
       "stopAtEntry": false,
       "console": "internalConsole"

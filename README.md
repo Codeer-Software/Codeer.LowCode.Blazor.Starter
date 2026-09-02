@@ -10,13 +10,16 @@ Open an empty folder in [Claude Code](https://claude.com/claude-code) and say:
 
 > このURLを見て指示に従って https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter
 
-Claude Code reads [docs/claude-code-setup.md](docs/claude-code-setup.md) and does the rest: checks the .NET SDK (installs it with
+Claude Code reads [ClaudeCodeForDeveloper/claude-code-setup.md](ClaudeCodeForDeveloper/claude-code-setup.md) and does the rest: checks the .NET SDK (installs it with
 winget if you agree), downloads this repository, builds the solution, creates a design project from a template with sample data,
 sets up its own workspace for editing the design, and starts the server (opens in your browser) and the designer.
 Windows only (the designer is a WPF application). Visual Studio is not required; VS Code launch settings are included.
 No license registration is needed to try it — the designer runs as a trial.
 
-After that, in the same folder, you can ask Claude Code to add or change screens ("商品マスタの画面を追加して").
+After that you can ask Claude Code to add or change screens ("商品マスタの画面を追加して"): start it in `DesignProjects/<design name>/`
+(the design project's own workspace; the sample created by the setup is `DesignProjects/PatternShowcaseAuth/`). Start it in the repository
+root when you want to change the C# host instead. Layout: `DesignProjects/<name>/design/` is the design project itself, next to `Project.md`,
+`ddl/` and `docs/`; `ClaudeCodeForDeveloper/` holds the setup procedure and the generated host-development references.
 
 > **Disclaimer**: the setup procedure and the workspace documents in this repository are instructions executed by an AI
 > (Claude Code). The AI installs software, edits files and runs commands on your machine, and its behavior is not
@@ -43,7 +46,7 @@ You can also:
 
 - start a new application from a variant in `Source/Hosts/` (clone the repository, or install the Visual Studio extension),
 - `git diff` two tags (for example `git diff v1.3.20 v1.3.23 -- Source/Hosts/Cookie`) to see what changed between framework versions and apply it to your own application,
-- use the repository as the entry point for Claude Code (see `CLAUDE.md` and `docs/claude-code-setup.md`).
+- use the repository as the entry point for Claude Code (see `CLAUDE.md` and `ClaudeCodeForDeveloper/claude-code-setup.md`).
 
 ## Getting started by hand
 
@@ -56,7 +59,7 @@ You can also:
    for the desktop variants): connection strings, `DesignFileDirectory`, file storage directory. The defaults point at
    `C:\Codeer.LowCode.Blazor.Local\...`; create those folders or change the paths. The reference of every setting is in `CLAUDE.md`.
 4. Create the design project: run `LowCodeApp.Designer` and pick a template, or without the GUI
-   `LowCodeApp.Designer.exe template-create --name PatternShowcaseAuth --out-dir <Design> --data-dir <Local\Data> --deploy-dir <DesignFileDirectory>`.
+   `LowCodeApp.Designer.exe template-create --name PatternShowcaseAuth --out-dir DesignProjects\<name>\design --data-dir <Local\Data> --deploy-dir <DesignFileDirectory>`.
    Then run the server. For `Source/Hosts/Maui/`, run the `Cookie` server first and point the app at it.
 
 Rename: the solution and projects are named `LowCodeApp`. Renaming is a plain find-and-replace of `LowCodeApp`

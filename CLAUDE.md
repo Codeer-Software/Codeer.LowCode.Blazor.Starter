@@ -10,40 +10,49 @@
 ## 最初にやること（空フォルダから始めたとき）
 
 ユーザーが「この URL（リポジトリ）を見て指示に従って」「セットアップして」と言ってきて、まだビルドも起動もしていない状態なら、
-**[docs/claude-code-setup.md](docs/claude-code-setup.md) を読んで、その手順を上から実行する**（環境確認 → 取得 → ビルド →
+**[ClaudeCodeForDeveloper/claude-code-setup.md](ClaudeCodeForDeveloper/claude-code-setup.md) を読んで、その手順を上から実行する**（環境確認 → 取得 → ビルド →
 デザインプロジェクト作成 → Claude Code ワークスペース展開 → サーバーとデザイナの起動）。質問は最小限、既定値で一本道。
 
 ## このフォルダで Claude Code ができること（優先順）
 
-このフォルダ（リポジトリのルート）は、セットアップ後は **デザインの作業場（Claude Code ワークスペース）とホストのソースが同居**する。
+セットアップ後のフォルダ構成。**ホストを触る人はリポジトリのルートで、デザインを作る人は `DesignProjects/<デザイン名>/` で** Claude Code を起動する。
 
 ```
 <ROOT>/
-├── CLAUDE.md                 ← この文書 (ホスト側の説明・作業ルール)
-├── Design/                   ← デザインプロジェクト (画面・データ・スクリプト)。ふつうの変更はここだけ
-├── ClaudeCodeForDesigner/    ← デザインの作り方・仕様・カタログ (デザイナが自動生成。手で編集しない)
-│   ├── CLAUDE.md             ←   デザイン作成の詳細指示書 (着手前に通読)
-│   └── WorkspaceRules.md     ←   ワークスペースの運用ルール (CLI の使い方・許可・ファイル配置)
-├── Project.md                ← このプロジェクト固有のルール (ユーザー所有。守る)
-├── Local/                    ← ローカル実行用 (Data = SQLite / Designs = デプロイ先 App.zip / Storages / Font)
-├── Source/Hosts/<Variant>/   ← ホストのソース (C#)。最後の手段
+├── CLAUDE.md                        ← この文書 (ホスト側の説明・作業ルール)
+├── ClaudeCodeForDeveloper/          ← ホスト (C#) を触る Claude Code 向けの文書
+│   ├── claude-code-setup.md         ←   セットアップ手順 (コミット済み・Claude Code が実行する)
+│   └── _specs/                      ←   ライブラリの拡張点リファレンス (デザイナの developer-workspace が生成。gitignore)
+├── Source/Hosts/<Variant>/          ← ホストのソース (C#)。最後の手段
 ├── Source/Hosts/Common/LowCodeApp.SeleniumTest/ ← Selenium (NUnit) テスト。PageObject は生成、Scenario を書く
-└── .vscode/                  ← VS Code の起動・ビルド設定 (Visual Studio が無い環境向け)
+├── DesignProjects/                  ← デザインプロジェクト (画面・データ・スクリプト)。1 フォルダ = 1 デザイン
+│   └── <デザイン名>/                ←   Claude Code ワークスペース (デザイン担当者はここで起動)
+│       ├── CLAUDE.md                ←     デザイン作業の規約 (デザイナが生成)
+│       ├── ClaudeCodeForDesigner/   ←     デザインの作り方・仕様・カタログ (デザイナが自動生成。手で編集しない)
+│       ├── Project.md               ←     このデザイン固有のルール (ユーザー所有。守る)
+│       ├── ddl/  docs/              ←     テーブル定義 SQL / このデザイン固有の文書
+│       └── design/                  ←     デザイン本体 (app.clprj / Modules / PageFrames …)。デザイナが開く・デプロイされる範囲
+├── Local/                           ← ローカル実行用 (Data = SQLite / Designs = デプロイ先 App.zip / Storages / Font)
+└── .vscode/                         ← VS Code の起動・ビルド設定 (Visual Studio が無い環境向け)
 ```
 
-1. **画面・データ構造・業務ルールの追加変更 → `Design/` を編集する（ローコード）。** やり方は
-   `ClaudeCodeForDesigner/CLAUDE.md` と `ClaudeCodeForDesigner/WorkspaceRules.md`（**着手前に必ず読む**）。
+1. **画面・データ構造・業務ルールの追加変更 → `DesignProjects/<デザイン名>/design/` を編集する（ローコード）。** やり方は
+   そのフォルダの `CLAUDE.md` と `ClaudeCodeForDesigner/CLAUDE.md`（**着手前に必ず読む**。ルートで起動した Claude Code がデザインを触るときも同じ）。
    デザインの変更に C# の再ビルドは要らない。反映はデザイナの「送信」か CLI の `deploy`
 2. **設定で表せないことだけスクリプト（`*.mod.cs`）。最小限に。** スクリプトを書く前に「既存フィールド／プロパティで代替できないか」を必ず問う
 3. **C#（このリポジトリの `Source/`）を触るのは最後の手段。** フィールド型そのものが無い・性能をコードで改善したい・独自 API / 外部連携が要る、
-   などローコードの範囲で不可能と確定したときだけ。やり方は下の「ホストのカスタマイズ」と `ClaudeCodeForDesigner/_specs/HostCustomization.md`
+   などローコードの範囲で不可能と確定したときだけ。やり方は下の「ホストのカスタマイズ」と `ClaudeCodeForDeveloper/_specs/HostCustomization.md`
 
-**自動テスト (Selenium)**: ユーザーが求めたら `ClaudeCodeForDesigner/Docs/SeleniumTestGuide.md` の手順で。テストプロジェクトは
+**サンプルを土台にしない**: セットアップ直後の `DesignProjects/<テンプレート名>/` はサンプル集（ショーケース）。ユーザーが自分の業務アプリを求めたら、
+サンプルに増築せず、空のプロジェクト（`Empty` / 認証付きは `EmptyAuth`）から別のデザインプロジェクトを作ることを提案して確認する（下の「デザインプロジェクトの切り替え」）。
+
+**自動テスト (Selenium)**: ユーザーが求めたら `DesignProjects/<デザイン名>/ClaudeCodeForDesigner/Docs/SeleniumTestGuide.md` の手順で。テストプロジェクトは
 `Source/Hosts/Common/LowCodeApp.SeleniumTest`（Web バリアントの `LowCodeApp.sln` に含まれている。`selenium-test-init` で新規展開しなくてよい）。
-`pageobject "Design" --out-dir Source/Hosts/Common/LowCodeApp.SeleniumTest/PageObject --namespace LowCodeApp.SeleniumTest.PageObject` で PageObject を生成し、
+`pageobject "DesignProjects/<デザイン名>/design" --out-dir Source/Hosts/Common/LowCodeApp.SeleniumTest/PageObject --namespace LowCodeApp.SeleniumTest.PageObject` で PageObject を生成し、
 `testsettings.json` の `BaseUrl` / `DataSources`、`testsettings.local.json`（gitignore）の `ConnectionStrings` を合わせて `dotnet test`。テストデータは同梱の DataManager。
 
-`ClaudeCodeForDesigner/` がまだ無い（セットアップ前）なら、`docs/claude-code-setup.md` の Step 7（`claude-workspace`）で展開する。
+`ClaudeCodeForDeveloper/_specs/` が無い（セットアップ前・パッケージ更新後）なら `developer-workspace`、デザインプロジェクトの `ClaudeCodeForDesigner/` が無いなら
+`claude-workspace` で展開する（コマンドは `ClaudeCodeForDeveloper/claude-code-setup.md` の Step 5 / Step 7）。
 
 ## バリアントの選び方
 
@@ -82,11 +91,11 @@
 ```powershell
 dotnet build Source/Hosts/Cookie/LowCodeApp.sln                                   # 初回は NuGet 復元で数分
 dotnet run --project Source/Hosts/Cookie/LowCodeApp.Server --launch-profile https  # https://localhost:7137 (Normal は 7169)
-Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe Design   # 引数のフォルダのプロジェクトを開いて起動
+Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe DesignProjects/<デザイン名>/design   # 引数のフォルダのプロジェクトを開いて起動
 ```
 
 - Visual Studio 2026: `LowCodeApp.sln` を開き `LowCodeApp.Server` を F5。デザイナは `LowCodeApp.Designer` を「新しいインスタンスを開始」
-- VS Code: ルートの `.vscode/launch.json` に **Server** / **Designer** 構成がある（既定は Cookie。Normal を使うなら `Cookie` を `Normal` に置換）。拡張は C# Dev Kit
+- VS Code: ルートの `.vscode/launch.json` に **Server** / **Designer** 構成がある（既定は Cookie と `DesignProjects/PatternShowcaseAuth/design`。バリアント名とデザインのフォルダは置換する）。拡張は C# Dev Kit
 - **サーバーは Claude Code が勝手に再起動しない**（ユーザーが VS / VS Code で起動していることが多い）。再起動が必要なときはその旨を伝える
 - C# を変えたら Server / Designer の再ビルドと再起動が必要。デザインの変更はデプロイだけで反映（スクリプト変更はサーバー再起動）
 
@@ -115,12 +124,25 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Desi
 | `Logging` / `AllowedHosts` | | ASP.NET Core 標準 |
 
 **DB を SQLite から PostgreSQL 等に変える手順**: ① `appsettings.json` の `DataSources[].DataSourceType` を変える ② `appsettings.Development.json` の接続文字列を差し替える
-③ デザインプロジェクト側 `Design/designer.settings.json` の `DataSourceType` と `designer.settings.Development.json` の接続文字列も同じに ④ テーブルはデザイナの
+③ デザインプロジェクト側 `DesignProjects/<デザイン名>/design/designer.settings.json` の `DataSourceType` と `designer.settings.Development.json` の接続文字列も同じに ④ テーブルはデザイナの
 Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロバイダは `Codeer.LowCode.Blazor.DbAccess` に同梱済みで追加パッケージは不要。
+
+## デザインプロジェクトの切り替え（サンプルから自分のアプリへ）
+
+ホストが配信するデザインは 1 つ（`DesignFileDirectory` の `App.zip`）。デザインプロジェクトは `DesignProjects/` にいくつ置いてもよいが、
+サーバーが読むのは最後にデプロイしたもの。新しいデザインプロジェクトを作って切り替える手順（DESIGNER_EXE = `Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe`。GUI 系 exe なので `Start-Process -Wait` + `--out`）:
+
+1. 作る: `template-create --name EmptyAuth --out-dir DesignProjects/<アプリ名>/design --data-dir Local/Data --deploy-dir Local/Designs --out Local/tc.json`
+   （認証なしなら `Empty`。テンプレート付属の SQLite が `Local/Data` に置かれ、`design/designer.settings.Development.json` の接続文字列がそこを指し、`Local/Designs/App.zip` が**この新しいデザインで上書き**される）
+2. ワークスペースを展開: `claude-workspace DesignProjects/<アプリ名> --project design --out Local/cw.json`（`CLAUDE.md` / `ClaudeCodeForDesigner/` / `Project.md` / `ddl/` / `docs/` ができる）
+3. サーバーの `appsettings.Development.json` の `ConnectionStrings` を、新しいデザインの `design/designer.settings.Development.json` と同じ DB ファイルに向ける（`DataSources[].Name` はデザイン側 `designer.settings.json` と一致させる）。サーバーを再起動
+4. 以後のデザイン作業は `DesignProjects/<アプリ名>/` で Claude Code を起動して行う。`.vscode/launch.json` の Designer 構成のフォルダも差し替える
+
+元のサンプルに戻すときは、そのデザインを `deploy "DesignProjects/<テンプレート名>/design"` し直し、接続文字列を戻す。サンプルのデザインプロジェクトが不要なら `DesignProjects/<テンプレート名>/` ごと削除してよい（`Local/Data` の DB ファイルはそのままでも害はない）。
 
 ## ホストのカスタマイズ（C#・最後の手段）
 
-やり方の詳細と正確な API は `ClaudeCodeForDesigner/_specs/HostCustomization.md`（デザイナが生成。ライブラリ側の拡張点）。
+やり方の詳細と正確な API は `ClaudeCodeForDeveloper/_specs/HostCustomization.md`（デザイナの `developer-workspace` が生成。ライブラリ側の拡張点。無ければ `Start-Process -Wait` で `LowCodeApp.Designer.exe developer-workspace <ROOT> --out <json>` を実行して生成する）。
 シグネチャは推測せず `LowCodeApp.Designer.exe api --type <FullName> --out <md>` で確認する（`Start-Process -Wait` で呼ぶ）。デザイナに載っていないサーバー側ライブラリ（`Codeer.LowCode.Blazor.Extras.Server` / `Codeer.LowCode.Blazor.DbAccess`）は `--assembly` に Server の `bin/Debug/net8.0/` にある dll のパスを渡す。
 
 | やりたいこと | 場所 |
@@ -139,16 +161,16 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 - **ライブラリで済むことを自前実装しない。** メール・承認・Excel/PDF・ファイル保存（S3/Azure）・AI 連携などは
   `Codeer.LowCode.Blazor.Extras` / `Extras.Server` にある。まず該当パッケージの API を探す（`api --assembly Codeer.LowCode.Blazor.Extras` / `api --assembly <Server の bin の Codeer.LowCode.Blazor.Extras.Server.dll>`）
 - **秘密情報を書かない。** 接続文字列・API キーは `appsettings.Development.json` か環境変数。コミットに含めない。
-  `appsettings.Development.json` / `Design/designer.settings.Development.json` の中身は、セットアップ手順で必要なとき以外は読まない
+  `appsettings.Development.json` / `DesignProjects/*/design/designer.settings.Development.json` の中身は、セットアップ手順で必要なとき以外は読まない
 - **ビルドが通る状態で止める。** C# を触ったら `dotnet build Source/Hosts/<Variant>/LowCodeApp.sln` を最後に実行する
 - リネームは `LowCodeApp` の一括置換（ファイル名・フォルダ名・中身）。`x:Class`、`*.styles.css` のリンクも対象
 
-## 初回セットアップの手順（手動で行う場合の要約。Claude Code は docs/claude-code-setup.md）
+## 初回セットアップの手順（手動で行う場合の要約。Claude Code は ClaudeCodeForDeveloper/claude-code-setup.md）
 
 1. サーバープロジェクトの `appsettings.Development.json`: 接続文字列、`DesignFileDirectory`、`FileSystemStorages`。
    既定は `C:\Codeer.LowCode.Blazor.Local\...` を指す
 2. `LowCodeApp.Designer` を起動してデザインプロジェクトを作る（テンプレートから選べる）か、
-   `LowCodeApp.Designer.exe template-create --name <テンプレ> --out-dir <Design> --data-dir <Local\Data> --deploy-dir <DesignFileDirectory>`
+   `LowCodeApp.Designer.exe template-create --name <テンプレ> --out-dir DesignProjects\<デザイン名>\design --data-dir <Local\Data> --deploy-dir <DesignFileDirectory>`
 3. サーバーを起動。`Source/Hosts/Cookie/` は初回起動時に `admin`/`admin` のユーザーが自動作成される
 4. `Source/Hosts/Maui/` はサーバーを先に起動してからアプリを起動（`LowCodeApp.Maui/README.md`）
 

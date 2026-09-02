@@ -7,7 +7,7 @@ AI の動作は決定的ではなく、ソフトウェアのインストール�
 
 ゴール: ユーザーの作業フォルダに、Codeer.LowCode.Blazor のアプリ（サーバー / クライアント / デザイナ）がビルド済みで、
 サンプルの画面が入ったデザインプロジェクトができていて、**サーバーがブラウザで開き、デザイナも起動している**状態にする。
-そのあと同じフォルダで Claude Code が画面（デザイン）を追加・変更できるようにする。
+そのあと Claude Code が画面（デザイン）を追加・変更できるようにする（デザインの作業場は `<ROOT>\DesignProjects\<TEMPLATE>\`、ホストの C# の作業場は ROOT）。
 
 ## 進め方の原則
 
@@ -83,8 +83,8 @@ Move-Item "$env:TEMP\starter\Codeer.LowCode.Blazor.Starter-main\*" "<ROOT>" -For
 ```
 
 取得後、`<ROOT>\Source\Hosts\Cookie\LowCodeApp.sln` と `<ROOT>\CLAUDE.md` があることを確認する。
-**このフォルダが以後の作業場所。** `CLAUDE.md`（ホスト側の説明）と、あとで展開される `ClaudeCodeForDesigner/`（デザインの作り方）が
-Claude Code の知識源になる。
+**このフォルダが以後の作業場所。** Claude Code の知識源は 3 つ: ROOT の `CLAUDE.md`（ホスト側の説明）、`ClaudeCodeForDeveloper/`（この手順書と、Step 5 で
+生成するホスト開発のリファレンス）、Step 7 で展開される `DesignProjects\<TEMPLATE>\ClaudeCodeForDesigner/`（デザインの作り方）。
 
 > ユーザー自身のリポジトリにしたい場合は `.git` を削除して `git init` すればよい（聞かれたときだけ案内する。聞かない）。
 
@@ -126,43 +126,58 @@ dotnet build "<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.sln"
 - 警告（`warning`）は無視してよい
 - 成功すると、デザイナの exe が `<ROOT>\Source\Hosts\Common\LowCodeApp.Designer\bin\Debug\net8.0-windows\LowCodeApp.Designer.exe` にできる。以降 **DESIGNER_EXE** と呼ぶ
 
+続けて、ホスト（C#）を触るときに Claude Code が読むリファレンスを生成する。デザイナ exe には GUI を出さない CLI（headless）があり、
+**GUI サブシステムの exe なので PowerShell の `&` では待たない。必ず `Start-Process -Wait` で呼び、結果は `--out` の JSON ファイルで受け取る**（以降の Step も同じ）:
+
+```powershell
+Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
+  "developer-workspace", "<ROOT>", "--out", "<ROOT>\Local\developer-workspace.json")
+Get-Content "<ROOT>\Local\developer-workspace.json"
+```
+
+`<ROOT>\ClaudeCodeForDeveloper\_specs\HostCustomization.md` などができる（`_` で始まるものは生成物・gitignore 済み。この手順書などコミット済みの文書には触らない）。
+パッケージを更新したときは同じコマンドで作り直す。判定: JSON に `"error"` が無く `written` に `HostCustomization.md` が含まれる。
+
 ## Step 6. デザインプロジェクトをテンプレートから作る
 
-デザイナ exe には GUI を出さない CLI（headless）がある。**GUI サブシステムの exe なので PowerShell の `&` では待たない。
-必ず `Start-Process -Wait` で呼び、結果は `--out` の JSON ファイルで受け取る。**
+デザインプロジェクトは **`<ROOT>\DesignProjects\<名前>\`** に 1 つずつ置く。`design\` がデザイン本体（デザイナが開く・デプロイされる範囲）で、
+隣に `Project.md` / `ddl\` / `docs\`（Step 7 で生成）が並ぶ。ここではテンプレート名をフォルダ名にする（`DesignProjects\<TEMPLATE>\`）。
+これは**サンプル（ショーケース）**であることを名前で示すためで、ユーザー自身の業務アプリはあとで別のデザインプロジェクトとして作る（`CLAUDE.md` の「デザインプロジェクトの切り替え」）。
 
 ```powershell
 Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
   "template-create", "--name", "<TEMPLATE>",
-  "--out-dir", "<ROOT>\Design",
+  "--out-dir", "<ROOT>\DesignProjects\<TEMPLATE>\design",
   "--data-dir", "<ROOT>\Local\Data",
   "--deploy-dir", "<ROOT>\Local\Designs",
   "--out", "<ROOT>\Local\template-create.json")
 Get-Content "<ROOT>\Local\template-create.json"
 ```
 
-これ 1 回で次が済む: `<ROOT>\Design` にデザインプロジェクト（`app.clprj` / `Modules` / `PageFrames` …）が展開され、
-サンプル DB（SQLite）が `<ROOT>\Local\Data` に置かれ、`Design\designer.settings.Development.json` の接続文字列がそのパスに
+これ 1 回で次が済む: `<ROOT>\DesignProjects\<TEMPLATE>\design` にデザインプロジェクト（`app.clprj` / `Modules` / `PageFrames` …）が展開され、
+サンプル DB（SQLite）が `<ROOT>\Local\Data` に置かれ、`design\designer.settings.Development.json` の接続文字列がそのパスに
 書き換わり、デプロイ先が `<ROOT>\Local\Designs` に設定されて **`App.zip` がそこに出力**される（サーバーはこの zip を読む）。
 
 判定: JSON に `"error"` が無く、`deploy.success` が `true`。`<ROOT>\Local\Designs\App.zip` が存在する。
 
 ## Step 7. Claude Code 用ワークスペースを展開する（デザインを AI で編集できるようにする）
 
+ワークスペース＝デザインプロジェクト 1 つ分のフォルダ `<ROOT>\DesignProjects\<TEMPLATE>`。その中の `design` がデザイン本体:
+
 ```powershell
 Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
-  "claude-workspace", "<ROOT>", "--project", "Design", "--out", "<ROOT>\Local\claude-workspace.json")
+  "claude-workspace", "<ROOT>\DesignProjects\<TEMPLATE>", "--project", "design", "--out", "<ROOT>\Local\claude-workspace.json")
 Get-Content "<ROOT>\Local\claude-workspace.json"
 ```
 
-ROOT に `ClaudeCodeForDesigner/`（デザインの作り方・仕様・カタログ。**自動生成、手で編集しない**）、`Project.md`（このプロジェクト固有のメモ）、
-`LocalEnvironment.md`、`.claude/settings.local.json`（デザイナ exe のパスを焼き込んだ許可リストとフック）ができる。
-ROOT の `CLAUDE.md`（このリポジトリのもの）はそのまま残り、ワークスペースの規約は `ClaudeCodeForDesigner/WorkspaceRules.md` に置かれる。
+`<ROOT>\DesignProjects\<TEMPLATE>\` に `CLAUDE.md`（デザイン作業の規約）、`ClaudeCodeForDesigner/`（デザインの作り方・仕様・カタログ。**自動生成、手で編集しない**）、
+`Project.md`（このデザイン固有のメモ）、`ddl/`、`docs/`、`LocalEnvironment.md`、`.claude/settings.local.json`（デザイナ exe のパスを焼き込んだ許可リストとフック）ができる。
+ROOT の `CLAUDE.md`（このリポジトリのもの）には触らない。
 
-判定: JSON の `aiRefresh` が `ok`。`<ROOT>\ClaudeCodeForDesigner\CLAUDE.md` と `_field_catalog.md` が存在する。
+判定: JSON の `aiRefresh` が `ok`。`<ROOT>\DesignProjects\<TEMPLATE>\ClaudeCodeForDesigner\CLAUDE.md` と `_field_catalog.md` が存在する。
 
-> `.claude/settings.local.json` は **Claude Code が次のセッションから読む**。今のセッションでは反映されないので、
-> 完了メッセージで「一度 Claude Code を再起動（`/exit` して再度 `claude`）すると、デザイン用のコマンドが許可済みになります」と伝える。
+> デザインの作業は **`<ROOT>\DesignProjects\<TEMPLATE>` で Claude Code を起動**して行う（`.claude/settings.local.json` の許可とフックはそのフォルダで起動したときに効く）。
+> ROOT で起動した Claude Code はホスト（C#）用。完了メッセージでこの使い分けを伝える。
 
 ## Step 8. HTTPS 開発証明書
 
@@ -183,10 +198,10 @@ Start-Process -FilePath "dotnet" -WorkingDirectory "<ROOT>\Source\Hosts\<VARIANT
   "run", "--project", "<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.Server", "--launch-profile", "https", "--no-build")
 ```
 
-デザイナ（`Design` フォルダを引数に渡すと、そのプロジェクトを開いた状態で起動する）:
+デザイナ（デザインプロジェクトのフォルダを引数に渡すと、そのプロジェクトを開いた状態で起動する）:
 
 ```powershell
-Start-Process -FilePath "<DESIGNER_EXE>" -ArgumentList @("<ROOT>\Design")
+Start-Process -FilePath "<DESIGNER_EXE>" -ArgumentList @("<ROOT>\DesignProjects\<TEMPLATE>\design")
 ```
 
 起動確認: 20〜60 秒待ってから `Invoke-WebRequest <URL> -UseBasicParsing -SkipCertificateCheck` が 200 を返せば OK
@@ -204,7 +219,7 @@ VS が無いときは VS Code（次項）。
 ## Step 10. VS 2026 が無いとき: VS Code で開ける状態にする
 
 ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同梱されている（このリポジトリの一部）。
-`launch.json` の既定は Cookie。Normal を選んだ場合は `launch.json` 内の `Cookie` を `Normal` に置換する。
+`launch.json` の既定は Cookie + `DesignProjects/PatternShowcaseAuth/design`。Normal を選んだ場合は `launch.json` 内の `Cookie` を `Normal` に、`PatternShowcaseAuth` を `GettingStarted` に置換する。
 
 1. 拡張機能: `code --install-extension ms-dotnettools.csdevkit`（VS Code があるとき。無ければ `extensions.json` の推奨が VS Code 側で提示される）
 2. 開く: `code "<ROOT>"`
@@ -216,9 +231,10 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 以下を短く伝える（この文書の URL や内部手順は説明しない）:
 
 - アプリの URL（`<URL>`）とログイン情報（Cookie のとき `admin` / `admin`）
-- デザインプロジェクトの場所（`<ROOT>\Design`）と、デザイナで編集 → 「送信」でサーバーに反映されること（サーバーの再起動は不要。スクリプトを変えたときだけ再起動）
-- **次にできること**: 「このフォルダで Claude Code を再起動すると、画面の追加や変更を私（Claude）に頼めます。例:『商品マスタの画面を追加して』」
-- ソースコード（C#）も同じフォルダにあり、必要なら変更できるが、**ふつうの画面追加はデザインだけで済む**こと
+- デザインプロジェクトの場所（`<ROOT>\DesignProjects\<TEMPLATE>\design`）と、デザイナで編集 → 「送信」でサーバーに反映されること（サーバーの再起動は不要。スクリプトを変えたときだけ再起動）
+- **次にできること**: 「`DesignProjects\<TEMPLATE>` フォルダで Claude Code を起動すると、画面の追加や変更を私（Claude）に頼めます。例:『商品マスタの画面を追加して』」
+- 今入っているのは**サンプル集**であること。**自分の業務アプリを作るときは、サンプルに増築せず、空のプロジェクトから別のデザインプロジェクト（`DesignProjects\<アプリ名>`）を作るのが既定**で、Claude に「自分のアプリを作りたい」と言えば確認しながら進めること
+- ソースコード（C#）も同じフォルダ（ROOT）にあり、必要なら ROOT で Claude Code を起動して変更できるが、**ふつうの画面追加はデザインだけで済む**こと
 
 ---
 
@@ -230,10 +246,11 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 | `dotnet build` で `NETSDK1045`（必要な SDK が無い） | .NET SDK 8 が入っていない、または `global.json` の版とずれている。Step 1 をやり直す |
 | ビルドは通るが `LowCodeApp.Designer.exe` が無い | `Source\Hosts\Common\LowCodeApp.Designer\bin\Debug\net8.0-windows\` を再確認。無ければ `dotnet build "<ROOT>\Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj"` |
 | `template-create` の JSON に `template not found` | `Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("template-list","--out","<ROOT>\Local\tl.json")` で一覧を出し `folderName` を確認する |
-| `template-create` の JSON に `--out-dir must be empty` | `<ROOT>\Design` に既にファイルがある。中身を確認し、ユーザーの物でなければ削除して再実行 |
+| `template-create` の JSON に `--out-dir must be empty` | `<ROOT>\DesignProjects\<TEMPLATE>\design` に既にファイルがある。中身を確認し、ユーザーの物でなければ削除して再実行 |
 | `template-create` や `claude-workspace` を実行するとデザイナの **ウィンドウが開いて** JSON ができない | デザイナのパッケージが古い（`template-create` は Codeer.LowCode.Blazor.Designer 1.3.24 以降）。`Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj` の `Codeer.LowCode.Blazor.Designer` の版を確認する。このリポジトリを最新から取得していれば起きない |
 | サーバー起動で `address already in use` | ポートが使用中。`launchSettings.json` の `applicationUrl` のポート番号を空いている番号に変えて再起動し、完了メッセージの URL も合わせる |
-| ブラウザで開くと真っ白／`design not found` | `<ROOT>\Local\Designs\App.zip` が無い。Step 6 のデプロイが失敗している。`Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("deploy","<ROOT>\Design","--out","<ROOT>\Local\deploy.json")` で作り直す |
+| ブラウザで開くと真っ白／`design not found` | `<ROOT>\Local\Designs\App.zip` が無い。Step 6 のデプロイが失敗している。`Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("deploy","<ROOT>\DesignProjects\<TEMPLATE>\design","--out","<ROOT>\Local\deploy.json")` で作り直す |
+| `developer-workspace` / `claude-workspace` で `--out` の JSON ができない（ウィンドウが開く） | デザイナのパッケージが古い（`developer-workspace` は Codeer.LowCode.Blazor.Designer.Standard 0.8.2 以降）。このリポジトリを最新から取得していれば起きない |
 | ログインできない（Cookie） | サンプル DB に `admin` がいるはず。`appsettings.Development.json` の `ConnectionStrings` が `<ROOT>\Local\Data\...` を指しているか、ファイルが存在するかを確認 |
 | `winget` が見つからない | Step 1 の dotnet-install.ps1 経路 |
 | PowerShell で `&` でデザイナ exe を呼ぶと即戻って何も起きない | 正常（GUI サブシステム）。必ず `Start-Process -Wait` + `--out` |
@@ -242,6 +259,6 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 ## この手順が前提にしているもの（保守メモ）
 
 - Codeer.LowCode.Blazor.Designer **1.3.24 以降**（`template-create` / `deploy` / `api` サブコマンド、起動引数でのプロジェクトオープン）
-- Codeer.LowCode.Blazor.Designer.Standard **0.8.1 以降**（`template-create --data-dir` によるサンプル DB 配置、既存 `CLAUDE.md` を保持する `claude-workspace`）
+- Codeer.LowCode.Blazor.Designer.Standard **0.8.2 以降**（`template-create --data-dir` によるサンプル DB 配置、`developer-workspace`、デザインプロジェクトのフォルダ名の既定 `design`）
 - 各バリアントの `appsettings.Development.json` の既定パスが `C:\Codeer.LowCode.Blazor.Local\...`（Step 4 の置換の前提）
 - ポート: `Properties/launchSettings.json` の `https` プロファイル（Cookie 7137 / Normal 7169）
