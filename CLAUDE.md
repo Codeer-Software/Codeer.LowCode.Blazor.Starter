@@ -16,13 +16,16 @@
 ## このフォルダで Claude Code ができること（優先順）
 
 セットアップ後のフォルダ構成。**ホストを触る人はリポジトリのルートで、デザインを作る人は `DesignProjects/<デザイン名>/` で** Claude Code を起動する。
+ルートで起動してもデザインは編集できる（`.claude/settings.local.json` に同じ許可があり、フックが各デザインワークスペースの自動更新を代行する）。
 
 ```
 <ROOT>/
 ├── CLAUDE.md                        ← この文書 (ホスト側の説明・作業ルール)
+├── .claude/                         ← Claude Code の設定。settings.json (共通・コミット済み) と settings.local.json (デザイナ exe パス入りの許可・フック。developer-workspace が生成。gitignore)
 ├── ClaudeCodeForDeveloper/          ← ホスト (C#) を触る Claude Code 向けの文書
 │   ├── claude-code-setup.md         ←   セットアップ手順 (コミット済み・Claude Code が実行する)
-│   └── _specs/                      ←   ライブラリの拡張点リファレンス (デザイナの developer-workspace が生成。gitignore)
+│   ├── _specs/                      ←   ライブラリの拡張点リファレンス (デザイナの developer-workspace が生成。gitignore)
+│   └── _hooks/                      ←   ルート用フック (DesignProjects/*/ のワークスペースを巡回して最新化。同上)
 ├── Source/Hosts/<Variant>/          ← ホストのソース (C#)。最後の手段
 ├── Source/Hosts/Common/LowCodeApp.SeleniumTest/ ← Selenium (NUnit) テスト。PageObject は生成、Scenario を書く
 ├── DesignProjects/                  ← デザインプロジェクト (画面・データ・スクリプト)。1 フォルダ = 1 デザイン

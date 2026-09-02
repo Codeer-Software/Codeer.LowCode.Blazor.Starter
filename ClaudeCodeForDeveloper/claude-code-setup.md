@@ -136,7 +136,11 @@ Get-Content "<ROOT>\Local\developer-workspace.json"
 ```
 
 `<ROOT>\ClaudeCodeForDeveloper\_specs\HostCustomization.md` などができる（`_` で始まるものは生成物・gitignore 済み。この手順書などコミット済みの文書には触らない）。
+同時に `<ROOT>\.claude\settings.local.json`（デザイナ exe のパスを焼き込んだ許可リストと、`DesignProjects\*\` の各ワークスペースを最新化するフック。既存なら触らない）ができる。
 パッケージを更新したときは同じコマンドで作り直す。判定: JSON に `"error"` が無く `written` に `HostCustomization.md` が含まれる。
+
+> `.claude/settings.local.json` は **Claude Code が次のセッションから読む**。今のセッションでは反映されないので、完了メッセージで
+> 「一度 Claude Code を再起動（`/exit` して再度 `claude`）すると、デザイナのコマンドが許可済みになります」と伝える。
 
 ## Step 6. デザインプロジェクトをテンプレートから作る
 
@@ -176,8 +180,8 @@ ROOT の `CLAUDE.md`（このリポジトリのもの）には触らない。
 
 判定: JSON の `aiRefresh` が `ok`。`<ROOT>\DesignProjects\<TEMPLATE>\ClaudeCodeForDesigner\CLAUDE.md` と `_field_catalog.md` が存在する。
 
-> デザインの作業は **`<ROOT>\DesignProjects\<TEMPLATE>` で Claude Code を起動**して行う（`.claude/settings.local.json` の許可とフックはそのフォルダで起動したときに効く）。
-> ROOT で起動した Claude Code はホスト（C#）用。完了メッセージでこの使い分けを伝える。
+> デザインだけを扱う人は **`<ROOT>\DesignProjects\<TEMPLATE>` で Claude Code を起動**する（ホストのソースが視界に入らない）。ROOT で起動した Claude Code は
+> ホスト（C#）とデザインの両方を扱える（Step 5 の `settings.local.json` に同じ許可とフックがある）。完了メッセージでこの使い分けを伝える。
 
 ## Step 8. HTTPS 開発証明書
 
@@ -232,7 +236,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 
 - アプリの URL（`<URL>`）とログイン情報（Cookie のとき `admin` / `admin`）
 - デザインプロジェクトの場所（`<ROOT>\DesignProjects\<TEMPLATE>\design`）と、デザイナで編集 → 「送信」でサーバーに反映されること（サーバーの再起動は不要。スクリプトを変えたときだけ再起動）
-- **次にできること**: 「`DesignProjects\<TEMPLATE>` フォルダで Claude Code を起動すると、画面の追加や変更を私（Claude）に頼めます。例:『商品マスタの画面を追加して』」
+- **次にできること**: 「Claude Code を再起動すると、画面の追加や変更を私（Claude）に頼めます。例:『商品マスタの画面を追加して』。デザインだけを扱うなら `DesignProjects\<TEMPLATE>` フォルダで起動するとホストのソースが視界に入らず身軽です」
 - 今入っているのは**サンプル集**であること。**自分の業務アプリを作るときは、サンプルに増築せず、空のプロジェクトから別のデザインプロジェクト（`DesignProjects\<アプリ名>`）を作るのが既定**で、Claude に「自分のアプリを作りたい」と言えば確認しながら進めること
 - ソースコード（C#）も同じフォルダ（ROOT）にあり、必要なら ROOT で Claude Code を起動して変更できるが、**ふつうの画面追加はデザインだけで済む**こと
 
@@ -250,7 +254,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 | `template-create` や `claude-workspace` を実行するとデザイナの **ウィンドウが開いて** JSON ができない | デザイナのパッケージが古い（`template-create` は Codeer.LowCode.Blazor.Designer 1.3.24 以降）。`Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj` の `Codeer.LowCode.Blazor.Designer` の版を確認する。このリポジトリを最新から取得していれば起きない |
 | サーバー起動で `address already in use` | ポートが使用中。`launchSettings.json` の `applicationUrl` のポート番号を空いている番号に変えて再起動し、完了メッセージの URL も合わせる |
 | ブラウザで開くと真っ白／`design not found` | `<ROOT>\Local\Designs\App.zip` が無い。Step 6 のデプロイが失敗している。`Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("deploy","<ROOT>\DesignProjects\<TEMPLATE>\design","--out","<ROOT>\Local\deploy.json")` で作り直す |
-| `developer-workspace` / `claude-workspace` で `--out` の JSON ができない（ウィンドウが開く） | デザイナのパッケージが古い（`developer-workspace` は Codeer.LowCode.Blazor.Designer.Standard 0.8.2 以降）。このリポジトリを最新から取得していれば起きない |
+| `developer-workspace` / `claude-workspace` で `--out` の JSON ができない（ウィンドウが開く） | デザイナのパッケージが古い（`developer-workspace` は Codeer.LowCode.Blazor.Designer.Standard 0.8.3 以降）。このリポジトリを最新から取得していれば起きない |
 | ログインできない（Cookie） | サンプル DB に `admin` がいるはず。`appsettings.Development.json` の `ConnectionStrings` が `<ROOT>\Local\Data\...` を指しているか、ファイルが存在するかを確認 |
 | `winget` が見つからない | Step 1 の dotnet-install.ps1 経路 |
 | PowerShell で `&` でデザイナ exe を呼ぶと即戻って何も起きない | 正常（GUI サブシステム）。必ず `Start-Process -Wait` + `--out` |
@@ -259,6 +263,6 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 ## この手順が前提にしているもの（保守メモ）
 
 - Codeer.LowCode.Blazor.Designer **1.3.24 以降**（`template-create` / `deploy` / `api` サブコマンド、起動引数でのプロジェクトオープン）
-- Codeer.LowCode.Blazor.Designer.Standard **0.8.2 以降**（`template-create --data-dir` によるサンプル DB 配置、`developer-workspace`、デザインプロジェクトのフォルダ名の既定 `design`）
+- Codeer.LowCode.Blazor.Designer.Standard **0.8.3 以降**（`template-create --data-dir` によるサンプル DB 配置、`developer-workspace` によるルート用の許可・フック生成、デザインプロジェクトのフォルダ名の既定 `design`）
 - 各バリアントの `appsettings.Development.json` の既定パスが `C:\Codeer.LowCode.Blazor.Local\...`（Step 4 の置換の前提）
 - ポート: `Properties/launchSettings.json` の `https` プロファイル（Cookie 7137 / Normal 7169）

@@ -1,0 +1,20 @@
+{
+  "_README": "ホストのルートで Claude Code を起動したときの共通設定 (リポジトリの一部・マシン非依存)。デザイナ exe のパスを含む許可リストとフックは、デザイナの developer-workspace が同じフォルダの settings.local.json (gitignore) に生成する。",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Write",
+      "Edit",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)"
+    ],
+    "ask": [
+      "Read(**/appsettings.Development.json)",
+      "Edit(**/appsettings.Development.json)",
+      "Read(**/designer.settings.Development.json)",
+      "Edit(**/designer.settings.Development.json)"
+    ]
+  }
+}
