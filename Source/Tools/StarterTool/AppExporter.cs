@@ -78,6 +78,17 @@ namespace StarterTool
             foreach (var file in Directory.EnumerateFiles(Path.Combine(_root, ".vscode"), "*.json"))
                 CopyText(Path.Combine(".vscode", Path.GetFileName(file)), dest, upgrade);
             Console.WriteLine("exported CLAUDE.md, ClaudeCodeForDeveloper/, .vscode/, .gitignore, LICENSE");
+
+            //Fonts for PDF output (FontFileDirectory): Noto Sans JP (SIL Open Font License 1.1; OFL.txt goes with them).
+            var fontSrc = Path.Combine(Repository.Hosts(_root), Repository.CommonDir, "Font");
+            if (Directory.Exists(fontSrc))
+            {
+                var fontDst = Path.Combine(dest, "Local", "Font");
+                Directory.CreateDirectory(fontDst);
+                foreach (var file in Directory.EnumerateFiles(fontSrc))
+                    File.Copy(file, Path.Combine(fontDst, Path.GetFileName(file)), true);
+                Console.WriteLine("exported Local/Font (" + string.Join(", ", Directory.EnumerateFiles(fontSrc).Select(Path.GetFileName)) + ")");
+            }
         }
 
         void CopyText(string relative, string dest, bool upgrade)

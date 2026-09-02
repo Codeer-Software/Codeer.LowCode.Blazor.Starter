@@ -107,7 +107,7 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 サーバーの設定 `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.Server\appsettings.Development.json` は、パスが
 `C:\Codeer.LowCode.Blazor.Local\...` という固定パスになっている。これを **ROOT 配下**に向ける。
 
-1. フォルダを作る: `<ROOT>\Local\Data`、`<ROOT>\Local\Designs`、`<ROOT>\Local\Storages`、`<ROOT>\Local\Font`
+1. フォルダを作る: `<ROOT>\Local\Data`、`<ROOT>\Local\Designs`、`<ROOT>\Local\Storages`（`<ROOT>\Local\Font` は Step 2 の export-app が作り、PDF 出力用の Noto Sans JP（`NotoSansJP.ttf` / `NotoSansJP#b.ttf`、SIL Open Font License）が入っている）
 2. `appsettings.Development.json` を編集する（JSON として読んで書き戻す。`\` は JSON 内で `\\`）:
    - `ConnectionStrings` の各値: `Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\<ファイル名>` → `Data Source=<ROOT>\\Local\\Data\\<ファイル名>`（ファイル名はそのまま）
    - `FileSystemStorages[*].Directory` → `<ROOT>\\Local\\Storages`
@@ -267,7 +267,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 | ログインできない（Cookie） | サンプル DB に `admin` がいるはず。`appsettings.Development.json` の `ConnectionStrings` が `<ROOT>\Local\Data\...` を指しているか、ファイルが存在するかを確認 |
 | `winget` が見つからない | Step 1 の dotnet-install.ps1 経路 |
 | PowerShell で `&` でデザイナ exe を呼ぶと即戻って何も起きない | 正常（GUI サブシステム）。必ず `Start-Process -Wait` + `--out` |
-| Excel / PDF 出力でフォントのエラー | `<ROOT>\Local\Font` に `NotoSansJP.ttf` を置く（PDF 出力を使うときだけ必要） |
+| Excel / PDF 出力でフォントのエラー | `<ROOT>\Local\Font` に `NotoSansJP.ttf` と `NotoSansJP#b.ttf` があるか確認する（export-app が置く。無ければ Starter の `Source\Hosts\Common\Font` からコピー） |
 
 <!-- maintainer-only -->
 ## この手順が前提にしているもの（保守メモ）

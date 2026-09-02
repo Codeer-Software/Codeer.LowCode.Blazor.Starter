@@ -121,7 +121,7 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Desi
 | `ConnectionStrings:<Name>` | string | `DataSources[].Name` と同名で接続文字列。SQLite なら `Data Source=<パス>;`、PostgreSQL なら `Host=...;Username=...;Password=...;Database=...` 等（Npgsql / SqlClient / MySqlConnector / Oracle の書式） |
 | `DataSources[]` | `{ Name, DataSourceType }` | データソース。`DataSourceType` は `SQLite` / `PostgreSQL` / `SQLServer` / `MySQL` / `Oracle`。デザインプロジェクトの `designer.settings.json` の `DataSources[].Name` と一致させる。テンプレの既定には標準テンプレート 6 種のデータソース名（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）が入っている |
 | `DesignFileDirectory` | string | デザイン（`App.zip`）を読むフォルダ。デザイナのデプロイ先と同じにする |
-| `FontFileDirectory` | string | PDF 出力用フォント（`NotoSansJP.ttf` 等）。PDF を使わないなら空フォルダでよい |
+| `FontFileDirectory` | string | PDF 出力用フォント。`Local/Font` に Noto Sans JP（`NotoSansJP.ttf` = 通常 / `NotoSansJP#b.ttf` = 太字。SIL Open Font License、`OFL.txt` 同梱）が入っている。他のフォントを足すときも `<名前>.ttf` / `<名前>#b.ttf` の組で置く |
 | `FileSystemStorages[]` | `{ Name, Directory }` | FileField の保存先（ローカルフォルダ）。`designer.settings.json` の `FileStorageNames` と `Name` を一致させる |
 | `AzureBlobStorages[]` / `S3Storages[]` / `FileStorages[]` | | 保存先の他方式。項目は `api --type Codeer.LowCode.Blazor.Extras.Server.FileManagement.AzureBlobStorageSettings --assembly <Server の bin にある Codeer.LowCode.Blazor.Extras.Server.dll のパス>` で確認 |
 | `TemporaryFileTableInfo[]` | `{ DataSourceName, Table, GuidColumn, CreatedDateTimeColumn }` | アップロード一時ファイルの管理テーブル（データソースごと） |
