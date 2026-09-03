@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Codeer.LowCode.Blazor.Extras.Server" Version="0.8.3" />
+    <PackageReference Include="Codeer.LowCode.Blazor.Extras.Server" Version="0.8.4" />
     <PackageReference Include="Azure.Identity" Version="1.13.2" />
     <PackageReference Include="System.Net.Http.WinHttpHandler" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="8.0.40" />
