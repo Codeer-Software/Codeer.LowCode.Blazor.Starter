@@ -3,8 +3,8 @@ using System.Text.RegularExpressions;
 namespace StarterTool
 {
     /// <summary>
-    /// Copies the Normal / Cookie masters and Hosts/Common into the Codeer.LowCode.Blazor repository
-    /// (Source/App/{Normal,Cookie,Common}) as debug copies: the Codeer.LowCode.Blazor* packages that are built in that
+    /// Copies the Cookie masters and Hosts/Common into the Codeer.LowCode.Blazor repository
+    /// (Source/App/{Cookie,Common}) as debug copies: the Codeer.LowCode.Blazor* packages that are built in that
     /// repository become project references so the framework can be debugged through a real application.
     /// The copies are generated; edits belong in the Starter masters.
     /// The folder layout mirrors Hosts/, so the "..\..\Common\X\X.csproj" references work unchanged.

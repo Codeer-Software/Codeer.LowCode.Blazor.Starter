@@ -8,12 +8,12 @@ using StarterTool;
 //
 // Every project exists once:
 //   Source/Hosts/Common/*                        projects shared by every variant
-//   Source/Hosts/<Variant>/LowCodeApp.<Own>       projects that belong to one variant (Normal/Cookie Server+Client, Maui, Wpf, WinForms)
+//   Source/Hosts/<Variant>/LowCodeApp.<Own>       projects that belong to one variant (Cookie Server+Client, Maui, Wpf, WinForms)
 // Generated (never edited by hand):
 //   Source/Hosts/<Variant>/LowCodeApp.sln         references the projects in place (Common/, and Cookie's server/client for Maui)
 //   Source/Codeer.LowCode.Blazor.Starter.sln      maintainer solution with everything
 //   Source/Tools/Codeer.LowCode.Blazor.Templates/ProjectTemplates/*.zip
-//   Codeer.LowCode.Blazor/Source/App/{Normal,Cookie,Common} (debug copies with project references)
+//   Codeer.LowCode.Blazor/Source/App/{Cookie,Common} (debug copies with project references)
 
 var root = Repository.FindRoot();
 var command = args.Length > 0 ? args[0] : "";

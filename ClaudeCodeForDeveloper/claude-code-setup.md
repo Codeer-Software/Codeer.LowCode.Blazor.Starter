@@ -100,7 +100,7 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 | `<TEMPLATE>` | `Empty`（空のプロジェクト。AppUser モジュールとログインだけ。初期ユーザー `admin` / `admin`） |
 | `<URL>` | `https://localhost:7137` |
 
-ソリューションは `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.sln`。<!-- maintainer-only -->リポジトリの `Source\Hosts\` には保守用に他のホスト（`Normal` / `Wpf` / `WinForms` / `MultiTenant`）も入っているが、export-app は Cookie だけを書き出す。<!-- /maintainer-only -->
+ソリューションは `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.sln`。<!-- maintainer-only -->リポジトリの `Source\Hosts\` には保守用に他のホスト（`Wpf` / `WinForms` / `MultiTenant`）も入っているが、export-app は Cookie だけを書き出す。<!-- /maintainer-only -->
 
 ## Step 4. ローカルの置き場を作り、appsettings を書き換える
 

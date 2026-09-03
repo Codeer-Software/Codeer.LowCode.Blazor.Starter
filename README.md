@@ -35,7 +35,7 @@ C# のホスト側を変えたいときはリポジトリのルートで起動�
 
 Entra ID / OIDC / TOTP など独自の認証を組む場合も `Cookie` を土台にします（cookie 認証の枝葉を差し替えるだけで済みます）。
 認証なしの構成が必要なら `Cookie` から認証を外します（手順は `CLAUDE.md` の「認証を外す」）。
-`Source/Hosts/` にはほかに `Normal`（認証なし）、`Wpf` / `WinForms`（デスクトップ単体）、`MultiTenant`（マルチテナント）も保守用に置いてありますが、テンプレートとしては提供していません。
+`Source/Hosts/` にはほかに `Wpf` / `WinForms`（デスクトップ単体）、`MultiTenant`（マルチテナント）も保守用に置いてありますが、テンプレートとしては提供していません。
 
 各バリアントのソリューションには `Source/Hosts/Common/` のプロジェクトも含まれます: `LowCodeApp.Designer`（ビジュアルデザイナ。デザインファイルの編集に使う）、
 `LowCodeApp.Client.Shared`（ブラウザ・デスクトップ・モバイルのクライアントで共有するサービス）、ライセンスツール。

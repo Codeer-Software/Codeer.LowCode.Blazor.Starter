@@ -37,7 +37,7 @@
         }
 
         //Maintainer view: Common once, each variant's own projects under a folder named after the variant, and the tool.
-        //Same-named projects (LowCodeApp.Server of Normal and Cookie) are fine because they sit in different solution folders.
+        //Same-named projects (LowCodeApp.Server of Cookie and MultiTenant) are fine because they sit in different solution folders.
         void CreateAllSolution()
         {
             var entries = new List<(string csproj, string folder, bool deploy)>();

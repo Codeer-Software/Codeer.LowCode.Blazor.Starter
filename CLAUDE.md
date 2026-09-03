@@ -65,7 +65,7 @@
 | `Source/Hosts/Cookie/` | Web（WASM クライアント + ASP.NET Core サーバー）、Cookie 認証（ユーザーテーブルでパスワード検証） | 業務アプリの既定。Entra ID / OIDC / TOTP など独自の認証を組むときもここを土台にする（cookie スキームと `[Authorize]`、現在ユーザー解決はそのまま使え、ログインの発行方法だけ差し替える） |
 | `Source/Hosts/Maui/` | `Cookie` + .NET MAUI（Android/iOS）クライアント | スマホアプリとして配布したい。デザイン変更はストア更新なしで反映される |
 
-`Source/Hosts/` にはほかに `Normal`（認証なし）/ `Wpf` `WinForms`（デスクトップ単体）/ `MultiTenant`（マルチテナント）も**保守用**に置いてあるが、
+`Source/Hosts/` にはほかに `Wpf` `WinForms`（デスクトップ単体）/ `MultiTenant`（マルチテナント）も**保守用**に置いてあるが、
 テンプレートとしては提供していない。ユーザーに勧めない（認証なしが要るときは下の「認証を外す」）。
 
 <!-- /maintainer-only -->
@@ -75,7 +75,6 @@
 `Server/Controllers/AccountController.cs`、`Server/PasswordCheckUser.cs`（+ `appsettings*.json` の `PasswordCheckUserTableInfo` と `SystemConfig` の該当プロパティ）、
 各 Controller の `[Authorize]`、`Client/wwwroot/login.html` と `Client/LoginInfo.cs`（`Program.cs` / `NavigationService.cs` のログイン遷移）、
 `Services/DataService.cs` の現在ユーザー解決（前段認証のヘッダから取るか固定値にする）。
-<!-- maintainer-only -->差分の正解は `Source/Hosts/Normal/` にあるので、迷ったら `git diff --no-index Source/Hosts/Cookie/LowCodeApp.Server Source/Hosts/Normal/LowCodeApp.Server` で見比べる。<!-- /maintainer-only -->
 
 ## 共通の構成
 
