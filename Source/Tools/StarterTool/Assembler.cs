@@ -96,7 +96,9 @@
             foreach (var group in entries.GroupBy(e => e.folder))
             {
                 var paths = string.Join(" ", group.Select(e => $"\"{Path.GetRelativePath(dir, e.csproj)}\""));
-                Repository.RunDotnet(dir, $"sln {slnName} add --solution-folder \"{group.Key}\" {paths}");
+                //.NET 10 SDK adds ReferencedProjects recursively by default, which would drop a common project (Client.Shared)
+                //into the first variant's folder that references it. Every project is listed explicitly, so add only those.
+                Repository.RunDotnet(dir, $"sln {slnName} add --include-references false --solution-folder \"{group.Key}\" {paths}");
             }
             StabilizeProjectGuids(slnPath);
 
