@@ -52,7 +52,7 @@
   {
     _isValid = false;
     await AppInfoService.AsImplement().InitializeAppAsync();
-    _isValid = true;
     await NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName, JSRuntime);
+    _isValid = true;
   }
 }
