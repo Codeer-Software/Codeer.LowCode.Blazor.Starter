@@ -9,7 +9,21 @@ namespace LowCodeApp.Maui.Services
         const string BaseUrlKey = "Server.BaseUrl";
 
         /// <summary>Set once at startup from appsettings.json (Server:BaseUrl).</summary>
-        public static string DefaultBaseUrl { get; set; } = string.Empty;
+        public static string DefaultBaseUrl
+        {
+            get => _defaultBaseUrl;
+            set =>
+#if WINDOWS
+                // appsettings.json targets the Android emulator, which reaches the host PC via the special
+                // address 10.0.2.2. That address is meaningless on Windows itself (there is no host to reach
+                // through it), so when running as a Windows desktop app it must be read as plain localhost.
+                _defaultBaseUrl = value.Replace("10.0.2.2", "localhost");
+#else
+                _defaultBaseUrl = value;
+#endif
+        }
+
+        static string _defaultBaseUrl = string.Empty;
 
         /// <summary>
         /// 外部 IdP ログイン後にシステムブラウザから戻ってくる URL (Server:LoginCallbackUrl、既定 lowcodeapp://auth)。

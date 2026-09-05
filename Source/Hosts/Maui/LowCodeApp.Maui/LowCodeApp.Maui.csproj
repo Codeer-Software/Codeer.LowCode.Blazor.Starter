@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
-    <!-- Mobile client only. Add net10.0-windows10.0.19041.0 / net10.0-maccatalyst here if you also want a desktop build. -->
-    <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+    <!-- Mobile clients plus an unpackaged Windows desktop build. Add net10.0-maccatalyst here if you also want macOS. -->
+    <TargetFrameworks>net10.0-android;net10.0-ios;net10.0-windows10.0.19041.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <!-- No RootNamespace: it must follow the project name so the Razor components (default namespace) and the
          C# files (namespace substituted by the VS template) end up in the same namespace. -->
@@ -20,6 +20,10 @@
     <ApplicationVersion>1</ApplicationVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+    <!-- Unpackaged (non-MSIX) Windows run/deploy, matching the plain "dotnet build/run" workflow used for Android/iOS. -->
+    <WindowsPackageType Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">None</WindowsPackageType>
   </PropertyGroup>
   <!-- Codeer.LowCode.Blazor resolves field/design types by reflection (TypeFinder, FieldDesignManager), so the
        app and library assemblies must not be trimmed. "partial" trims only the framework, the same setting the
