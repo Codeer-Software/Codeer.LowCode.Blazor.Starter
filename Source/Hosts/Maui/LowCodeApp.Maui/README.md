@@ -60,6 +60,41 @@ enter the URL and press *Save*. The value is stored with MAUI `Preferences` and 
   (it recreates the WebView). Server-side hot reload (`UseHotReload`) needs a SignalR connection the device can
   trust; with the development certificate it silently stays off.
 
+## Startup time
+
+A cold start on Android is a few seconds, most of it before any of this project's code runs: the .NET runtime
+comes up, then MAUI, then the Android WebView, and only then does Blazor boot inside it. Measured on a
+low-end Android 12 tablet, process start to the page being drawn:
+
+| Build | First frame | Page drawn |
+|---|---|---|
+| Debug | 3.4s | 6.4s |
+| Release, AOT disabled | 2.8s | |
+| Release (Profiled AOT, the default) | **1.6s** | **4.1s** |
+
+So judge startup on a Release build: Debug adds JNI checking, the debug helper library and fast deployment,
+which loads every assembly individually from the device instead of from the APK.
+
+A relaunch while the process is still alive (the app was only backgrounded) is ~90ms - the cost above is paid
+only when Android has killed the process.
+
+### Release builds fail in the AOT step when TEMP contains non-ASCII characters
+
+    Microsoft.Android.Sdk.Aot.targets(123,5): error : Precompiling failed for ...\linked\<assembly>.dll with exit code 1
+    error : The specified response file can not be read
+
+The AOT compiler cannot read its response file when the path holds non-ASCII characters, which it does when the
+Windows user name is not ASCII (`C:\Users\<name>\AppData\Local\Temp`). Point `TEMP`/`TMP` at an ASCII path for
+the build:
+
+```powershell
+$env:TMP = "D:\aottmp"; $env:TEMP = "D:\aottmp"
+dotnet build Source/Hosts/Maui/LowCodeApp.Maui/LowCodeApp.Maui.csproj -f net10.0-android -c Release
+```
+
+Disabling AOT (`-p:AndroidEnableProfiledAot=false -p:RunAOTCompilation=false`) also builds, but gives up most of
+the startup gain in the table above, so prefer fixing `TEMP`.
+
 ## Publishing
 
 Change `ApplicationId`, `ApplicationTitle`, the icon (`Resources/AppIcon`) and the splash screen (`Resources/Splash`)

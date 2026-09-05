@@ -11,6 +11,7 @@
 @inject HttpClient HttpClient
 @inject NavigationManager NavigationManager
 @inject INavigationService NavigationService
+@inject ServerConnection Server
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
 
 @if (_isValid)
@@ -29,15 +30,19 @@ else if (_connectionError != null)
     </div>
   </div>
 }
-else
+
+@if (_connectionError == null && _loaderVisible)
 {
-  <svg class="loading-progress">
-    <circle r="40%" cx="50%" cy="50%" />
-    <circle r="40%" cx="50%" cy="50%" />
-  </svg>
-  <div class="loading-progress-text"></div>
-  <div class="app-init-note" aria-live="polite">
-    App Initializing
+  <div class="app-loading @(_isValid ? "app-loading-done" : null)"
+       style="--blazor-load-percentage: @(_progress)%; --blazor-load-percentage-text: '@(_progress)%'">
+    <svg class="loading-progress">
+      <circle r="40%" cx="50%" cy="50%" />
+      <circle r="40%" cx="50%" cy="50%" />
+    </svg>
+    <div class="loading-progress-text"></div>
+    <div class="app-init-note" aria-live="polite" @key="_stage">
+      @_stage
+    </div>
   </div>
 }
 
@@ -55,17 +60,56 @@ else
   bool _toLoginPage = false;
   string? _connectionError;
 
+  //What the loading screen says and how far the ring has travelled. Startup is several seconds on a cold
+  //start (the .NET runtime and the WebView have to come up first), so it reports which step is running
+  //instead of showing one static message and a ring that never moves. index.html starts it off at 12%.
+  string _stage = "Starting the app";
+  int _progress = 12;
+  bool _loaderVisible = true;
+  bool _fadingOutLoader;
+
+  //Renders the new text before the next step blocks: without yielding, the whole method runs to completion
+  //and only the last stage is ever painted.
+  async Task SetStage(string stage, int progress)
+  {
+    _stage = stage;
+    _progress = progress;
+    StateHasChanged();
+    await Task.Yield();
+  }
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    await base.OnAfterRenderAsync(firstRender);
+
+    //The page is rendered underneath while the loading screen fades out over it, so the hand-over does not
+    //flash an empty screen. Drop the loading screen once the fade (0.3s delay + 0.4s) has finished.
+    if (!_isValid || _fadingOutLoader) return;
+    _fadingOutLoader = true;
+    await Task.Delay(750);
+    _loaderVisible = false;
+    StateHasChanged();
+  }
+#if DEBUG
+  bool _noAuthServer = false;
+#endif
+
+  static bool IsJson(HttpResponseMessage response)
+    => response.Content.Headers.ContentType?.MediaType == "application/json";
+
   protected override async Task OnInitializedAsync()
   {
     _isValid = false;
     await base.OnInitializedAsync();
+    await SetStage("Connecting to the server", 30);
 
     //401 means "not signed in" and goes to the login page. Anything else (server down, wrong BaseUrl,
     //cleartext blocked, ...) is a connection problem and is shown as such instead of a silent wait.
     try
     {
-      using var response = await HttpClient.GetAsync("api/account/current_user");
-      if (response.IsSuccessStatusCode)
+      //Started during app startup (MauiProgram), so by now it is usually already finished.
+      using var response = await (Server.TakeCurrentUserPrewarm() ?? HttpClient.GetAsync("api/account/current_user"));
+      if (response.IsSuccessStatusCode && IsJson(response))
       {
         var id = await response.Content.ReadFromJsonAsync<StringWrapper>();
         AppInfoService.AsImplement().SetCurrentUserId(id?.Value ?? string.Empty);
@@ -74,9 +118,22 @@ else
       {
         AppInfoService.AsImplement().SetCurrentUserId(string.Empty);
       }
+#if DEBUG
+      else if (response.IsSuccessStatusCode)
+      {
+        //A host variant without authentication (Hosts/Normal) has no AccountController, so this request
+        //falls through to MapFallbackToFile and index.html comes back: 200, but text/html instead of JSON.
+        //Take that as "this server has no authentication" and skip the login page. Development only -
+        //a release build is expected to talk to the Cookie variant.
+        _noAuthServer = true;
+        AppInfoService.AsImplement().SetCurrentUserId(string.Empty);
+      }
+#endif
       else
       {
-        _connectionError = $"{(int)response.StatusCode} {response.ReasonPhrase}";
+        _connectionError = response.IsSuccessStatusCode
+          ? $"Unexpected content type: {response.Content.Headers.ContentType?.MediaType}"
+          : $"{(int)response.StatusCode} {response.ReasonPhrase}";
         _toLoginPage = true;
         return;
       }
@@ -89,6 +146,9 @@ else
     }
 
     if (!string.IsNullOrEmpty(Services.AppInfoService.CurrentUserId)) return;
+#if DEBUG
+    if (_noAuthServer) return;
+#endif
     _toLoginPage = true;
     var returnUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
     NavigationManager.NavigateTo("/login" + (string.IsNullOrEmpty(returnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(returnUrl)));
@@ -104,8 +164,18 @@ else
   private async Task InitPage()
   {
     _isValid = false;
+    await SetStage("Loading the application design", 55);
     await AppInfoService.AsImplement().InitializeAppAsync();
+    await SetStage("Preparing the page", 85);
     await NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName, JSRuntime);
+
+    //Let the ring travel to 100% (0.5s) and then rest there before handing over: arriving at 100% is the part
+    //worth showing, and fading it out while it is still moving looks like the app gave up half way. The fade
+    //itself waits another 0.3s (app-loading in app.css), so 100% stands still for about half a second.
+    _progress = 100;
+    StateHasChanged();
+    await Task.Delay(700);
+
     _isValid = true;
   }
 }

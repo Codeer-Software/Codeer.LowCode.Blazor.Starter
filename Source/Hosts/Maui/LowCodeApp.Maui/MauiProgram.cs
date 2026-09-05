@@ -38,7 +38,13 @@ namespace LowCodeApp.Maui
             builder.Logging.AddDebug();
 #endif
 
-            return builder.Build();
+            var app = builder.Build();
+
+            //Ask the server who is signed in now, so that round trip overlaps the WebView and Blazor startup
+            //instead of being added to it. LowCodePage picks up the result.
+            app.Services.GetRequiredService<ServerConnection>().PrewarmCurrentUser();
+
+            return app;
         }
 
         //appsettings.json is bundled as a MauiAsset. appsettings.Development.json (optional) overrides it.
