@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using LowCodeApp.Client;
 using LowCodeApp.Server.Services;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
+using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Microsoft.Extensions.Caching.Distributed;
 
@@ -151,5 +152,50 @@ namespace LowCodeApp.Server.Controllers
         [HttpGet("logout/{provider}")]
         public Task<IActionResult> ExternalLogout(string provider)
             => _externalLogins.SignOutAsync(this, provider, LoginPage);
+
+        //認証アプリ (TOTP) の登録状態と解除 (Extras の TotpResetButtonField が使う)。
+        //対象は自分の行か、その行を編集できる人 (CLB の権限モデル)。列は書き込み専用なのでここが唯一の入口
+        [Authorize]
+        [HttpGet("totp/status/{userId}")]
+        public async Task<IActionResult> GetTotpStatus(string userId)
+        {
+            var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
+            if (totp == null) return Ok(new TotpStatus());
+            if (!await CanManageTotpAsync(userId)) return Forbid();
+            var current = await totp.FindAsync(userId);
+            return Ok(new TotpStatus { Enabled = true, Registered = current?.IsConfirmed == true });
+        }
+
+        [Authorize]
+        [HttpPost("totp/reset/{userId}")]
+        public async Task<IActionResult> TotpReset(string userId)
+        {
+            var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
+            if (totp == null) return NotFound();
+            if (!await CanManageTotpAsync(userId)) return Forbid();
+            await totp.ResetAsync(userId);
+            return Ok(new TotpStatus { Enabled = true, Registered = false });
+        }
+
+        //本人はいつでも可。他人の行は Submit と同じ書込権限 (アプリアクセス・モジュール条件・行条件) を通った人だけ
+        async Task<bool> CanManageTotpAsync(string userId)
+        {
+            if (userId == DataService.GetCurrentUserId(HttpContext)) return true;
+            try
+            {
+                await _dataService.ModuleDataIO.CheckUpdateAuthorizationAsync(DesignerService.GetDesignData().AppSettings.CurrentUserModuleDesignName, userId);
+                return true;
+            }
+            catch (LowCodeException)
+            {
+                return false;
+            }
+        }
+
+        public class TotpStatus
+        {
+            public bool Enabled { get; set; }
+            public bool Registered { get; set; }
+        }
     }
 }

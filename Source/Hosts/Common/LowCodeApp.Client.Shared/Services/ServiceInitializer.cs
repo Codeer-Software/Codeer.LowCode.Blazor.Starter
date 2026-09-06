@@ -23,6 +23,9 @@ namespace LowCodeApp.Client.Shared.Services
             ApprovalTransport.EndPointBase = "/api/approval";
             Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
             AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
+            //認証アプリ (TOTP) 解除ボタン (TotpResetButtonField / MyTotpResetButtonField。Cookie 認証テンプレートの AccountController)
+            TotpResetClient.StatusEndPoint = "/api/account/totp/status";
+            TotpResetClient.ResetEndPoint = "/api/account/totp/reset";
             AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";
             BulkFileReader.ParseFileEndPoint = "/api/module_data/parse_file";
             BulkFileTransferService.ListFileByDataEndPoint = "/api/module_data/list_file_by_data";
