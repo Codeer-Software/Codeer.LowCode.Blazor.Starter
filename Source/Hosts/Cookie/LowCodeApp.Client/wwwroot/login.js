@@ -7,7 +7,6 @@
 
   //画面の文言 (既定は日本語。login.html で window.loginTexts を定義すると上書きできる)
   const texts = Object.assign({
-    documentTitle: "ログイン",
     loginFailed: "ログインに失敗しました",
     enterCode: "認証コードを入力してください",
     invalidCode: "認証コードが正しくありません",
@@ -48,21 +47,6 @@
     passwordEnabled = options.password ?? options.Password ?? true;
     const providers = options.providers ?? options.Providers ?? [];
     providerCount = providers.length;
-    const page = options.page ?? options.Page ?? {};
-
-    //デザインの LoginPage 設定: タイトル / ロゴ / 案内文 (空なら出さない)
-    const title = page.title || page.Title || "";
-    document.title = title || texts.documentTitle;
-    if (title) el("Title").textContent = title;
-    show("Title", !!title);
-    const logoUrl = page.logoUrl || page.LogoUrl || "";
-    if (logoUrl) el("Logo").src = logoUrl;
-    show("Logo", !!logoUrl);
-    const message = page.message || page.Message || "";
-    if (message) el("Message").textContent = message;
-    show("Message", !!message);
-    show("Head", !!(title || logoUrl || message));
-
     show("LoginForm", passwordEnabled);
 
     //パスワードログイン無効で IdP が 1 つなら画面を出さずに即遷移 (エラー表示中は止まるのでループしない)

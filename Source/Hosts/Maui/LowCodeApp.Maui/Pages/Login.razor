@@ -6,16 +6,8 @@
 
 <div class="login-center">
   <div>
-    @* タイトル / ロゴ / 案内文はデザインの AppSettings > LoginPage (api/account/login_options の page) *@
-    @if (!string.IsNullOrEmpty(_page.LogoUrl))
-    {
-      <img src="@ResolveUrl(_page.LogoUrl)" alt="" style="max-width:320px;max-height:96px;" class="mb-2" />
-    }
-    <h1>@(string.IsNullOrEmpty(_page.Title) ? "ログイン" : _page.Title)</h1>
-    @if (!string.IsNullOrEmpty(_page.Message))
-    {
-      <p class="text-muted" style="white-space: pre-line;">@_page.Message</p>
-    }
+    @* ロゴ・アプリ名・案内文はここに直接書く *@
+    <h1>ログイン</h1>
     @if (_totp == null)
     {
       @if (_passwordEnabled)
@@ -92,15 +84,6 @@
   {
     public bool Password { get; set; } = true;
     public List<LoginProvider> Providers { get; set; } = new();
-    public LoginPage Page { get; set; } = new();
-  }
-
-  //デザインの AppSettings > LoginPage
-  class LoginPage
-  {
-    public string Title { get; set; } = string.Empty;
-    public string LogoUrl { get; set; } = string.Empty;
-    public string Message { get; set; } = string.Empty;
   }
 
   class LoginProvider
@@ -130,7 +113,6 @@
   readonly LoginInfo _login = new();
   bool _passwordEnabled = true;
   List<LoginProvider> _providers = new();
-  LoginPage _page = new();
   TotpStep? _totp;
   bool _busy;
   bool _failed;
@@ -146,7 +128,6 @@
       {
         _passwordEnabled = options.Password;
         _providers = options.Providers;
-        _page = options.Page ?? new();
       }
     }
     catch { }
@@ -316,10 +297,6 @@
       _busy = false;
     }
   }
-
-  //ロゴの相対 URL (wwwroot 相対) はサーバーの URL に対して解決する (アプリ内の静的ファイルではなくサーバーから取る)
-  string ResolveUrl(string url)
-    => Uri.TryCreate(url, UriKind.Absolute, out _) ? url : new Uri(Server.BaseAddress, url).ToString();
 
   void SignedIn()
   {

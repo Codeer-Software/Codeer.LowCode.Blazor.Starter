@@ -7,7 +7,7 @@ namespace LowCodeApp.SeleniumTest;
 
 /// <summary>
 /// Cookie 認証テンプレートのログイン画面 (wwwroot/login.html + login.js)。
-/// タイトルはデザインの AppSettings > LoginPage で変わるので、URL (login.html) と要素の id で特定する。
+/// タイトルはアプリごとに書き換えられるので、URL (login.html) と要素の id で特定する。
 /// </summary>
 public class LoginForm : PageBase
 {

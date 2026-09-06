@@ -44,19 +44,15 @@ namespace LowCodeApp.Server.Controllers
             return NoContent();
         }
 
-        //ログイン画面が描くもの: ID/パスワードのフォームの有無、外部 IdP ごとのボタン (appsettings の EntraLogin / GoogleLogin / CognitoLogin / OidcLogins)、
-        //デザインの AppSettings > LoginPage (タイトル / ロゴ / 案内文)。画面の構造は login.html (Web) と Login.razor (MAUI) が固定で持つ
+        //ログイン画面が描くもの: ID/パスワードのフォームの有無、外部 IdP ごとのボタン (appsettings の EntraLogin / GoogleLogin / CognitoLogin / OidcLogins)。
+        //見た目は login.html (Web) と Login.razor (MAUI) を直接書き換える
         [HttpGet("login_options")]
         public object LoginOptions()
-        {
-            var page = DesignerService.GetDesignData().AppSettings.LoginPage;
-            return new
+            => new
             {
                 Password = SystemConfig.Instance.AllowPasswordLogin,
                 Providers = _externalLogins.Options,
-                Page = new { page.Title, page.LogoUrl, page.Message },
             };
-        }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginInfo? loginInfo)
@@ -153,43 +149,26 @@ namespace LowCodeApp.Server.Controllers
         public Task<IActionResult> ExternalLogout(string provider)
             => _externalLogins.SignOutAsync(this, provider, LoginPage);
 
-        //認証アプリ (TOTP) の登録状態と解除 (Extras の TotpResetButtonField が使う)。
-        //対象は自分の行か、その行を編集できる人 (CLB の権限モデル)。列は書き込み専用なのでここが唯一の入口
+        //ログイン中の自分の認証アプリ (TOTP) の登録状態と解除 (Extras の MyTotpResetButtonField が使う)。
+        //対象は常に自分。列は書き込み専用なのでここが唯一の入口
         [Authorize]
-        [HttpGet("totp/status/{userId}")]
-        public async Task<IActionResult> GetTotpStatus(string userId)
+        [HttpGet("totp/status")]
+        public async Task<IActionResult> GetTotpStatus()
         {
             var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
             if (totp == null) return Ok(new TotpStatus());
-            if (!await CanManageTotpAsync(userId)) return Forbid();
-            var current = await totp.FindAsync(userId);
+            var current = await totp.FindAsync(DataService.GetCurrentUserId(HttpContext));
             return Ok(new TotpStatus { Enabled = true, Registered = current?.IsConfirmed == true });
         }
 
         [Authorize]
-        [HttpPost("totp/reset/{userId}")]
-        public async Task<IActionResult> TotpReset(string userId)
+        [HttpPost("totp/reset")]
+        public async Task<IActionResult> TotpReset()
         {
             var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
             if (totp == null) return NotFound();
-            if (!await CanManageTotpAsync(userId)) return Forbid();
-            await totp.ResetAsync(userId);
+            await totp.ResetAsync(DataService.GetCurrentUserId(HttpContext));
             return Ok(new TotpStatus { Enabled = true, Registered = false });
-        }
-
-        //本人はいつでも可。他人の行は Submit と同じ書込権限 (アプリアクセス・モジュール条件・行条件) を通った人だけ
-        async Task<bool> CanManageTotpAsync(string userId)
-        {
-            if (userId == DataService.GetCurrentUserId(HttpContext)) return true;
-            try
-            {
-                await _dataService.ModuleDataIO.CheckUpdateAuthorizationAsync(DesignerService.GetDesignData().AppSettings.CurrentUserModuleDesignName, userId);
-                return true;
-            }
-            catch (LowCodeException)
-            {
-                return false;
-            }
         }
 
         public class TotpStatus
