@@ -131,10 +131,10 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Desi
 | `Mail` | `{ DefaultInfraName, DefaultBulkInfraName, HistoryModuleName }` | メール送信の既定インフラ名（`MailSenderTable` のキー）と送信履歴モジュール |
 | `Smtp` / `GraphApi` / `Gmail` | | 送信インフラごとの設定。項目は `api --type Codeer.LowCode.Blazor.Extras.Server.Mail.SmtpSettings --assembly <同上の dll パス>` 等で確認 |
 | `AISettings` | `{ OpenAIEndPoint, OpenAIKey, ChatModel, DocumentAnalysisEndPoint, DocumentAnalysisKey }` | AI 文書解析（Azure OpenAI / Document Intelligence）。未使用なら空 |
-| （ログインのユーザーテーブル） | 設定なし | ユーザーモジュール（`CurrentUserModuleDesignName`）のデザインから引く: 表 = `DbTable`、ID = `IdField`、ログイン ID / 外部 IdP の突き合わせ / 有効フラグ / 表示名 = `LoginAccountContractField` の役割、ハッシュ / ソルト = `PasswordHashField` の列。初回起動時にユーザーが 0 件なら `admin`/`admin` を作る |
+| （ログインのユーザーテーブル） | 設定なし | ユーザーモジュール（`CurrentUserModuleDesignName`）のデザインから引く: 表 = `DbTable`、ID = `IdField`、ログイン ID / 外部 IdP の突き合わせ / 有効フラグ / 表示名 = `LoginAccountContractField` の役割、ハッシュ / ソルト = 契約の照合用の列。初回起動時にユーザーが 0 件なら `admin`/`admin` を作る |
 | `AllowPasswordLogin`（Cookie） | `true` | ID/パスワードのログインを出すか。外部 IdP 専用なら `false` |
 | `EntraLogin` / `GoogleLogin` / `CognitoLogin` / `OidcLogins`（Cookie） | なし | 外部 IdP。`ClientId` を書いたものだけ有効（Extras の `docs/ExternalLogin.md`） |
-| `TotpLogin`（Cookie） | `{ Issuer }` | 認証アプリの二要素認証の表示名。有効・無効はデザイン（ユーザーモジュールの `TotpSecretField`）で決まる（Extras の `docs/TwoFactorLogin.md`） |
+| `TotpLogin`（Cookie） | `{ Issuer }` | 認証アプリの二要素認証の表示名。有効・無効はデザイン（`LoginAccountContractField` の TOTP 列）で決まる（Extras の `docs/TwoFactorLogin.md`） |
 | `EmailOtpLogin`（Cookie） | すべて任意 | メールのワンタイムコードの二要素認証（`MailInfraName` / `Subject` / `Body` / `CodeLifetimeMinutes` / `MaxAttempts`）。有効・無効はデザイン（`LoginAccountContractField` の `TwoFactorEmail`）で決まる |
 | `Logging` / `AllowedHosts` | | ASP.NET Core 標準 |
 

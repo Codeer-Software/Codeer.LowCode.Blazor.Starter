@@ -14,7 +14,7 @@ public class LoginForm : PageBase
     public TextBoxDriver Id => ById("Id").Wait();
     public TextBoxDriver Password => ById("Password").Wait();
     public ButtonDriver LoginButton => ById("LoginButton").Wait();
-    /// <summary>二要素認証 (TOTP) のコード入力。ユーザーモジュールに TotpSecretField があるときだけ出る。</summary>
+    /// <summary>二要素認証 (認証アプリ / メール) のコード入力。ユーザーモジュールの LoginAccountContractField で有効にしたときだけ出る。</summary>
     public TextBoxDriver TotpCode => ById("TotpCode").Wait();
     public ButtonDriver VerifyButton => ById("VerifyButton").Wait();
     public IWebElement ErrorMessage => ById("ErrorMessage").Wait().Find();

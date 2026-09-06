@@ -133,7 +133,7 @@
         <label for="IsPersistent" class="form-check-label">ログイン状態を保持する</label>
       </div>
 
-      <!-- 二要素認証 (認証アプリ = TotpSecretField / メール = LoginAccountContractField の TwoFactorEmail。パスワード成功後にこちらへ切り替わる) -->
+      <!-- 二要素認証 (認証アプリ = LoginAccountContractField の TOTP 列 / メール = 同 TwoFactorEmail。パスワード成功後にこちらへ切り替わる) -->
       <form id="TotpForm" novalidate style="display:none;">
         <div id="TotpSetup" class="mb-3" style="display:none;">
           <p class="small mb-2">認証アプリ (Google Authenticator、Microsoft Authenticator など) で QR コードを読み取り、表示された 6 桁のコードを入力してください。</p>

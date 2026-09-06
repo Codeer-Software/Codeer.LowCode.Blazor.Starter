@@ -72,8 +72,8 @@ namespace LowCodeApp.Server.Controllers
             if (account == null) return Unauthorized();
 
             //二要素認証。コード未指定なら状態を返すだけでサインインしない。コード検証が通ったとき (status: ok) だけ下のサインインへ進む。
-            // - 認証アプリ (TOTP): ユーザーモジュールに TotpSecretField があるとき (setup = 登録用 QR / totp = コード要求)
-            // - メールのワンタイムコード: LoginAccountContractField の TwoFactorEmail があるとき (email = 送信済み)。TotpSecretField があればそちらが優先
+            // - 認証アプリ (TOTP): LoginAccountContractField に TOTP の 3 列があるとき (setup = 登録用 QR / totp = コード要求)
+            // - メールのワンタイムコード: LoginAccountContractField の TwoFactorEmail があるとき (email = 送信済み)。TOTP の列があればそちらが優先
             var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
             if (totp != null)
             {
