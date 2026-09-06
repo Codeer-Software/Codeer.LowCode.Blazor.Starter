@@ -7,15 +7,6 @@ using Codeer.LowCode.Blazor.Extras.Server.Auth;
 
 namespace LowCodeApp.Server.Services
 {
-    public class PasswordCheckUserTableInfo
-    {
-        public string TableName { get; set; } = string.Empty;
-        public string IdColumn { get; set; } = string.Empty;
-        public string UserNameColumn { get; set; } = string.Empty;
-        public string HashColumn { get; set; } = string.Empty;
-        public string SaltColumn { get; set; } = string.Empty;
-    }
-
     public class SystemConfig
     {
         public static SystemConfig Instance { get; set; } = new();
@@ -35,13 +26,14 @@ namespace LowCodeApp.Server.Services
         public SendGridSettings SendGrid { get; set; } = new();
         public GmailSettings Gmail { get; set; } = new();
         public AISettings AISettings { get; set; } = new();
-        public PasswordCheckUserTableInfo PasswordCheckUserTableInfo { get; set; } = new();
-        //ID/パスワードのログイン。外部 IdP 専用にするなら false (ログイン画面はプロバイダのボタンだけになる)
+        //ID/パスワードのログイン (表・列はユーザーモジュールのデザインから: IdField / LoginAccountContractField / PasswordHashField)。外部 IdP 専用にするなら false (ログイン画面はプロバイダのボタンだけになる)
         public bool AllowPasswordLogin { get; set; } = true;
         //外部 IdP (Entra ID / Google / AWS Cognito / OIDC)。種類ごとの設定 (EntraLogin / GoogleLogin / CognitoLogin / OidcLogins) を ExternalLoginTable が IExternalLoginProvider に組み立てる
         public List<IExternalLoginProvider> ExternalLogins { get; set; } = [];
         //MAUI アプリがシステムブラウザで外部 IdP にログインした後に戻る URL。MAUI 側の appsettings (Server:LoginCallbackUrl) と一致させる
         public string MobileLoginCallbackUrl { get; set; } = string.Empty;
+        //ID/パスワードのログインに足す二要素認証 (TOTP)。有効・無効はデザイン (ユーザーモジュールの TotpSecretField) で決まり、ここは表示用の Issuer だけ (docs: Codeer.LowCode.Blazor.Extras の TotpLogin.md)
+        public TotpLoginSettings TotpLogin { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }
 }

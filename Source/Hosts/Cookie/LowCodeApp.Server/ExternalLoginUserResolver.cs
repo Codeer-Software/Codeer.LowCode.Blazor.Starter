@@ -1,5 +1,4 @@
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
-using Dapper;
 using LowCodeApp.Server.Services;
 
 namespace LowCodeApp.Server
@@ -8,8 +7,8 @@ namespace LowCodeApp.Server
     /// 外部 IdP (Entra ID / Google / AWS Cognito / OIDC) が本人確認したユーザーを、ユーザーテーブルの 1 行に解決する。
     /// これはアプリのプロビジョニング方針なので、パッケージではなくここに置く:
     ///
-    /// - 事前登録制 (この実装): IdP のユーザー名 (Entra = UPN、Google / Cognito = メール) がユーザーテーブルのユーザー名列
-    ///   (PasswordCheckUserTableInfo) と一致する行だけ許可する。行は作らない
+    /// - 事前登録制 (この実装): IdP のユーザー名 (Entra = UPN、Google / Cognito = メール) がユーザーモジュールの
+    ///   LoginAccountContractField の ExternalLoginName (空なら LoginName) の列と一致し、IsActive が偽でない行だけ許可する。行は作らない
     /// - 自動作成: 行が無ければ INSERT する (identity.LoginName / DisplayName / Email が使える)
     /// - Subject での紐付け: identity.Provider + identity.Subject を紐付けテーブルに持てば、メールが変わってもユーザーを維持できる
     ///
@@ -26,16 +25,9 @@ namespace LowCodeApp.Server
 
         public async Task<ExternalLoginUser?> ResolveAsync(ExternalLoginIdentity identity)
         {
-            var tableInfo = SystemConfig.Instance.PasswordCheckUserTableInfo;
-            var designData = DesignerService.GetDesignData();
-            var dataSourceName = designData.Modules.Find(designData.AppSettings.CurrentUserModuleDesignName)?.DataSourceName ?? string.Empty;
-            var conn = _dataService.DbAccess.GetConnection(dataSourceName);
-
-            var user = (await conn.QueryAsync<PasswordCheckUser>(
-                $"SELECT {tableInfo.IdColumn} AS Id, {tableInfo.UserNameColumn} AS UserName FROM {tableInfo.TableName} WHERE {tableInfo.UserNameColumn} = @UserName",
-                new { UserName = identity.LoginName })).FirstOrDefault();
-
-            return user == null ? null : new ExternalLoginUser(user.Id, user.UserName);
+            var accounts = LoginAccountStore.Create(DesignerService.GetDesignData(), _dataService.DbAccess);
+            var account = accounts == null ? null : await accounts.FindByExternalLoginNameAsync(identity.LoginName);
+            return account == null ? null : new ExternalLoginUser(account.UserId, account.DisplayName);
         }
     }
 }

@@ -4,7 +4,7 @@
 
 | パス | 役割 |
 |---|---|
-| `Source/` | ビルド対象のすべて。リポジトリのルートは文書。`Source/Codeer.LowCode.Blazor.Starter.sln` は全バリアントの全プロジェクトを開く（MAUI ワークロードが必要） |
+| `Source/` | ビルド対象のすべて。リポジトリのルートは文書。`Source/Codeer.LowCode.Blazor.Starter.sln` は MAUI 以外の全バリアントの全プロジェクトを開く。MAUI は `Source/Hosts/Maui/LowCodeApp.sln` を別に開く（MAUI ワークロードが必要。全部入りに入れると読み込みとデバッグが重いため分けている。VSIX はプロジェクトフォルダから作るので .sln の構成は無関係） |
 | `Source/Hosts/` | ホストアプリケーション＝ローコードのデザインプロジェクトを動かす C# ソリューション（デザインプロジェクト本体＝画面・データ・スクリプトはデザイナで作り、このリポジトリには含まれない） |
 | `Source/Hosts/Common/` | 全バリアント共通プロジェクトのマスタ（`Client.Shared`、`Designer`、`LicenseRegister`、`LicenseRegisterCli`）。`Font/` は PDF 出力用の Noto Sans JP（SIL OFL 1.1、`OFL.txt` 同梱。`export-app` が `Local/Font` にコピーする。VSIX には含めない） |
 | `Source/Hosts/<Variant>/LowCodeApp.<Own>` | バリアント固有プロジェクトのマスタ（`Cookie` のサーバーとクライアント、`Maui`、`Wpf`、`WinForms`）。公開テンプレートは `Cookie`（接尾辞なし・既定）と `Maui` だけ。`Wpf` / `WinForms` / `MultiTenant` は `Variants.cs` で `IsTemplate: false`（ソリューション生成とデバッグ用コピーの対象だが VSIX には入れない） |

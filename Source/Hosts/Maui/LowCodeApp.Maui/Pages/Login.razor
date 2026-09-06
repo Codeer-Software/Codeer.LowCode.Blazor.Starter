@@ -7,29 +7,54 @@
 <div class="login-center">
   <div>
     <h1>Login</h1>
-    @if (_passwordEnabled)
+    @if (_totp == null)
     {
-      <EditForm Model="_login" OnValidSubmit="LoginAsync">
-        <div class="mb-2">
-          User ID
-          <InputText @bind-Value="_login.Id" class="form-control" autocomplete="username" />
+      @if (_passwordEnabled)
+      {
+        <EditForm Model="_login" OnValidSubmit="LoginAsync">
+          <div class="mb-2">
+            User ID
+            <InputText @bind-Value="_login.Id" class="form-control" autocomplete="username" />
+          </div>
+          <div class="mb-2">
+            Password
+            <InputText @bind-Value="_login.Password" type="password" class="form-control" autocomplete="current-password" />
+          </div>
+          <div class="mb-3">
+            <InputCheckbox @bind-Value="_login.IsPersistent" id="IsPersistent" />
+            <label for="IsPersistent" class="ms-1">Remember me?</label>
+          </div>
+          <button type="submit" class="btn btn-primary" disabled="@_busy">Login</button>
+        </EditForm>
+      }
+      @foreach (var provider in _providers)
+      {
+        <div class="mt-2">
+          <button type="button" class="btn btn-outline-primary w-100" disabled="@_busy" @onclick="() => ExternalLoginAsync(provider.Name)">Login with @provider.DisplayName</button>
         </div>
-        <div class="mb-2">
-          Password
-          <InputText @bind-Value="_login.Password" type="password" class="form-control" autocomplete="current-password" />
-        </div>
-        <div class="mb-3">
-          <InputCheckbox @bind-Value="_login.IsPersistent" id="IsPersistent" />
-          <label for="IsPersistent" class="ms-1">Remember me?</label>
-        </div>
-        <button type="submit" class="btn btn-primary" disabled="@_busy">Login</button>
-      </EditForm>
+      }
     }
-    @foreach (var provider in _providers)
+    else
     {
-      <div class="mt-2">
-        <button type="button" class="btn btn-outline-primary w-100" disabled="@_busy" @onclick="() => ExternalLoginAsync(provider.Name)">Login with @provider.DisplayName</button>
-      </div>
+      @* 二要素認証 (TOTP)。サーバーの TotpLogin が有効なとき、パスワード成功後にコードを求める *@
+      <EditForm Model="_totp" OnValidSubmit="VerifyTotpAsync">
+        @if (_totp.Status == "setup")
+        {
+          <p class="mb-2">Scan the QR code with your authenticator app, then enter the 6-digit code it shows.</p>
+          <img src="data:image/png;base64,@_totp.QrPngBase64" alt="QR code for authenticator app" class="border mb-2" style="width:200px;height:200px;" />
+          <div class="small text-muted mb-2">Can't scan? Enter this key manually:<br /><code>@_totp.Secret</code></div>
+        }
+        else
+        {
+          <p class="mb-2">Enter the 6-digit code shown in your authenticator app.</p>
+        }
+        <div class="mb-3">
+          Authentication code
+          <InputText @bind-Value="_totp.Code" class="form-control" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
+        </div>
+        <button type="submit" class="btn btn-primary" disabled="@_busy">Verify</button>
+        <button type="button" class="btn btn-secondary ms-1" disabled="@_busy" @onclick="BackToLogin">Back</button>
+      </EditForm>
     }
     @if (_failed)
     {
@@ -47,6 +72,7 @@
     public string? Id { get; set; }
     public string? Password { get; set; }
     public bool IsPersistent { get; set; }
+    public string? TotpCode { get; set; }
   }
 
   class LoginOptions
@@ -61,9 +87,26 @@
     public string DisplayName { get; set; } = string.Empty;
   }
 
+  //POST api/account/login の応答。二要素認証が無効なら status は "ok" だけ
+  class LoginResult
+  {
+    public string Status { get; set; } = "ok";
+    public string? Secret { get; set; }
+    public string? QrPngBase64 { get; set; }
+  }
+
+  class TotpStep
+  {
+    public string Status { get; set; } = string.Empty;
+    public string? Secret { get; set; }
+    public string? QrPngBase64 { get; set; }
+    public string? Code { get; set; }
+  }
+
   readonly LoginInfo _login = new();
   bool _passwordEnabled = true;
   List<LoginProvider> _providers = new();
+  TotpStep? _totp;
   bool _busy;
   bool _failed;
   string? _errorMessage;
@@ -93,10 +136,25 @@
 
     _busy = true;
     _failed = false;
+    _errorMessage = null;
     try
     {
+      _login.TotpCode = null;
       var response = await HttpClient.PostAsJsonAsync("api/account/login", _login);
       if (!response.IsSuccessStatusCode)
+      {
+        _failed = true;
+        return;
+      }
+
+      //二要素認証が有効なら status が setup / totp で返り、まだサインインしていない
+      var result = await ReadResultAsync(response);
+      if (result.Status == "setup" || result.Status == "totp")
+      {
+        _totp = new TotpStep { Status = result.Status, Secret = result.Secret, QrPngBase64 = result.QrPngBase64 };
+        return;
+      }
+      if (result.Status != "ok")
       {
         _failed = true;
         return;
@@ -110,6 +168,67 @@
     finally
     {
       _busy = false;
+    }
+  }
+
+  async Task VerifyTotpAsync()
+  {
+    if (_totp == null || string.IsNullOrWhiteSpace(_totp.Code))
+    {
+      _failed = true;
+      _errorMessage = "Enter the authentication code.";
+      return;
+    }
+
+    _busy = true;
+    _failed = false;
+    _errorMessage = null;
+    try
+    {
+      _login.TotpCode = _totp.Code.Trim();
+      var response = await HttpClient.PostAsJsonAsync("api/account/login", _login);
+      if (!response.IsSuccessStatusCode)
+      {
+        _failed = true;
+        return;
+      }
+      var result = await ReadResultAsync(response);
+      if (result.Status != "ok")
+      {
+        _failed = true;
+        _errorMessage = "Invalid authentication code.";
+        return;
+      }
+      SignedIn();
+    }
+    catch
+    {
+      _failed = true;
+    }
+    finally
+    {
+      _busy = false;
+    }
+  }
+
+  void BackToLogin()
+  {
+    _totp = null;
+    _failed = false;
+    _errorMessage = null;
+    _login.Password = null;
+    _login.TotpCode = null;
+  }
+
+  static async Task<LoginResult> ReadResultAsync(HttpResponseMessage response)
+  {
+    try
+    {
+      return await response.Content.ReadFromJsonAsync<LoginResult>() ?? new LoginResult();
+    }
+    catch
+    {
+      return new LoginResult();
     }
   }
 

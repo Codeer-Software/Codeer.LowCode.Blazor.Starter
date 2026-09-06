@@ -22,6 +22,10 @@
       width: 300px;
       margin-bottom: 8px;
     }
+    #QrImage {
+      width: 200px;
+      height: 200px;
+    }
   </style>
 </head>
 <body>
@@ -43,6 +47,33 @@
         </div>
         <button id="LoginButton" type="submit" class="btn btn-primary">Login</button>
       </form>
+
+      <!-- 二要素認証 (TOTP)。サーバーの TotpLogin が有効なときだけ、パスワード成功後にこちらへ切り替わる -->
+      <form id="TotpForm" novalidate style="display:none;">
+        <div id="TotpSetup" class="mb-3" style="display:none; max-width:340px;">
+          <p class="mb-2">
+            Scan the QR code with your authenticator app
+            (Google Authenticator, Microsoft Authenticator, etc.),
+            then enter the 6-digit code it shows.
+          </p>
+          <img id="QrImage" alt="QR code for authenticator app" class="border mb-2" />
+          <div class="small text-muted">
+            Can't scan? Enter this key manually:<br />
+            <code id="SecretText"></code>
+          </div>
+        </div>
+        <div id="TotpPrompt" class="mb-2" style="display:none;">
+          Enter the 6-digit code shown in your authenticator app.
+        </div>
+        <div class="mb-3">
+          Authentication code
+          <input id="TotpCode" name="TotpCode" type="text" style="width:300px" class="form-control"
+                 inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required />
+        </div>
+        <button id="VerifyButton" type="submit" class="btn btn-primary">Verify</button>
+        <button id="BackButton" type="button" class="btn btn-secondary ms-1">Back</button>
+      </form>
+
       <!-- サーバーに設定された外部 IdP ごとのボタン (api/account/login_options から組み立てる) -->
       <div id="Providers" class="mt-3"></div>
       <div id="ErrorMessage" class="text-danger mt-3" style="display:none;">Login failed.</div>
@@ -52,6 +83,8 @@
   <script>
     const params = new URLSearchParams(location.search);
     const redirect = sanitizeReturnUrl(params.get("returnUrl"));
+    //TOTP の 2 段階目に持ち越す 1 段階目の入力
+    let pending = null;
 
     (async () => {
       if (window.__blazorStarted) location.reload();
@@ -112,41 +145,118 @@
       }
 
       const btn = document.getElementById("LoginButton");
-      const err = document.getElementById("ErrorMessage");
       btn.disabled = true;
-      err.style.display = "none";
+      hideError();
 
       try {
-        const token = await getAntiforgeryToken();
-        const res = await fetch("/api/account/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-ANTIFORGERY-TOKEN":token },
-          body: JSON.stringify({ Id: id, Password: password, IsPersistent: isPersistent }),
-          credentials: "include",
-          cache: "no-store"
-        });
-
-        if (res.ok) {
-          const me = await fetch("/api/account/current_user", { credentials: "include", cache: "no-store" });
-          if (me.ok) {
-            const j = await me.json();
-            const uid = (j?.value ?? j?.Value ?? "").trim();
-            if (uid) {
-              if (redirect === "/" || redirect === "") location.href = "/";
-              else location.href = redirect;
-              return;
-            }
-          }
-          showError();
-        } else {
-          showError();
+        const res = await postLogin({ Id: id, Password: password, IsPersistent: isPersistent });
+        if (!res.ok) {
+          showError(); return;
         }
+
+        //二要素認証が有効なら status が setup / totp で返り、まだサインインしていない
+        const j = await readJson(res);
+        const status = j?.status ?? j?.Status ?? "ok";
+        if (status === "setup") {
+          document.getElementById("QrImage").src = "data:image/png;base64," + (j?.qrPngBase64 ?? j?.QrPngBase64 ?? "");
+          document.getElementById("SecretText").textContent = j?.secret ?? j?.Secret ?? "";
+          pending = { Id: id, Password: password, IsPersistent: isPersistent };
+          showTotp(true);
+          return;
+        }
+        if (status === "totp") {
+          pending = { Id: id, Password: password, IsPersistent: isPersistent };
+          showTotp(false);
+          return;
+        }
+        if (status !== "ok") {
+          showError(); return;
+        }
+        await enterApp();
       } catch {
         showError();
       } finally {
         btn.disabled = false;
       }
     });
+
+    document.getElementById("TotpForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!pending) { backToLogin(); return; }
+
+      const code = document.getElementById("TotpCode").value.trim();
+      if (!code) {
+        showError("Enter the authentication code"); return;
+      }
+
+      const btn = document.getElementById("VerifyButton");
+      btn.disabled = true;
+      hideError();
+
+      try {
+        const res = await postLogin({ ...pending, TotpCode: code });
+        if (!res.ok) {
+          showError(); return;
+        }
+        const j = await readJson(res);
+        const status = j?.status ?? j?.Status ?? "ok";
+        if (status !== "ok") {
+          showError("Invalid authentication code"); return;
+        }
+        await enterApp();
+      } catch {
+        showError();
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("BackButton").addEventListener("click", backToLogin);
+
+    async function postLogin(body) {
+      const token = await getAntiforgeryToken();
+      return await fetch("/api/account/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-ANTIFORGERY-TOKEN": token },
+        body: JSON.stringify(body),
+        credentials: "include",
+        cache: "no-store"
+      });
+    }
+    async function readJson(res) {
+      try { return await res.json(); } catch { return null; }
+    }
+    //サインイン後: Cookie でユーザーが取れることを確かめてからアプリへ
+    async function enterApp() {
+      const me = await fetch("/api/account/current_user", { credentials: "include", cache: "no-store" });
+      if (me.ok) {
+        const j = await me.json();
+        const uid = (j?.value ?? j?.Value ?? "").trim();
+        if (uid) {
+          if (redirect === "/" || redirect === "") location.href = "/";
+          else location.href = redirect;
+          return;
+        }
+      }
+      showError();
+    }
+    function showTotp(isSetup) {
+      document.getElementById("LoginForm").style.display = "none";
+      document.getElementById("Providers").style.display = "none";
+      document.getElementById("TotpForm").style.display = "";
+      document.getElementById("TotpSetup").style.display = isSetup ? "" : "none";
+      document.getElementById("TotpPrompt").style.display = isSetup ? "none" : "";
+      document.getElementById("TotpCode").value = "";
+      document.getElementById("TotpCode").focus();
+    }
+    function backToLogin() {
+      pending = null;
+      hideError();
+      document.getElementById("TotpForm").style.display = "none";
+      document.getElementById("LoginForm").style.display = "";
+      document.getElementById("Providers").style.display = "";
+      document.getElementById("Password").value = "";
+    }
     async function getAntiforgeryToken() {
       try {
         await fetch("/api/account/antiforgery", { credentials: "include", cache: "no-store" });
@@ -163,6 +273,9 @@
       const el = document.getElementById("ErrorMessage");
       el.textContent = message ?? "Login failed";
       el.style.display = "block";
+    }
+    function hideError() {
+      document.getElementById("ErrorMessage").style.display = "none";
     }
     function sanitizeReturnUrl(u) {
       try {

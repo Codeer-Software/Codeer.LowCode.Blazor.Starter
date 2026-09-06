@@ -29,7 +29,10 @@
     /// <summary>One application variant and how the VS template describes it.</summary>
     /// <param name="IsTemplate">false = kept in the repository (solution generated, debug copy exported) but not shipped as a VS template.
     /// Public templates are Cookie (the default, no suffix) and Maui only; Wpf / WinForms / MultiTenant stay as hosts for maintenance.</param>
-    public record Variant(string Name, string TemplateName, string ZipName, string Description, string[] PlatformTags, string[] ProjectTypeTags, VariantProject[] Projects, bool IsTemplate = true)
+    /// <param name="InAllSolution">false = the variant's own projects stay out of the maintainer solution (Source/Codeer.LowCode.Blazor.Starter.sln)
+    /// and are opened from the variant's own Source/Hosts/&lt;Variant&gt;/LowCodeApp.sln instead. Used for Maui, whose workload makes the
+    /// all-in-one solution slow to load and debug. Solutions are only for editing; the VSIX is packed from the project folders.</param>
+    public record Variant(string Name, string TemplateName, string ZipName, string Description, string[] PlatformTags, string[] ProjectTypeTags, VariantProject[] Projects, bool IsTemplate = true, bool InAllSolution = true)
     {
         static VariantProject Own(string name, string folder, bool deploy = false) => new(name, ProjectSource.Own, folder, Deploy: deploy);
         static VariantProject Common(string name, string folder, bool inVsix = true) => new(name, ProjectSource.Common, folder, InVsix: inVsix);
@@ -79,7 +82,9 @@
                 {
                     Own("Maui", "MobileApp", deploy: true),
                     Common("Client.Shared", "MobileApp"),
-                }),
+                },
+                //Debug the mobile app from Source/Hosts/Maui/LowCodeApp.sln (with the Cookie server running from its own solution).
+                InAllSolution: false),
             Desktop("Wpf"),
             Desktop("WinForms"),
             //Multi-tenant (ASP.NET Core Identity + per-tenant design/data). Kept here as a host, not templated yet.

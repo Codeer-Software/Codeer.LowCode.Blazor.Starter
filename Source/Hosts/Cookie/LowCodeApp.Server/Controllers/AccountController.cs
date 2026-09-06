@@ -3,11 +3,9 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Codeer.LowCode.Blazor.Utils;
-using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using LowCodeApp.Client;
 using LowCodeApp.Server.Services;
-using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
 
 namespace LowCodeApp.Server.Controllers
@@ -52,26 +50,28 @@ namespace LowCodeApp.Server.Controllers
             if (loginInfo == null) throw new ArgumentException(nameof(loginInfo));
             if (!SystemConfig.Instance.AllowPasswordLogin) return NotFound();
 
-            var tableInfo = SystemConfig.Instance.PasswordCheckUserTableInfo;
+            //ID/パスワードの照合。表・列はユーザーモジュールのデザイン (IdField / LoginAccountContractField の役割 / PasswordHashField のハッシュ・ソルト) から引く
             var designData = DesignerService.GetDesignData();
+            var accounts = LoginAccountStore.Create(designData, _dataService.DbAccess);
+            if (accounts == null || !accounts.HasPassword) return NotFound();
 
-            var dataSourceName = designData.Modules.Find(designData.AppSettings.CurrentUserModuleDesignName)?.DataSourceName ?? string.Empty;
+            var account = await accounts.VerifyPasswordAsync(loginInfo.Id, loginInfo.Password);
+            if (account == null) return Unauthorized();
 
-            var conn = _dataService.DbAccess.GetConnection(dataSourceName);
-
-            var user = (await conn.QueryAsync<PasswordCheckUser>(
-                $"SELECT {tableInfo.IdColumn} AS Id, {tableInfo.UserNameColumn} AS UserName, {tableInfo.HashColumn} AS Hash, {tableInfo.SaltColumn} AS Salt FROM {tableInfo.TableName} WHERE {tableInfo.UserNameColumn} = @UserName",
-                new { UserName = loginInfo.Id })).FirstOrDefault();
-
-            if (user == null) return Unauthorized();
-
-            if (!PasswordHashHelper.VerifyHash(loginInfo.Password ?? string.Empty, user.Hash, user.Salt))
-                return Unauthorized();
+            //二要素認証 (TOTP)。ユーザーモジュールに TotpSecretField があるときだけ有効。
+            //コード未指定なら状態 (setup = 登録用 QR / totp = コード要求) を返すだけでサインインしない。
+            //コード検証が通ったとき (status: ok) だけ下のサインインへ進む
+            var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
+            if (totp != null)
+            {
+                var result = await totp.VerifyAsync(account.UserId, account.LoginName, loginInfo.TotpCode);
+                if (result.Status != TotpLoginStatus.Ok) return Ok(result);
+            }
 
             var claims = new List<Claim>
             {
-                new(ClaimTypes.Name, loginInfo.Id ?? string.Empty),
-                new(ClaimTypes.NameIdentifier, user.Id)
+                new(ClaimTypes.Name, account.DisplayName),
+                new(ClaimTypes.NameIdentifier, account.UserId)
             };
 
             var claimsIdentity = new ClaimsIdentity(
@@ -82,7 +82,7 @@ namespace LowCodeApp.Server.Controllers
                 new ClaimsPrincipal(claimsIdentity),
                 new AuthenticationProperties { IsPersistent = loginInfo.IsPersistent });
 
-            return Ok();
+            return Ok(new TotpLoginResult { Status = TotpLoginStatus.Ok });
         }
 
         //外部 IdP: ブラウザがここに遷移 (GET) すると IdP へ送られる。IdP が本人確認した後、ExternalLoginUserResolver が

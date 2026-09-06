@@ -1,9 +1,7 @@
-using Dapper;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using LowCodeApp.Server.Services;
 using Codeer.LowCode.Blazor.DbAccess;
-using Codeer.LowCode.Blazor.Extras.Services;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
 
 namespace LowCodeApp.Server
@@ -61,26 +59,13 @@ namespace LowCodeApp.Server
                 });
         }
 
-        static string GetDataSourceName()
-        {
-            var designData = DesignerService.GetDesignData();
-            return designData.Modules.Find(designData.AppSettings.CurrentUserModuleDesignName)?.DataSourceName ?? string.Empty;
-        }
-
+        //ユーザーが 0 件なら admin / admin を作る (表・列はユーザーモジュールのデザインから。パスワードログインがある構成だけ)
         static async Task CreateInitialUserAsync(WebApplication app)
         {
-            var tableInfo = SystemConfig.Instance.PasswordCheckUserTableInfo;
-            using var dbAccessor = new DbAccessor(SystemConfig.Instance.DataSources);
-            var conn = dbAccessor.GetConnection(GetDataSourceName());
-
-            var count = await conn.ExecuteScalarAsync<long>($"SELECT COUNT(*) FROM {tableInfo.TableName}");
-            if (count > 0) return;
-
-            var hashData = PasswordHashHelper.CreateHash("admin");
-
-            await conn.ExecuteAsync(
-                $"INSERT INTO {tableInfo.TableName} ({tableInfo.UserNameColumn}, {tableInfo.HashColumn}, {tableInfo.SaltColumn}) VALUES (@UserName, @Hash, @Salt)",
-                new { UserName = "admin", Hash = hashData.Hash ?? string.Empty, Salt = hashData.Salt ?? string.Empty });
+            await using var dbAccessor = new DbAccessor(SystemConfig.Instance.DataSources);
+            var accounts = LoginAccountStore.Create(DesignerService.GetDesignData(), dbAccessor);
+            if (accounts == null || !accounts.HasPassword || await accounts.AnyAsync()) return;
+            await accounts.AddAsync("admin", "admin");
         }
     }
 }

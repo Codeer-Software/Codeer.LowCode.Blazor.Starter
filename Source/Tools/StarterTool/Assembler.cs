@@ -2,7 +2,8 @@
 {
     /// <summary>
     /// (Re)generates the solutions: Source/Hosts/&lt;Variant&gt;/LowCodeApp.sln for every variant and the maintainer
-    /// solution Source/Codeer.LowCode.Blazor.Starter.sln with everything. Every project exists exactly once in the
+    /// solution Source/Codeer.LowCode.Blazor.Starter.sln with everything except the variants marked InAllSolution = false
+    /// (Maui: open its own solution). Every project exists exactly once in the
     /// repository (the variant's own projects in its folder, common ones in Hosts/Common, borrowed ones in the owning
     /// variant); the solutions reference them in place, nothing is copied.
     /// </summary>
@@ -38,11 +39,12 @@
 
         //Maintainer view: Common once, each variant's own projects under a folder named after the variant, and the tool.
         //Same-named projects (LowCodeApp.Server of Cookie and MultiTenant) are fine because they sit in different solution folders.
+        //Variants with InAllSolution = false (Maui) are left out so the solution loads and debugs without their workload.
         void CreateAllSolution()
         {
             var entries = new List<(string csproj, string folder, bool deploy)>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var variant in Variant.All)
+            foreach (var variant in Variant.All.Where(v => v.InAllSolution))
             {
                 foreach (var project in variant.Projects)
                 {

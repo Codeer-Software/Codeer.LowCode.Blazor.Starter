@@ -72,7 +72,7 @@
 ### 認証を外す（前段のリバースプロキシや Easy Auth で守られている等、ログイン画面が要らないとき）
 
 `Cookie` から引き算する。触るのは 6 か所: `Server/CookieAuthentication.cs`（cookie スキームの登録。`Program.cs` の呼び出しごと）、
-`Server/Controllers/AccountController.cs`、`Server/PasswordCheckUser.cs`（+ `appsettings*.json` の `PasswordCheckUserTableInfo` と `SystemConfig` の該当プロパティ）、
+`Server/Controllers/AccountController.cs`（パスワード照合は Extras.Server の `LoginAccountStore`。表・列はユーザーモジュールのデザインから）、`Server/ExternalLoginUserResolver.cs` と `Services/ExternalLoginTable.cs`（+ `appsettings*.json` の `AllowPasswordLogin` / `TotpLogin` / 外部 IdP セクションと `SystemConfig` の該当プロパティ）、
 各 Controller の `[Authorize]`、`Client/wwwroot/login.html` と `Client/LoginInfo.cs`（`Program.cs` / `NavigationService.cs` のログイン遷移）、
 `Services/DataService.cs` の現在ユーザー解決（前段認証のヘッダから取るか固定値にする）。
 
@@ -131,7 +131,10 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Desi
 | `Mail` | `{ DefaultInfraName, DefaultBulkInfraName, HistoryModuleName }` | メール送信の既定インフラ名（`MailSenderTable` のキー）と送信履歴モジュール |
 | `Smtp` / `GraphApi` / `Gmail` | | 送信インフラごとの設定。項目は `api --type Codeer.LowCode.Blazor.Extras.Server.Mail.SmtpSettings --assembly <同上の dll パス>` 等で確認 |
 | `AISettings` | `{ OpenAIEndPoint, OpenAIKey, ChatModel, DocumentAnalysisEndPoint, DocumentAnalysisKey }` | AI 文書解析（Azure OpenAI / Document Intelligence）。未使用なら空 |
-| `PasswordCheckUserTableInfo`（Cookie） | `{ TableName, IdColumn, UserNameColumn, HashColumn, SaltColumn }` | ログイン検証に使うユーザーテーブルの列。テンプレ既定は `app_users`。初回起動時にユーザーが 0 件なら `admin`/`admin` を作る |
+| （ログインのユーザーテーブル） | 設定なし | ユーザーモジュール（`CurrentUserModuleDesignName`）のデザインから引く: 表 = `DbTable`、ID = `IdField`、ログイン ID / 外部 IdP の突き合わせ / 有効フラグ / 表示名 = `LoginAccountContractField` の役割、ハッシュ / ソルト = `PasswordHashField` の列。初回起動時にユーザーが 0 件なら `admin`/`admin` を作る |
+| `AllowPasswordLogin`（Cookie） | `true` | ID/パスワードのログインを出すか。外部 IdP 専用なら `false` |
+| `EntraLogin` / `GoogleLogin` / `CognitoLogin` / `OidcLogins`（Cookie） | なし | 外部 IdP。`ClientId` を書いたものだけ有効（Extras の `docs/ExternalLogin.md`） |
+| `TotpLogin`（Cookie） | `{ Issuer }` | 二要素認証の表示名。有効・無効はデザイン（ユーザーモジュールの `TotpSecretField`）で決まる（Extras の `docs/TotpLogin.md`） |
 | `Logging` / `AllowedHosts` | | ASP.NET Core 標準 |
 
 **DB を SQLite から PostgreSQL 等に変える手順**: ① `appsettings.json` の `DataSources[].DataSourceType` を変える ② `appsettings.Development.json` の接続文字列を差し替える

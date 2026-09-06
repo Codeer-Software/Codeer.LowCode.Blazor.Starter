@@ -18,6 +18,7 @@ using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
+using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Microsoft.AspNetCore.SignalR;
 
 //load dll.
@@ -46,10 +47,10 @@ SystemConfig.Instance.GraphApi = builder.Configuration.GetSection("GraphApi").Ge
 SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Get<SendGridSettings>() ?? new();
 SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
 SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
-SystemConfig.Instance.PasswordCheckUserTableInfo = builder.Configuration.GetSection("PasswordCheckUserTableInfo").Get<PasswordCheckUserTableInfo>() ?? new();
 SystemConfig.Instance.AllowPasswordLogin = builder.Configuration.GetValue<bool?>("AllowPasswordLogin") ?? true;
 SystemConfig.Instance.ExternalLogins = ExternalLoginTable.Create(builder.Configuration);
 SystemConfig.Instance.MobileLoginCallbackUrl = builder.Configuration["MobileLoginCallbackUrl"] ?? string.Empty;
+SystemConfig.Instance.TotpLogin = builder.Configuration.GetSection("TotpLogin").Get<TotpLoginSettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
