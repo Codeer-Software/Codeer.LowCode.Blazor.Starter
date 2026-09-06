@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using LowCodeApp.Server.Services;
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.Extras.Services;
+using Codeer.LowCode.Blazor.Extras.Server.Auth;
 
 namespace LowCodeApp.Server
 {
@@ -24,7 +25,11 @@ namespace LowCodeApp.Server
                         context.Response.StatusCode = 403;
                         return Task.CompletedTask;
                     };
-                });
+                })
+                //外部 IdP (Entra ID / Google / AWS Cognito / OIDC)。並べるプロバイダは Services/ExternalLoginTable が appsettings から組み立てる。
+                //IdP は本人確認をするだけで、セッションはこの Cookie のまま。確認できた本人をユーザー行に解決するのは ExternalLoginUserResolver
+                .AddExternalLogins(SystemConfig.Instance.ExternalLogins, o => o.MobileCallbackUrl = SystemConfig.Instance.MobileLoginCallbackUrl);
+            builder.Services.AddScoped<IExternalLoginUserResolver, ExternalLoginUserResolver>();
 
             //CSRF
             builder.Services.AddAntiforgery(options => {

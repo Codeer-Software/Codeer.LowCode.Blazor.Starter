@@ -22,7 +22,8 @@ namespace LowCodeApp.Maui.Services
 
         public override async Task Logout()
         {
-            await _http.PostAsJsonAsync("api/account/logout", "");
+            //mobile=true: Cookie の破棄のみ。IdP 側セッションの終了はブラウザ遷移が要るのでアプリでは行わない
+            await _http.PostAsJsonAsync("api/account/logout?mobile=true", "");
             _server.ResetAntiforgeryToken();
             _nav.NavigateTo("/login", true);
         }

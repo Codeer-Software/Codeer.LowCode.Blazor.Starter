@@ -22,8 +22,10 @@ namespace LowCodeApp.Client
 
         public override async Task Logout()
         {
-            await _http.PostAsJsonAsync("api/account/logout", "");
-            _nav.NavigateTo("/", true);
+            //外部 IdP (Entra ID 等) でサインインしたセッションは IdP へのブラウザ遷移で終わらせる必要があり、
+            //その場合サーバーは Cookie を消さずに遷移先 URL を返す (二段構え)
+            var result = await _http.PostAsJsonAsync<string, LogoutResult>("api/account/logout", "");
+            _nav.NavigateTo(string.IsNullOrEmpty(result?.Redirect) ? "/" : result.Redirect, true);
         }
     }
 }

@@ -3,6 +3,7 @@ using LowCodeApp.Client.Shared.Services;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
+using Codeer.LowCode.Blazor.Extras.Server.Auth;
 
 namespace LowCodeApp.Server.Services
 {
@@ -35,6 +36,12 @@ namespace LowCodeApp.Server.Services
         public GmailSettings Gmail { get; set; } = new();
         public AISettings AISettings { get; set; } = new();
         public PasswordCheckUserTableInfo PasswordCheckUserTableInfo { get; set; } = new();
+        //ID/パスワードのログイン。外部 IdP 専用にするなら false (ログイン画面はプロバイダのボタンだけになる)
+        public bool AllowPasswordLogin { get; set; } = true;
+        //外部 IdP (Entra ID / Google / AWS Cognito / OIDC)。種類ごとの設定 (EntraLogin / GoogleLogin / CognitoLogin / OidcLogins) を ExternalLoginTable が IExternalLoginProvider に組み立てる
+        public List<IExternalLoginProvider> ExternalLogins { get; set; } = [];
+        //MAUI アプリがシステムブラウザで外部 IdP にログインした後に戻る URL。MAUI 側の appsettings (Server:LoginCallbackUrl) と一致させる
+        public string MobileLoginCallbackUrl { get; set; } = string.Empty;
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }
 }

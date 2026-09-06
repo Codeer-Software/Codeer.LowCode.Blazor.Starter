@@ -17,6 +17,11 @@
       align-items: center;
       justify-content: center;
     }
+    #Providers a {
+      display: block;
+      width: 300px;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -37,8 +42,10 @@
           <label for="IsPersistent" class="ms-1">Remember me?</label>
         </div>
         <button id="LoginButton" type="submit" class="btn btn-primary">Login</button>
-        <div id="ErrorMessage" class="text-danger mt-3" style="display:none;">Login failed.</div>
       </form>
+      <!-- サーバーに設定された外部 IdP ごとのボタン (api/account/login_options から組み立てる) -->
+      <div id="Providers" class="mt-3"></div>
+      <div id="ErrorMessage" class="text-danger mt-3" style="display:none;">Login failed.</div>
     </div>
   </div>
 
@@ -49,6 +56,49 @@
     (async () => {
       if (window.__blazorStarted) location.reload();
     })();
+
+    //外部 IdP ログインに失敗したときサーバーが ?error= に付けて戻す理由コードの表示文言
+    const errorMessages = {
+      remote_failure: "Login was cancelled or failed.",
+      invalid_claims: "The account could not be verified.",
+      guest_not_allowed: "Guest accounts are not allowed.",
+      domain_not_allowed: "This account's domain is not allowed.",
+      user_not_registered: "This account is not registered."
+    };
+    const error = params.get("error");
+    if (error) showError(errorMessages[error] ?? "Login failed");
+
+    (async function loadLoginOptions() {
+      try {
+        const res = await fetch("/api/account/login_options", { credentials: "include", cache: "no-store" });
+        if (!res.ok) return;
+        const options = await res.json();
+        const password = options.password ?? options.Password ?? true;
+        const providers = options.providers ?? options.Providers ?? [];
+
+        if (!password) document.getElementById("LoginForm").style.display = "none";
+
+        //パスワードログイン無効で IdP が 1 つなら画面を出さずに即遷移 (エラー表示中は止まるのでループしない)
+        if (!password && providers.length === 1 && !error) {
+          location.replace(providerUrl(providers[0]));
+          return;
+        }
+
+        const container = document.getElementById("Providers");
+        for (const p of providers) {
+          const a = document.createElement("a");
+          a.className = "btn btn-outline-primary";
+          a.href = providerUrl(p);
+          a.textContent = "Login with " + (p.displayName ?? p.DisplayName ?? p.name ?? p.Name);
+          container.appendChild(a);
+        }
+      } catch { }
+    })();
+
+    function providerUrl(p) {
+      const name = p.name ?? p.Name;
+      return `/api/account/login/${encodeURIComponent(name)}?returnUrl=${encodeURIComponent(redirect)}`;
+    }
 
     document.getElementById("LoginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -109,9 +159,9 @@
         .find(x => x.startsWith(name + "="))
         ?.split("=")[1] ?? "";
     }
-    function showError() {
+    function showError(message) {
       const el = document.getElementById("ErrorMessage");
-      el.textContent = "Login failed";
+      el.textContent = message ?? "Login failed";
       el.style.display = "block";
     }
     function sanitizeReturnUrl(u) {

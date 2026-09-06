@@ -29,6 +29,7 @@ namespace LowCodeApp.Maui
             var baseUrl = builder.Configuration["Server:BaseUrl"];
             if (string.IsNullOrEmpty(baseUrl)) throw new InvalidOperationException("Server:BaseUrl is not set in appsettings.json.");
             ServerSettings.DefaultBaseUrl = baseUrl;
+            ServerSettings.LoginCallbackUrl = builder.Configuration["Server:LoginCallbackUrl"] ?? ServerSettings.LoginCallbackUrl;
             builder.Services.AddSingleton<ServerConnection>();
             builder.Services.AddScoped(sp => sp.GetRequiredService<ServerConnection>().CreateHttpClient());
 
