@@ -39,10 +39,19 @@ namespace LowCodeApp.Server.Controllers
             return NoContent();
         }
 
-        //ログイン画面に出す選択肢: ID/パスワードのフォームと、外部 IdP ごとのボタン (appsettings の EntraLogin / GoogleLogin / CognitoLogin / OidcLogins)
+        //ログイン画面が描くもの: ID/パスワードのフォームの有無、外部 IdP ごとのボタン (appsettings の EntraLogin / GoogleLogin / CognitoLogin / OidcLogins)、
+        //デザインの AppSettings > LoginPage (タイトル / ロゴ / 案内文)。画面の構造は login.html (Web) と Login.razor (MAUI) が固定で持つ
         [HttpGet("login_options")]
         public object LoginOptions()
-            => new { Password = SystemConfig.Instance.AllowPasswordLogin, Providers = _externalLogins.Options };
+        {
+            var page = DesignerService.GetDesignData().AppSettings.LoginPage;
+            return new
+            {
+                Password = SystemConfig.Instance.AllowPasswordLogin,
+                Providers = _externalLogins.Options,
+                Page = new { page.Title, page.LogoUrl, page.Message },
+            };
+        }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginInfo? loginInfo)

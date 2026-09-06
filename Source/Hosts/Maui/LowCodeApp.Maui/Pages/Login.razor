@@ -6,31 +6,40 @@
 
 <div class="login-center">
   <div>
-    <h1>Login</h1>
+    @* タイトル / ロゴ / 案内文はデザインの AppSettings > LoginPage (api/account/login_options の page) *@
+    @if (!string.IsNullOrEmpty(_page.LogoUrl))
+    {
+      <img src="@ResolveUrl(_page.LogoUrl)" alt="" style="max-width:320px;max-height:96px;" class="mb-2" />
+    }
+    <h1>@(string.IsNullOrEmpty(_page.Title) ? "ログイン" : _page.Title)</h1>
+    @if (!string.IsNullOrEmpty(_page.Message))
+    {
+      <p class="text-muted" style="white-space: pre-line;">@_page.Message</p>
+    }
     @if (_totp == null)
     {
       @if (_passwordEnabled)
       {
         <EditForm Model="_login" OnValidSubmit="LoginAsync">
           <div class="mb-2">
-            User ID
+            ユーザー ID
             <InputText @bind-Value="_login.Id" class="form-control" autocomplete="username" />
           </div>
           <div class="mb-2">
-            Password
+            パスワード
             <InputText @bind-Value="_login.Password" type="password" class="form-control" autocomplete="current-password" />
           </div>
           <div class="mb-3">
             <InputCheckbox @bind-Value="_login.IsPersistent" id="IsPersistent" />
-            <label for="IsPersistent" class="ms-1">Remember me?</label>
+            <label for="IsPersistent" class="ms-1">ログイン状態を保持する</label>
           </div>
-          <button type="submit" class="btn btn-primary" disabled="@_busy">Login</button>
+          <button type="submit" class="btn btn-primary" disabled="@_busy">ログイン</button>
         </EditForm>
       }
       @foreach (var provider in _providers)
       {
         <div class="mt-2">
-          <button type="button" class="btn btn-outline-primary w-100" disabled="@_busy" @onclick="() => ExternalLoginAsync(provider.Name)">Login with @provider.DisplayName</button>
+          <button type="button" class="btn btn-outline-primary w-100" disabled="@_busy" @onclick="() => ExternalLoginAsync(provider.Name)">@provider.DisplayName でログイン</button>
         </div>
       }
     }
@@ -40,25 +49,25 @@
       <EditForm Model="_totp" OnValidSubmit="VerifyTotpAsync">
         @if (_totp.Status == "setup")
         {
-          <p class="mb-2">Scan the QR code with your authenticator app, then enter the 6-digit code it shows.</p>
-          <img src="data:image/png;base64,@_totp.QrPngBase64" alt="QR code for authenticator app" class="border mb-2" style="width:200px;height:200px;" />
-          <div class="small text-muted mb-2">Can't scan? Enter this key manually:<br /><code>@_totp.Secret</code></div>
+          <p class="mb-2">認証アプリで QR コードを読み取り、表示された 6 桁のコードを入力してください。</p>
+          <img src="data:image/png;base64,@_totp.QrPngBase64" alt="認証アプリ登録用の QR コード" class="border mb-2" style="width:200px;height:200px;" />
+          <div class="small text-muted mb-2">読み取れない場合はこのキーを手入力してください:<br /><code>@_totp.Secret</code></div>
         }
         else
         {
-          <p class="mb-2">Enter the 6-digit code shown in your authenticator app.</p>
+          <p class="mb-2">認証アプリに表示されている 6 桁のコードを入力してください。</p>
         }
         <div class="mb-3">
-          Authentication code
+          認証コード
           <InputText @bind-Value="_totp.Code" class="form-control" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
         </div>
-        <button type="submit" class="btn btn-primary" disabled="@_busy">Verify</button>
-        <button type="button" class="btn btn-secondary ms-1" disabled="@_busy" @onclick="BackToLogin">Back</button>
+        <button type="submit" class="btn btn-primary" disabled="@_busy">確認</button>
+        <button type="button" class="btn btn-secondary ms-1" disabled="@_busy" @onclick="BackToLogin">戻る</button>
       </EditForm>
     }
     @if (_failed)
     {
-      <div class="text-danger mt-3">@(_errorMessage ?? "Login failed.")</div>
+      <div class="text-danger mt-3">@(_errorMessage ?? "ログインに失敗しました")</div>
     }
   </div>
 </div>
@@ -79,6 +88,15 @@
   {
     public bool Password { get; set; } = true;
     public List<LoginProvider> Providers { get; set; } = new();
+    public LoginPage Page { get; set; } = new();
+  }
+
+  //デザインの AppSettings > LoginPage
+  class LoginPage
+  {
+    public string Title { get; set; } = string.Empty;
+    public string LogoUrl { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
   }
 
   class LoginProvider
@@ -106,6 +124,7 @@
   readonly LoginInfo _login = new();
   bool _passwordEnabled = true;
   List<LoginProvider> _providers = new();
+  LoginPage _page = new();
   TotpStep? _totp;
   bool _busy;
   bool _failed;
@@ -121,6 +140,7 @@
       {
         _passwordEnabled = options.Password;
         _providers = options.Providers;
+        _page = options.Page ?? new();
       }
     }
     catch { }
@@ -176,7 +196,7 @@
     if (_totp == null || string.IsNullOrWhiteSpace(_totp.Code))
     {
       _failed = true;
-      _errorMessage = "Enter the authentication code.";
+      _errorMessage = "認証コードを入力してください";
       return;
     }
 
@@ -196,7 +216,7 @@
       if (result.Status != "ok")
       {
         _failed = true;
-        _errorMessage = "Invalid authentication code.";
+        _errorMessage = "認証コードが正しくありません";
         return;
       }
       SignedIn();
@@ -250,10 +270,10 @@
         _failed = true;
         _errorMessage = error switch
         {
-          "user_not_registered" => "This account is not registered.",
-          "guest_not_allowed" => "Guest accounts are not allowed.",
-          "domain_not_allowed" => "This account's domain is not allowed.",
-          _ => "Login failed."
+          "user_not_registered" => "このアカウントは登録されていません",
+          "guest_not_allowed" => "ゲストアカウントは使えません",
+          "domain_not_allowed" => "このアカウントのドメインは許可されていません",
+          _ => "ログインに失敗しました"
         };
         return;
       }
@@ -284,6 +304,10 @@
       _busy = false;
     }
   }
+
+  //ロゴの相対 URL (wwwroot 相対) はサーバーの URL に対して解決する (アプリ内の静的ファイルではなくサーバーから取る)
+  string ResolveUrl(string url)
+    => Uri.TryCreate(url, UriKind.Absolute, out _) ? url : new Uri(Server.BaseAddress, url).ToString();
 
   void SignedIn()
   {
