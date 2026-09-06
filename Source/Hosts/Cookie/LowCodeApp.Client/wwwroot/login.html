@@ -12,88 +12,148 @@
   <style>
     /* 見た目はここで変える。流れ (ID/パスワード → 二要素認証、外部 IdP のボタン) は login.js が担う。
        タイトル・ロゴ・案内文はデザインの AppSettings > LoginPage から入る (要素の id は login.js が参照するので変えない) */
-    .empty-center {
-      padding: 16px;
-      min-height: 100vh;
+    html, body {
+      height: 100%;
+    }
+    body {
+      background: #f3f4f6;
+    }
+    .login-center {
+      min-height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 24px 16px;
     }
-    .login-box {
-      width: 320px;
-    }
-    .login-box input.form-control {
+    .login-card {
       width: 100%;
+      max-width: 400px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+      padding: 40px 36px 32px;
+    }
+    .login-head {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .login-head:empty {
+      display: none;
     }
     #Logo {
-      max-width: 320px;
-      max-height: 96px;
+      max-width: 240px;
+      max-height: 80px;
       margin-bottom: 12px;
     }
-    #Providers a {
-      display: block;
+    #Title {
+      font-size: 1.25rem;
+      font-weight: 500;
+      margin: 0;
+    }
+    #Message {
+      font-size: .9rem;
+      margin: 8px 0 0;
+      white-space: pre-line;
+    }
+    .form-label {
+      font-size: .875rem;
+      margin-bottom: 4px;
+    }
+    .login-card .form-control {
+      padding: 10px 12px;
+    }
+    .login-card .btn {
+      width: 100%;
+      padding: 10px 12px;
+    }
+    .login-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: #8a8f98;
+      font-size: .8rem;
+    }
+    .login-divider::before, .login-divider::after {
+      content: "";
+      flex: 1;
+      border-top: 1px solid #e3e5e8;
+    }
+    #Providers .btn {
       margin-bottom: 8px;
     }
-    #QrImage {
-      width: 200px;
-      height: 200px;
+    .login-options {
+      margin-top: 16px;
+      font-size: .875rem;
     }
-    /* login_options を読むまでフォームを隠してちらつきを抑える */
-    body:not(.ready) .login-box form,
-    body:not(.ready) #Providers {
+    #QrImage {
+      width: 180px;
+      height: 180px;
+      display: block;
+      margin: 0 auto 8px;
+    }
+    #TotpForm .btn-secondary {
+      margin-top: 8px;
+    }
+    /* login_options を読むまで本体を隠してちらつきを抑える */
+    body:not(.ready) .login-card {
       visibility: hidden;
     }
   </style>
 </head>
 <body>
-  <div class="empty-center">
-    <div class="login-box">
-      <img id="Logo" alt="" style="display:none;" />
-      <h1 id="Title">ログイン</h1>
-      <p id="Message" class="text-muted" style="display:none; white-space: pre-line;"></p>
+  <div class="login-center">
+    <div class="login-card">
+      <div class="login-head" id="Head">
+        <img id="Logo" alt="" style="display:none;" />
+        <h1 id="Title" style="display:none;"></h1>
+        <p id="Message" class="text-muted" style="display:none;"></p>
+      </div>
 
       <!-- ID/パスワード (サーバーの AllowPasswordLogin が false なら出ない) -->
       <form id="LoginForm" novalidate>
-        <div class="mb-2">
-          ユーザー ID
+        <div class="mb-3">
+          <label class="form-label" for="Id">ユーザー ID</label>
           <input id="Id" name="Id" type="text" class="form-control" autocomplete="username" required />
         </div>
-        <div class="mb-2">
-          パスワード
-          <input id="Password" name="Password" type="password" class="form-control" autocomplete="current-password" required />
-        </div>
         <div class="mb-3">
-          <input id="IsPersistent" name="IsPersistent" type="checkbox" />
-          <label for="IsPersistent" class="ms-1">ログイン状態を保持する</label>
+          <label class="form-label" for="Password">パスワード</label>
+          <input id="Password" name="Password" type="password" class="form-control" autocomplete="current-password" required />
         </div>
         <button id="LoginButton" type="submit" class="btn btn-primary">ログイン</button>
       </form>
 
+      <!-- 外部 IdP (サーバーに設定されたものだけ login.js がボタンを並べる。パスワードも出るときは区切り線付き) -->
+      <div id="ProviderDivider" class="login-divider" style="display:none;">または</div>
+      <div id="Providers"></div>
+
+      <!-- パスワード / 外部 IdP のどちらにも効く -->
+      <div id="Options" class="login-options form-check">
+        <input id="IsPersistent" name="IsPersistent" type="checkbox" class="form-check-input" />
+        <label for="IsPersistent" class="form-check-label">ログイン状態を保持する</label>
+      </div>
+
       <!-- 二要素認証 (ユーザーモジュールに TotpSecretField があるときだけ、パスワード成功後にこちらへ切り替わる) -->
       <form id="TotpForm" novalidate style="display:none;">
         <div id="TotpSetup" class="mb-3" style="display:none;">
-          <p class="mb-2">認証アプリ (Google Authenticator、Microsoft Authenticator など) で QR コードを読み取り、表示された 6 桁のコードを入力してください。</p>
-          <img id="QrImage" alt="認証アプリ登録用の QR コード" class="border mb-2" />
-          <div class="small text-muted">
-            読み取れない場合はこのキーを手入力してください:<br />
+          <p class="small mb-2">認証アプリ (Google Authenticator、Microsoft Authenticator など) で QR コードを読み取り、表示された 6 桁のコードを入力してください。</p>
+          <img id="QrImage" alt="認証アプリ登録用の QR コード" class="border" />
+          <div class="small text-muted text-center">
+            読み取れない場合はこのキーを手入力してください<br />
             <code id="SecretText"></code>
           </div>
         </div>
-        <div id="TotpPrompt" class="mb-2" style="display:none;">
-          認証アプリに表示されている 6 桁のコードを入力してください。
-        </div>
+        <p id="TotpPrompt" class="small mb-3" style="display:none;">認証アプリに表示されている 6 桁のコードを入力してください。</p>
         <div class="mb-3">
-          認証コード
-          <input id="TotpCode" name="TotpCode" type="text" class="form-control"
+          <label class="form-label" for="TotpCode">認証コード</label>
+          <input id="TotpCode" name="TotpCode" type="text" class="form-control text-center" style="letter-spacing: .3em;"
                  inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required />
         </div>
         <button id="VerifyButton" type="submit" class="btn btn-primary">確認</button>
-        <button id="BackButton" type="button" class="btn btn-secondary ms-1">戻る</button>
+        <button id="BackButton" type="button" class="btn btn-outline-secondary">戻る</button>
       </form>
 
-      <!-- 外部 IdP (サーバーに設定されたものだけ login.js がボタンを並べる) -->
-      <div id="Providers" class="mt-3"></div>
-      <div id="ErrorMessage" class="text-danger mt-3" style="display:none;"></div>
+      <div id="ErrorMessage" class="text-danger small mt-3" style="display:none;"></div>
     </div>
   </div>
 

@@ -7,7 +7,7 @@
 
   //画面の文言 (既定は日本語。login.html で window.loginTexts を定義すると上書きできる)
   const texts = Object.assign({
-    title: "ログイン",
+    documentTitle: "ログイン",
     loginFailed: "ログインに失敗しました",
     enterCode: "認証コードを入力してください",
     invalidCode: "認証コードが正しくありません",
@@ -25,8 +25,11 @@
   const redirect = sanitizeReturnUrl(params.get("returnUrl"));
   //二要素認証の 2 段階目に持ち越す 1 段階目の入力
   let pending = null;
+  let passwordEnabled = true;
+  let providerCount = 0;
 
   const el = id => document.getElementById(id);
+  const show = (id, visible) => { const e = el(id); if (e) e.style.display = visible ? "" : "none"; };
 
   if (window.__blazorStarted) location.reload();
 
@@ -41,47 +44,51 @@
       if (res.ok) options = await res.json();
     } catch { }
     options = options || {};
-    const password = options.password ?? options.Password ?? true;
+    passwordEnabled = options.password ?? options.Password ?? true;
     const providers = options.providers ?? options.Providers ?? [];
+    providerCount = providers.length;
     const page = options.page ?? options.Page ?? {};
 
-    //デザインの LoginPage 設定: タイトル / ロゴ / 案内文
-    const title = page.title || page.Title || texts.title;
-    document.title = title;
-    if (el("Title")) el("Title").textContent = title;
+    //デザインの LoginPage 設定: タイトル / ロゴ / 案内文 (空なら出さない)
+    const title = page.title || page.Title || "";
+    document.title = title || texts.documentTitle;
+    if (title) el("Title").textContent = title;
+    show("Title", !!title);
     const logoUrl = page.logoUrl || page.LogoUrl || "";
-    if (el("Logo")) {
-      if (logoUrl) { el("Logo").src = logoUrl; el("Logo").style.display = ""; }
-      else el("Logo").style.display = "none";
-    }
+    if (logoUrl) el("Logo").src = logoUrl;
+    show("Logo", !!logoUrl);
     const message = page.message || page.Message || "";
-    if (el("Message")) {
-      el("Message").textContent = message;
-      el("Message").style.display = message ? "" : "none";
-    }
+    if (message) el("Message").textContent = message;
+    show("Message", !!message);
+    show("Head", !!(title || logoUrl || message));
 
-    if (!password) el("LoginForm").style.display = "none";
+    show("LoginForm", passwordEnabled);
 
     //パスワードログイン無効で IdP が 1 つなら画面を出さずに即遷移 (エラー表示中は止まるのでループしない)
-    if (!password && providers.length === 1 && !error) {
+    if (!passwordEnabled && providers.length === 1 && !error) {
       location.replace(providerUrl(providers[0]));
       return;
     }
 
     const container = el("Providers");
     for (const p of providers) {
-      const a = document.createElement("a");
-      a.className = "btn btn-outline-primary";
-      a.href = providerUrl(p);
-      a.textContent = texts.loginWith.replace("{0}", p.displayName ?? p.DisplayName ?? p.name ?? p.Name);
-      container.appendChild(a);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn btn-outline-primary";
+      b.textContent = texts.loginWith.replace("{0}", p.displayName ?? p.DisplayName ?? p.name ?? p.Name);
+      //「ログイン状態を保持する」は外部 IdP にも効かせるので、押した時点の状態で URL を組む
+      b.addEventListener("click", () => { location.href = providerUrl(p); });
+      container.appendChild(b);
     }
+    show("ProviderDivider", passwordEnabled && providers.length > 0);
+    show("Options", passwordEnabled || providers.length > 0);
     document.body.classList.add("ready");
   })();
 
   function providerUrl(p) {
     const name = p.name ?? p.Name;
-    return `/api/account/login/${encodeURIComponent(name)}?returnUrl=${encodeURIComponent(redirect)}`;
+    const persistent = el("IsPersistent")?.checked ? "&persistent=true" : "";
+    return `/api/account/login/${encodeURIComponent(name)}?returnUrl=${encodeURIComponent(redirect)}${persistent}`;
   }
 
   el("LoginForm").addEventListener("submit", async (e) => {
@@ -168,20 +175,24 @@
     showError();
   }
   function showTotp(isSetup) {
-    el("LoginForm").style.display = "none";
-    el("Providers").style.display = "none";
-    el("TotpForm").style.display = "";
-    el("TotpSetup").style.display = isSetup ? "" : "none";
-    el("TotpPrompt").style.display = isSetup ? "none" : "";
+    show("LoginForm", false);
+    show("ProviderDivider", false);
+    show("Providers", false);
+    show("Options", false);
+    show("TotpForm", true);
+    show("TotpSetup", isSetup);
+    show("TotpPrompt", !isSetup);
     el("TotpCode").value = "";
     el("TotpCode").focus();
   }
   function backToLogin() {
     pending = null;
     hideError();
-    el("TotpForm").style.display = "none";
-    el("LoginForm").style.display = "";
-    el("Providers").style.display = "";
+    show("TotpForm", false);
+    show("LoginForm", passwordEnabled);
+    show("ProviderDivider", passwordEnabled && providerCount > 0);
+    show("Providers", true);
+    show("Options", passwordEnabled || providerCount > 0);
     el("Password").value = "";
   }
   async function getAntiforgeryToken() {

@@ -96,10 +96,11 @@ namespace LowCodeApp.Server.Controllers
 
         //外部 IdP: ブラウザがここに遷移 (GET) すると IdP へ送られる。IdP が本人確認した後、ExternalLoginUserResolver が
         //ユーザー行に解決し、パスワードログインと同じ Cookie を発行する。
+        //persistent=true は「ログイン状態を保持する」(ブラウザを閉じても残る Cookie)。
         //mobile=true はネイティブアプリ (システムブラウザ) の流れで、Cookie の代わりに使い捨てチケットをアプリへ返す
         [HttpGet("login/{provider}")]
-        public IActionResult ExternalLogin(string provider, string? returnUrl, bool mobile = false)
-            => _externalLogins.Challenge(this, provider, returnUrl, mobile);
+        public IActionResult ExternalLogin(string provider, string? returnUrl, bool mobile = false, bool persistent = false)
+            => _externalLogins.Challenge(this, provider, returnUrl, mobile, persistent);
 
         //ネイティブアプリ: システムブラウザで受け取った使い捨てチケットを認証 Cookie に交換する
         [HttpPost("login_ticket")]
