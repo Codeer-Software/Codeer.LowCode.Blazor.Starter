@@ -45,13 +45,17 @@
     }
     else
     {
-      @* 二要素認証 (TOTP)。サーバーの TotpLogin が有効なとき、パスワード成功後にコードを求める *@
+      @* 二要素認証 (認証アプリ = setup / totp、メール = email)。パスワード成功後にコードを求める *@
       <EditForm Model="_totp" OnValidSubmit="VerifyTotpAsync">
         @if (_totp.Status == "setup")
         {
           <p class="mb-2">認証アプリで QR コードを読み取り、表示された 6 桁のコードを入力してください。</p>
           <img src="data:image/png;base64,@_totp.QrPngBase64" alt="認証アプリ登録用の QR コード" class="border mb-2" style="width:200px;height:200px;" />
           <div class="small text-muted mb-2">読み取れない場合はこのキーを手入力してください:<br /><code>@_totp.Secret</code></div>
+        }
+        else if (_totp.Status == "email")
+        {
+          <p class="mb-2">@_totp.MaskedEmail に認証コードを送りました。届いた 6 桁のコードを入力してください。</p>
         }
         else
         {
@@ -81,7 +85,7 @@
     public string? Id { get; set; }
     public string? Password { get; set; }
     public bool IsPersistent { get; set; }
-    public string? TotpCode { get; set; }
+    public string? TwoFactorCode { get; set; }
   }
 
   class LoginOptions
@@ -111,6 +115,7 @@
     public string Status { get; set; } = "ok";
     public string? Secret { get; set; }
     public string? QrPngBase64 { get; set; }
+    public string? MaskedEmail { get; set; }
   }
 
   class TotpStep
@@ -118,6 +123,7 @@
     public string Status { get; set; } = string.Empty;
     public string? Secret { get; set; }
     public string? QrPngBase64 { get; set; }
+    public string? MaskedEmail { get; set; }
     public string? Code { get; set; }
   }
 
@@ -159,7 +165,7 @@
     _errorMessage = null;
     try
     {
-      _login.TotpCode = null;
+      _login.TwoFactorCode = null;
       var response = await HttpClient.PostAsJsonAsync("api/account/login", _login);
       if (!response.IsSuccessStatusCode)
       {
@@ -167,11 +173,17 @@
         return;
       }
 
-      //二要素認証が有効なら status が setup / totp で返り、まだサインインしていない
+      //二要素認証が有効なら status が setup / totp (認証アプリ) か email (メール) で返り、まだサインインしていない
       var result = await ReadResultAsync(response);
-      if (result.Status == "setup" || result.Status == "totp")
+      if (result.Status == "setup" || result.Status == "totp" || result.Status == "email")
       {
-        _totp = new TotpStep { Status = result.Status, Secret = result.Secret, QrPngBase64 = result.QrPngBase64 };
+        _totp = new TotpStep { Status = result.Status, Secret = result.Secret, QrPngBase64 = result.QrPngBase64, MaskedEmail = result.MaskedEmail };
+        return;
+      }
+      if (result.Status == "send_failed")
+      {
+        _failed = true;
+        _errorMessage = "認証コードのメールを送れませんでした。管理者に連絡してください";
         return;
       }
       if (result.Status != "ok")
@@ -205,7 +217,7 @@
     _errorMessage = null;
     try
     {
-      _login.TotpCode = _totp.Code.Trim();
+      _login.TwoFactorCode = _totp.Code.Trim();
       var response = await HttpClient.PostAsJsonAsync("api/account/login", _login);
       if (!response.IsSuccessStatusCode)
       {
@@ -237,7 +249,7 @@
     _failed = false;
     _errorMessage = null;
     _login.Password = null;
-    _login.TotpCode = null;
+    _login.TwoFactorCode = null;
   }
 
   static async Task<LoginResult> ReadResultAsync(HttpResponseMessage response)

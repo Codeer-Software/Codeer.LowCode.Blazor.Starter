@@ -10,6 +10,12 @@ namespace LowCodeApp.Server
     {
         public static void UseCookieAuthentication(this WebApplicationBuilder builder)
         {
+            //ログイン途中の一時データ (外部 IdP の MAUI 向け使い捨てチケット、メール認証コード) の置き場。
+            //これはプロセス内メモリなので単一インスタンス向け。App Service 等で複数インスタンスに広げるときは
+            //AddStackExchangeRedisCache / AddDistributedSqlServerCache などの共有キャッシュに差し替える
+            //(発行したインスタンスと検証するインスタンスが違うと失敗するため)
+            builder.Services.AddDistributedMemoryCache();
+
             builder.Services
                 .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options => {

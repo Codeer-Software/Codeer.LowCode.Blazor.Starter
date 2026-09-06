@@ -51,6 +51,7 @@ SystemConfig.Instance.AllowPasswordLogin = builder.Configuration.GetValue<bool?>
 SystemConfig.Instance.ExternalLogins = ExternalLoginTable.Create(builder.Configuration);
 SystemConfig.Instance.MobileLoginCallbackUrl = builder.Configuration["MobileLoginCallbackUrl"] ?? string.Empty;
 SystemConfig.Instance.TotpLogin = builder.Configuration.GetSection("TotpLogin").Get<TotpLoginSettings>() ?? new();
+SystemConfig.Instance.EmailOtpLogin = builder.Configuration.GetSection("EmailOtpLogin").Get<EmailOtpLoginSettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);

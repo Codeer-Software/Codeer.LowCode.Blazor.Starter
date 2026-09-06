@@ -32,8 +32,10 @@ namespace LowCodeApp.Server.Services
         public List<IExternalLoginProvider> ExternalLogins { get; set; } = [];
         //MAUI アプリがシステムブラウザで外部 IdP にログインした後に戻る URL。MAUI 側の appsettings (Server:LoginCallbackUrl) と一致させる
         public string MobileLoginCallbackUrl { get; set; } = string.Empty;
-        //ID/パスワードのログインに足す二要素認証 (TOTP)。有効・無効はデザイン (ユーザーモジュールの TotpSecretField) で決まり、ここは表示用の Issuer だけ (docs: Codeer.LowCode.Blazor.Extras の TotpLogin.md)
+        //ID/パスワードのログインに足す二要素認証 (TOTP)。有効・無効はデザイン (ユーザーモジュールの TotpSecretField) で決まり、ここは表示用の Issuer だけ (docs: Codeer.LowCode.Blazor.Extras の TwoFactorLogin.md)
         public TotpLoginSettings TotpLogin { get; set; } = new();
+        //メールのワンタイムコードによる二要素認証。有効・無効はデザイン (LoginAccountContractField の TwoFactorEmail) で決まり、ここはメールの体裁と有効期限だけ
+        public EmailOtpLoginSettings EmailOtpLogin { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }
 }

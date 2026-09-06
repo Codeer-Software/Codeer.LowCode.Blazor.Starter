@@ -11,6 +11,7 @@
     loginFailed: "ログインに失敗しました",
     enterCode: "認証コードを入力してください",
     invalidCode: "認証コードが正しくありません",
+    sendFailed: "認証コードのメールを送れませんでした。管理者に連絡してください",
     loginWith: "{0} でログイン",
     errors: {
       remote_failure: "ログインが中断されたか、失敗しました",
@@ -105,18 +106,20 @@
       const res = await postLogin({ Id: id, Password: password, IsPersistent: isPersistent });
       if (!res.ok) { showError(); return; }
 
-      //二要素認証が有効なら status が setup / totp で返り、まだサインインしていない
+      //二要素認証が有効なら status が setup / totp (認証アプリ) か email (メール) で返り、まだサインインしていない
       const j = await readJson(res);
       const status = j?.status ?? j?.Status ?? "ok";
-      if (status === "setup" || status === "totp") {
+      if (status === "setup" || status === "totp" || status === "email") {
         pending = { Id: id, Password: password, IsPersistent: isPersistent };
         if (status === "setup") {
           el("QrImage").src = "data:image/png;base64," + (j?.qrPngBase64 ?? j?.QrPngBase64 ?? "");
           el("SecretText").textContent = j?.secret ?? j?.Secret ?? "";
         }
-        showTotp(status === "setup");
+        if (status === "email") el("EmailAddress").textContent = j?.maskedEmail ?? j?.MaskedEmail ?? "";
+        showTotp(status);
         return;
       }
+      if (status === "send_failed") { showError(texts.sendFailed); return; }
       if (status !== "ok") { showError(); return; }
       await enterApp();
     } catch {
@@ -136,10 +139,11 @@
     btn.disabled = true;
     hideError();
     try {
-      const res = await postLogin({ ...pending, TotpCode: code });
+      const res = await postLogin({ ...pending, TwoFactorCode: code });
       if (!res.ok) { showError(); return; }
       const j = await readJson(res);
       const status = j?.status ?? j?.Status ?? "ok";
+      if (status === "send_failed") { showError(texts.sendFailed); return; }
       if (status !== "ok") { showError(texts.invalidCode); return; }
       await enterApp();
     } catch {
@@ -174,14 +178,16 @@
     }
     showError();
   }
-  function showTotp(isSetup) {
+  //kind: setup (認証アプリの登録) / totp (認証アプリのコード) / email (メールのコード)
+  function showTotp(kind) {
     show("LoginForm", false);
     show("ProviderDivider", false);
     show("Providers", false);
     show("Options", false);
     show("TotpForm", true);
-    show("TotpSetup", isSetup);
-    show("TotpPrompt", !isSetup);
+    show("TotpSetup", kind === "setup");
+    show("TotpPrompt", kind === "totp");
+    show("EmailPrompt", kind === "email");
     el("TotpCode").value = "";
     el("TotpCode").focus();
   }

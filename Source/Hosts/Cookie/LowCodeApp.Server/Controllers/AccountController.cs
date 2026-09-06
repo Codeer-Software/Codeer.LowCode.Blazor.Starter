@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 using LowCodeApp.Client;
 using LowCodeApp.Server.Services;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
+using Codeer.LowCode.Blazor.Extras.Server.Mail;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace LowCodeApp.Server.Controllers
 {
@@ -18,11 +20,13 @@ namespace LowCodeApp.Server.Controllers
 
         readonly DataService _dataService;
         readonly ExternalLoginService _externalLogins;
+        readonly IDistributedCache _cache;
 
-        public AccountController(DataService dataService, ExternalLoginService externalLogins)
+        public AccountController(DataService dataService, ExternalLoginService externalLogins, IDistributedCache cache)
         {
             _dataService = dataService;
             _externalLogins = externalLogins;
+            _cache = cache;
         }
 
         [Authorize]
@@ -67,14 +71,23 @@ namespace LowCodeApp.Server.Controllers
             var account = await accounts.VerifyPasswordAsync(loginInfo.Id, loginInfo.Password);
             if (account == null) return Unauthorized();
 
-            //二要素認証 (TOTP)。ユーザーモジュールに TotpSecretField があるときだけ有効。
-            //コード未指定なら状態 (setup = 登録用 QR / totp = コード要求) を返すだけでサインインしない。
-            //コード検証が通ったとき (status: ok) だけ下のサインインへ進む
+            //二要素認証。コード未指定なら状態を返すだけでサインインしない。コード検証が通ったとき (status: ok) だけ下のサインインへ進む。
+            // - 認証アプリ (TOTP): ユーザーモジュールに TotpSecretField があるとき (setup = 登録用 QR / totp = コード要求)
+            // - メールのワンタイムコード: LoginAccountContractField の TwoFactorEmail があるとき (email = 送信済み)。TotpSecretField があればそちらが優先
             var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
             if (totp != null)
             {
-                var result = await totp.VerifyAsync(account.UserId, account.LoginName, loginInfo.TotpCode);
+                var result = await totp.VerifyAsync(account.UserId, account.LoginName, loginInfo.TwoFactorCode);
                 if (result.Status != TotpLoginStatus.Ok) return Ok(result);
+            }
+            else if (accounts.HasTwoFactorEmail)
+            {
+                //メールは MailDispatcher 経由 (送信インフラの解決・開発環境の宛先リダイレクト)。履歴モジュールには残さない (コードを記録しない)
+                var dispatcher = new MailDispatcher(SystemConfig.Instance.Mail, MailSenderTable.Create);
+                var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin,
+                    message => dispatcher.SendAsync(new Codeer.LowCode.Blazor.Extras.Mail.MailSendRequest { MailInfraName = SystemConfig.Instance.EmailOtpLogin.MailInfraName, Message = message }), _cache);
+                var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail ?? string.Empty, loginInfo.TwoFactorCode);
+                if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);
             }
 
             var claims = new List<Claim>
