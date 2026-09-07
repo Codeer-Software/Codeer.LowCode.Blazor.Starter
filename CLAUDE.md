@@ -58,14 +58,15 @@
 <!-- maintainer-only -->
 ## バリアントの選び方
 
-公開しているホストは 2 つ。**既定は `Cookie`**（Visual Studio テンプレート名も接尾辞なしの `Codeer.LowCode.Blazor`）。
+公開しているホストは 4 つ。**既定は `Cookie`**（Visual Studio テンプレート名も接尾辞なしの `Codeer.LowCode.Blazor`）。
 
 | フォルダ | 用途 | 選ぶ基準 |
 |---|---|---|
 | `Source/Hosts/Cookie/` | Web（WASM クライアント + ASP.NET Core サーバー）、Cookie 認証（ユーザーテーブルでパスワード検証） | 業務アプリの既定。Entra ID / Google / AWS Cognito / 汎用 OIDC のログインは `appsettings` の `ExternalLogins` に書くだけで足せる（Extras.Server の外部ログイン。手順は Codeer.LowCode.Blazor.Extras の `docs/ExternalLogin.md`、方針コードは `Server/ExternalLoginUserResolver.cs`）。TOTP など他の認証を組むときもここを土台にする（cookie スキームと `[Authorize]`、現在ユーザー解決はそのまま使え、ログインの発行方法だけ差し替える） |
 | `Source/Hosts/Maui/` | `Cookie` + .NET MAUI（Android/iOS）クライアント | スマホアプリとして配布したい。デザイン変更はストア更新なしで反映される |
+| `Source/Hosts/Wpf/` `Source/Hosts/WinForms/` | デスクトップ単体（サーバー機能を同一プロセスに内包） | サーバーを立てない・オフライン寄り |
 
-`Source/Hosts/` にはほかに `Wpf` `WinForms`（デスクトップ単体）/ `MultiTenant`（マルチテナント）も**保守用**に置いてあるが、
+`Source/Hosts/` にはほかに `MultiTenant`（マルチテナント）も**保守用**に置いてあるが、
 テンプレートとしては提供していない。ユーザーに勧めない（認証なしが要るときは下の「認証を外す」）。
 
 <!-- /maintainer-only -->
