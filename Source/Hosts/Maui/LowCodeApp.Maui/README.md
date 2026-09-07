@@ -31,11 +31,47 @@ runtime from the app's *Settings* page (stored with MAUI `Preferences`).
   required there.
 - `http://...:5085/` also works, but only if the server runs with the `http` profile: with the `https` profile
   `UseHttpsRedirection` answers with a 307 to `https://localhost:7137`, which the device cannot reach.
-- For a physical device use the PC's LAN address (for example `https://192.168.1.10:7137/`) and start the server
-  listening on all interfaces (launch profile `applicationUrl` = `https://0.0.0.0:7137`).
+- For a physical device use the PC's LAN address - see *A physical device over the LAN* below.
 - Plain `http` is allowed for development by `android:usesCleartextTraffic="true"` (AndroidManifest.xml) and
   `NSAllowsArbitraryLoads` (Info.plist). Remove both when the server is `https` only.
 - Put machine-specific overrides in `appsettings.Development.json` (same shape, picked up automatically when present).
+
+### A physical device over the LAN
+
+`adb reverse` only works while the device is attached to the PC and adb is alive, so a Debug build launched from
+the device's home screen has to reach the server by its LAN address, for example `https://192.168.5.150:7137/`.
+Three things have to line up.
+
+1. **The server must listen on all interfaces.** The default launch profile binds `localhost`, which opens a
+   loopback-only socket: a connection from the device never arrives. Both the Cookie and the Normal variant have
+   an `https-lan` profile that binds `0.0.0.0` instead - use that one:
+
+   ```powershell
+   dotnet run --project Source/Hosts/Cookie/LowCodeApp.Server --launch-profile https-lan
+   ```
+
+   The two variants use different ports (Cookie 7137, Normal 7169), so both can run at the same time. A Debug
+   build talking to the Normal variant skips the login page (see `LowCodePage.razor`); a Release build cannot
+   use it at all, because that branch is `#if DEBUG`.
+
+2. **The Windows firewall must allow the port inbound** (once, from an elevated PowerShell):
+
+   ```powershell
+   New-NetFirewallRule -DisplayName "LowCodeApp Server (LAN)" -Direction Inbound -Protocol TCP -LocalPort 7137 -Profile Private -Action Allow
+   ```
+
+   Add a second rule for 7169 to reach the Normal variant as well.
+
+3. **Keep the URL on `https`.** Over `http` the server answers with a 307 (`UseHttpsRedirection`) and the
+   authentication cookie is `Secure`, so it is never sent back. `https` works even though the development
+   certificate is issued for `localhost`, because Debug builds skip certificate validation (see
+   `ServerConnection.CreateHttpClient`).
+
+Then set the URL on the device: *Settings* in the title bar (⋮ menu on Android), or `appsettings.Development.json`
+to make it the bundled default.
+
+This is a Debug-only arrangement. A Release build validates the certificate, so it cannot talk to a development
+server on a LAN address at all - a store or internal-test release needs a server with a real certificate.
 
 ## Running
 
