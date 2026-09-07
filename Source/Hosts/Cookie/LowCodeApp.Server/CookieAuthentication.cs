@@ -30,9 +30,9 @@ namespace LowCodeApp.Server
                         return Task.CompletedTask;
                     };
                 })
-                //外部 IdP (Entra ID / Google / AWS Cognito / OIDC)。並べるプロバイダは Services/ExternalLoginTable が appsettings から組み立てる。
+                //外部 IdP (Entra ID / Google / AWS Cognito / OIDC)。並べるプロバイダは Services/ExternalLoginTable が SystemConfig の設定から組み立てる。
                 //IdP は本人確認をするだけで、セッションはこの Cookie のまま。確認できた本人をユーザー行に解決するのは ExternalLoginUserResolver
-                .AddExternalLogins(SystemConfig.Instance.ExternalLogins, o => o.MobileCallbackUrl = SystemConfig.Instance.MobileLoginCallbackUrl);
+                .AddExternalLogins(ExternalLoginTable.Create(), o => o.MobileCallbackUrl = SystemConfig.Instance.MobileLoginCallbackUrl);
             builder.Services.AddScoped<IExternalLoginUserResolver, ExternalLoginUserResolver>();
 
             //CSRF

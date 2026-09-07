@@ -36,8 +36,14 @@ LicenseManager.IsAutoUpdate = builder.Configuration.GetSection("IsLicenseAutoUpd
 SystemConfig.Instance.UseHotReload = builder.Configuration.GetSection("UseHotReload").Get<bool>();
 SystemConfig.Instance.CanScriptDebug = builder.Configuration.GetSection("CanScriptDebug").Get<bool>();
 SystemConfig.Instance.DataSources = builder.Configuration.GetSection("DataSources").Get<DataSource[]>() ?? [];
-//ファイル保存先は種類ごとのセクションを FileStorageTable が読む (FileSystemStorages / AzureBlobStorages / S3Storages)
-SystemConfig.Instance.FileStorages = FileStorageTable.Create(builder.Configuration);
+//ファイル保存先の設定 (種類ごとのセクション。実体は Services/FileStorageTable が組み立てる)
+SystemConfig.Instance.FileSystemStorages = builder.Configuration.GetSection("FileSystemStorages").Get<FileSystemStorageSettings[]>() ?? [];
+SystemConfig.Instance.AzureBlobStorages = builder.Configuration.GetSection("AzureBlobStorages").Get<AzureBlobStorageSettings[]>() ?? [];
+SystemConfig.Instance.S3Storages = builder.Configuration.GetSection("S3Storages").Get<S3StorageSettings[]>() ?? [];
+SystemConfig.Instance.FileStorages = builder.Configuration.GetSection("FileStorages").Get<FileStorage[]>() ?? [];
+//Azure Blob の接続文字列は ConnectionStrings:<Name> にも置ける
+foreach (var storage in SystemConfig.Instance.AzureBlobStorages) if (string.IsNullOrEmpty(storage.ConnectionString) && string.IsNullOrEmpty(storage.BlobServiceUri)) storage.ConnectionString = builder.Configuration.GetConnectionString(storage.Name) ?? string.Empty;
+foreach (var storage in SystemConfig.Instance.FileStorages) if (string.IsNullOrEmpty(storage.ConnectionString)) storage.ConnectionString = builder.Configuration.GetConnectionString(storage.Name) ?? string.Empty;
 SystemConfig.Instance.TemporaryFileTableInfo = builder.Configuration.GetSection("TemporaryFileTableInfo").Get<TemporaryFileTableInfo[]>() ?? [];
 SystemConfig.Instance.DesignFileDirectory = builder.Configuration["DesignFileDirectory"] ?? string.Empty;
 SystemConfig.Instance.FontFileDirectory = builder.Configuration["FontFileDirectory"] ?? string.Empty;

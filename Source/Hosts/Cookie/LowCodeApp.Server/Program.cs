@@ -35,8 +35,14 @@ LicenseManager.IsAutoUpdate = builder.Configuration.GetSection("IsLicenseAutoUpd
 SystemConfig.Instance.UseHotReload = builder.Configuration.GetSection("UseHotReload").Get<bool>();
 SystemConfig.Instance.CanScriptDebug = builder.Configuration.GetSection("CanScriptDebug").Get<bool>();
 SystemConfig.Instance.DataSources = builder.Configuration.GetSection("DataSources").Get<DataSource[]>() ?? [];
-//ファイル保存先は種類ごとのセクションを FileStorageTable が読む (FileSystemStorages / AzureBlobStorages / S3Storages)
-SystemConfig.Instance.FileStorages = FileStorageTable.Create(builder.Configuration);
+//ファイル保存先の設定 (種類ごとのセクション。実体は Services/FileStorageTable が組み立てる)
+SystemConfig.Instance.FileSystemStorages = builder.Configuration.GetSection("FileSystemStorages").Get<FileSystemStorageSettings[]>() ?? [];
+SystemConfig.Instance.AzureBlobStorages = builder.Configuration.GetSection("AzureBlobStorages").Get<AzureBlobStorageSettings[]>() ?? [];
+SystemConfig.Instance.S3Storages = builder.Configuration.GetSection("S3Storages").Get<S3StorageSettings[]>() ?? [];
+SystemConfig.Instance.FileStorages = builder.Configuration.GetSection("FileStorages").Get<FileStorage[]>() ?? [];
+//Azure Blob の接続文字列は ConnectionStrings:<Name> にも置ける
+foreach (var storage in SystemConfig.Instance.AzureBlobStorages) if (string.IsNullOrEmpty(storage.ConnectionString) && string.IsNullOrEmpty(storage.BlobServiceUri)) storage.ConnectionString = builder.Configuration.GetConnectionString(storage.Name) ?? string.Empty;
+foreach (var storage in SystemConfig.Instance.FileStorages) if (string.IsNullOrEmpty(storage.ConnectionString)) storage.ConnectionString = builder.Configuration.GetConnectionString(storage.Name) ?? string.Empty;
 SystemConfig.Instance.TemporaryFileTableInfo = builder.Configuration.GetSection("TemporaryFileTableInfo").Get<TemporaryFileTableInfo[]>() ?? [];
 SystemConfig.Instance.DesignFileDirectory = builder.Configuration["DesignFileDirectory"] ?? string.Empty;
 SystemConfig.Instance.FontFileDirectory = builder.Configuration["FontFileDirectory"] ?? string.Empty;
@@ -48,7 +54,11 @@ SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Ge
 SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
 SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
 SystemConfig.Instance.AllowPasswordLogin = builder.Configuration.GetValue<bool?>("AllowPasswordLogin") ?? true;
-SystemConfig.Instance.ExternalLogins = ExternalLoginTable.Create(builder.Configuration);
+//外部 IdP の設定 (種類ごとのセクション。実体は Services/ExternalLoginTable が組み立てる)
+SystemConfig.Instance.EntraLogin = builder.Configuration.GetSection("EntraLogin").Get<EntraLoginSettings>() ?? new();
+SystemConfig.Instance.GoogleLogin = builder.Configuration.GetSection("GoogleLogin").Get<GoogleLoginSettings>() ?? new();
+SystemConfig.Instance.CognitoLogin = builder.Configuration.GetSection("CognitoLogin").Get<CognitoLoginSettings>() ?? new();
+SystemConfig.Instance.OidcLogins = builder.Configuration.GetSection("OidcLogins").Get<OidcLoginSettings[]>() ?? [];
 SystemConfig.Instance.MobileLoginCallbackUrl = builder.Configuration["MobileLoginCallbackUrl"] ?? string.Empty;
 SystemConfig.Instance.TotpLogin = builder.Configuration.GetSection("TotpLogin").Get<TotpLoginSettings>() ?? new();
 SystemConfig.Instance.EmailOtpLogin = builder.Configuration.GetSection("EmailOtpLogin").Get<EmailOtpLoginSettings>() ?? new();

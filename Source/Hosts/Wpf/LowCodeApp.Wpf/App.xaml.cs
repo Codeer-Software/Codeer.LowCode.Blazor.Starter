@@ -35,8 +35,14 @@ namespace LowCodeApp.Wpf
             LicenseManager.IsAutoUpdate = config.GetSection("IsLicenseAutoUpdate").Get<bool>();
             SystemConfig.Instance.UseHotReload = config.GetSection("UseHotReload").Get<bool>();
             SystemConfig.Instance.DataSources = config.GetSection("DataSources").Get<DataSource[]>() ?? new DataSource[0];
-            //ファイル保存先は種類ごとのセクションを FileStorageTable が読む (FileSystemStorages / AzureBlobStorages / S3Storages)
-            SystemConfig.Instance.FileStorages = FileStorageTable.Create(config);
+            //ファイル保存先の設定 (種類ごとのセクション。実体は Services/FileStorageTable が組み立てる)
+            SystemConfig.Instance.FileSystemStorages = config.GetSection("FileSystemStorages").Get<FileSystemStorageSettings[]>() ?? [];
+            SystemConfig.Instance.AzureBlobStorages = config.GetSection("AzureBlobStorages").Get<AzureBlobStorageSettings[]>() ?? [];
+            SystemConfig.Instance.S3Storages = config.GetSection("S3Storages").Get<S3StorageSettings[]>() ?? [];
+            SystemConfig.Instance.FileStorages = config.GetSection("FileStorages").Get<FileStorage[]>() ?? [];
+            //Azure Blob の接続文字列は ConnectionStrings:<Name> にも置ける
+            foreach (var storage in SystemConfig.Instance.AzureBlobStorages) if (string.IsNullOrEmpty(storage.ConnectionString) && string.IsNullOrEmpty(storage.BlobServiceUri)) storage.ConnectionString = config.GetConnectionString(storage.Name) ?? string.Empty;
+            foreach (var storage in SystemConfig.Instance.FileStorages) if (string.IsNullOrEmpty(storage.ConnectionString)) storage.ConnectionString = config.GetConnectionString(storage.Name) ?? string.Empty;
             SystemConfig.Instance.Mail = config.GetSection("Mail").Get<MailConfig>() ?? new();
             SystemConfig.Instance.Gmail = config.GetSection("Gmail").Get<GmailSettings>() ?? new();
             SystemConfig.Instance.AISettings = config.GetSection("AISettings").Get<AISettings>() ?? new();

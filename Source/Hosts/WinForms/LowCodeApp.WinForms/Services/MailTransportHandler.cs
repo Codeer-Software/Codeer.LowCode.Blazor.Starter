@@ -29,7 +29,7 @@ namespace LowCodeApp.WinForms.Services
         static async Task<T> RunAsync<T>(Func<MailDispatcher, CustomizedModuleDataIO, Task<T>> action)
         {
             await using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
-            var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, SystemConfig.Instance.FileStorages);
+            var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
             var io = new CustomizedModuleDataIO(DesignerService.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
 
             var mail = SystemConfig.Instance.Mail;

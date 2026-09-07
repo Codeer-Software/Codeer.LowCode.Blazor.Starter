@@ -47,7 +47,7 @@ namespace LowCodeApp.Wpf.Services
         {
             using var scope = _loadingService.StartLoading();
             await using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
-            var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, SystemConfig.Instance.FileStorages);
+            var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
             var dataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
             try
             {

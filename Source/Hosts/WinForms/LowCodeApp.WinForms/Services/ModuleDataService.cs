@@ -43,12 +43,12 @@ namespace LowCodeApp.WinForms.Services
                 try
                 {
                     using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
-                    var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, SystemConfig.Instance.FileStorages);
+                    var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
                     var moduleDataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
 
                     var location = moduleDataIO.FileFieldDataIO.GetFileLocation(moduleName!, id!, fieldName!).Result;
                     moduleDataIO.DbAccess.ClearAsync().AsTask().Wait();
-                    mem = StorageAccess.ReadFileAsync(SystemConfig.Instance.FileStorages, location).Result;
+                    mem = StorageAccess.ReadFileAsync(FileStorageTable.Storages, location).Result;
                 }
                 catch (Exception e)
                 {
@@ -83,7 +83,7 @@ namespace LowCodeApp.WinForms.Services
         async Task<T> CheckoutException<T>(Func<CustomizedModuleDataIO, Task<T>> f, T errResult)
         {
             await using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
-            var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, SystemConfig.Instance.FileStorages);
+            var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
             var dataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
             try
             {

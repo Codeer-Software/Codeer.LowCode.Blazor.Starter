@@ -16,7 +16,7 @@ namespace LowCodeApp.Server.Services
         {
             _httpContextAccessor = httpContextAccessor;
             DbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
-            TemporaryFileManager = new TemporaryFileManager(DbAccess, SystemConfig.Instance.TemporaryFileTableInfo, SystemConfig.Instance.FileStorages);
+            TemporaryFileManager = new TemporaryFileManager(DbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
             ModuleDataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), this, DbAccess, TemporaryFileManager);
         }
 

@@ -121,7 +121,7 @@ namespace LowCodeApp.Server.Controllers
             await _dataService.InitializeAsync();
             var location = await _dataService.ModuleDataIO.FileFieldDataIO.GetFileLocation(moduleName!, id!, fieldName!);
             await _dataService.DbAccess.ClearAsync();
-            return this.FileWithETag((await StorageAccess.ReadFileAsync(SystemConfig.Instance.FileStorages, location)).ToArray(), "application/octet-stream");
+            return this.FileWithETag((await StorageAccess.ReadFileAsync(FileStorageTable.Storages, location)).ToArray(), "application/octet-stream");
         }
 
         [HttpPost("upload")]
