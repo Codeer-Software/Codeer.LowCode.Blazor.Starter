@@ -34,6 +34,13 @@
     <TrimMode>partial</TrimMode>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
   </PropertyGroup>
+  <!-- Root components are created by reflection (BlazorWebView RootComponents), so the trimmer does not see
+       their constructors and removes them: startup then dies with "CtorNotLocated,
+       Microsoft.AspNetCore.Components.Web.HeadOutlet" inside AttachToPageAsync, before any component of this
+       app runs - which is why neither a try/catch nor an ErrorBoundary can catch it. Keep the assembly whole. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.Web" RootMode="All" />
+  </ItemGroup>
   <ItemGroup>
     <!-- App Icon -->
     <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />

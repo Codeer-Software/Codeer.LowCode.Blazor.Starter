@@ -135,3 +135,42 @@ the startup gain in the table above, so prefer fixing `TEMP`.
 
 Change `ApplicationId`, `ApplicationTitle`, the icon (`Resources/AppIcon`) and the splash screen (`Resources/Splash`)
 in `LowCodeApp.csproj`, then follow the standard .NET MAUI publishing steps for Android / iOS.
+
+### Before you build something you hand to other people
+
+The development conveniences described above are exactly what must not ship. Work through this list.
+
+1. **Delete `appsettings.Development.json`.** The csproj bundles it *when the file exists*
+   (`Condition="Exists(...)"`), so a build made with a local file still in place ships your machine's server URL
+   as the app's default - testers get `http://localhost:...` and a connection error. Put the real URL in
+   `appsettings.json` instead.
+2. **The server must be the Cookie variant.** The branch that treats an unauthenticated server as usable is
+   `#if DEBUG` only (see `LowCodePage.razor`), so a genuine Release build cannot talk to `Hosts/Normal` at all.
+3. **The server needs a certificate that the device trusts.** Release validates certificates - the bypass is
+   also `#if DEBUG`. A development certificate on a LAN address will not do; that combination only works for
+   local debugging (see *A physical device over the LAN* above).
+4. **Remove the cleartext permissions** once the server is https only: `android:usesCleartextTraffic="true"`
+   in `Platforms/Android/AndroidManifest.xml` and `NSAllowsArbitraryLoads` in `Platforms/iOS/Info.plist`.
+5. **Sign with your own key.** A local Release build is signed with the auto-generated `CN=Android Debug`
+   certificate, which Google Play rejects. Create an upload keystore, keep it out of the repository, and pass
+   its path and password from the environment or a gitignored `.props` file - never from a tracked file.
+6. **Bump `ApplicationVersion`** on every upload (`ApplicationDisplayVersion` is the user-visible string).
+
+Do not reach for `-p:DefineConstants=DEBUG%3BTRACE` to get around 2 or 3. It builds an app that skips
+certificate validation entirely, which is fine on your desk and unacceptable in anyone else's hands. It is
+useful for measuring startup on a Release build against a development server, and for nothing else.
+
+### Trimming
+
+`Release` keeps `TrimMode=partial` and Profiled AOT, and the csproj roots
+`Microsoft.AspNetCore.Components.Web` (`TrimmerRootAssembly`). That last part is not optional: root components
+are instantiated by reflection, so without it the trimmer removes `HeadOutlet`'s constructor and startup dies
+in `AttachToPageAsync` with `CtorNotLocated` - before any component of this app runs, which means no
+`try`/`catch` and no `ErrorBoundary` can catch it and the app simply sits on the loading screen forever. If you
+add root components of your own, or see that symptom after a dependency update, look for the exception in the
+WebView console (`chrome://inspect`, available because `AddBlazorWebViewDeveloperTools()` is enabled in Debug)
+and root the assembly it names.
+
+Two build details worth knowing when you change trimming settings: a csproj `ItemGroup` edit does not re-run
+the trimmer (delete `obj/Release` and `bin/Release` first), and `-t:Run` can skip packaging - build normally,
+then `-t:Install`.
