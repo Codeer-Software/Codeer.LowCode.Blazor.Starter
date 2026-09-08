@@ -43,16 +43,16 @@ the device's home screen has to reach the server by its LAN address, for example
 Three things have to line up.
 
 1. **The server must listen on all interfaces.** The default launch profile binds `localhost`, which opens a
-   loopback-only socket: a connection from the device never arrives. Both the Cookie and the Normal variant have
-   an `https-lan` profile that binds `0.0.0.0` instead - use that one:
+   loopback-only socket: a connection from the device never arrives. The Cookie variant has an `https-lan`
+   profile that binds `0.0.0.0` instead - use that one:
 
    ```powershell
    dotnet run --project Source/Hosts/Cookie/LowCodeApp.Server --launch-profile https-lan
    ```
 
-   The two variants use different ports (Cookie 7137, Normal 7169), so both can run at the same time. A Debug
-   build talking to the Normal variant skips the login page (see `LowCodePage.razor`); a Release build cannot
-   use it at all, because that branch is `#if DEBUG`.
+   There is also an `http-lan` profile (port 5085) that binds http only. Use it when you want to take TLS out
+   of the picture: with both schemes bound, `UseHttpsRedirection` can work out the https port and answers 307,
+   so plain http only stays plain when nothing else is listening.
 
 2. **The Windows firewall must allow the port inbound** (once, from an elevated PowerShell):
 
@@ -60,7 +60,7 @@ Three things have to line up.
    New-NetFirewallRule -DisplayName "LowCodeApp Server (LAN)" -Direction Inbound -Protocol TCP -LocalPort 7137 -Profile Private -Action Allow
    ```
 
-   Add a second rule for 7169 to reach the Normal variant as well.
+   Add a rule for 5085 as well if you want to use the `http-lan` profile.
 
 3. **Keep the URL on `https`.** Over `http` the server answers with a 307 (`UseHttpsRedirection`) and the
    authentication cookie is `Secure`, so it is never sent back. `https` works even though the development
@@ -144,8 +144,9 @@ The development conveniences described above are exactly what must not ship. Wor
    (`Condition="Exists(...)"`), so a build made with a local file still in place ships your machine's server URL
    as the app's default - testers get `http://localhost:...` and a connection error. Put the real URL in
    `appsettings.json` instead.
-2. **The server must be the Cookie variant.** The branch that treats an unauthenticated server as usable is
-   `#if DEBUG` only (see `LowCodePage.razor`), so a genuine Release build cannot talk to `Hosts/Normal` at all.
+2. **The server must authenticate.** The branch that treats a server without authentication as usable is
+   `#if DEBUG` only (see `LowCodePage.razor`), so a genuine Release build needs the Cookie variant (or another
+   host that issues the authentication cookie).
 3. **The server needs a certificate that the device trusts.** Release validates certificates - the bypass is
    also `#if DEBUG`. A development certificate on a LAN address will not do; that combination only works for
    local debugging (see *A physical device over the LAN* above).
