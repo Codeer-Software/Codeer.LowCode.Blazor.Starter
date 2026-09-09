@@ -1,0 +1,34 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "",
+    "Main": "",
+    "SampleSQLite": "Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\sqlite_sample.db;"
+  },
+  "FileSystemStorages": [
+    {
+      "Name": "Local",
+      "Directory": "C:\\Codeer.LowCode.Blazor.Local\\Storages"
+    }
+  ],
+  "DesignFileDirectory": "C:\\Codeer.LowCode.Blazor.Local\\Designs",
+  "FontFileDirectory": "C:\\Codeer.LowCode.Blazor.Local\\Font",
+  "UseHotReload": true,
+  "SqlLog": false,
+  "CanScriptDebug": true,
+  "IsLicenseAutoUpdate": true,
+  "IsLicenseAuthenticationByDomain": false,
+  "AISettings": {
+    "OpenAIEndPoint": "",
+    "OpenAIKey": "",
+    "ChatModel": "",
+    "DocumentAnalysisEndPoint": "",
+    "DocumentAnalysisKey": ""
+  },
+  "Gmail": {
+    "SenderMailAddress": "",
+    "SenderDisplayName": "",
+    "ClientSecret": "",
+    "TokenSecret": "",
+    "MaxBulkCount": 500
+  }
+}
