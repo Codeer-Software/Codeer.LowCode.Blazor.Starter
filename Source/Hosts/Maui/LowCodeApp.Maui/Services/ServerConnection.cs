@@ -111,6 +111,18 @@ namespace LowCodeApp.Maui.Services
 
         //The server issues the token as a readable cookie from GET api/account/antiforgery (and marks it Secure,
         //so the cookie container would not send it back over http). We read it from the Set-Cookie header instead.
+        /// <summary>
+        /// Drops every cookie held for the current server. Called after signing out: the server does send a
+        /// deletion for the authentication cookie, but not every platform's cookie store honours it (on iOS the
+        /// session survived the sign-out), which leaves the connection authenticated against a token issued for
+        /// the anonymous user - a state the app cannot recover from on its own.
+        /// </summary>
+        void ClearCookies()
+        {
+            foreach (Cookie cookie in _cookies.GetCookies(BaseAddress)) cookie.Expired = true;
+            _antiforgeryToken = null;
+        }
+
         void CaptureAntiforgeryToken(HttpResponseMessage response)
         {
             if (!response.Headers.TryGetValues("Set-Cookie", out var setCookies)) return;
@@ -136,20 +148,80 @@ namespace LowCodeApp.Maui.Services
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 //AutoValidateAntiforgeryToken only validates unsafe methods.
-                if (request.Method != HttpMethod.Get && request.Method != HttpMethod.Head && request.Method != HttpMethod.Options)
+                var validated = request.Method != HttpMethod.Get && request.Method != HttpMethod.Head && request.Method != HttpMethod.Options;
+                string? sentToken = null;
+                if (validated)
                 {
-                    var token = await GetAntiforgeryTokenAsync(cancellationToken);
-                    if (token != null)
+                    sentToken = await GetAntiforgeryTokenAsync(cancellationToken);
+                    if (sentToken != null)
                     {
                         request.Headers.Remove(AntiforgeryTokenName);
-                        request.Headers.Add(AntiforgeryTokenName, token);
+                        request.Headers.Add(AntiforgeryTokenName, sentToken);
                     }
+                    //Buffer the body so the request can be sent a second time (see the retry below).
+                    if (request.Content != null) await request.Content.LoadIntoBufferAsync();
                 }
 
                 var response = await base.SendAsync(request, cancellationToken);
                 _connection.CaptureAntiforgeryToken(response);
+
+                //An antiforgery token is bound to the user it was issued for, so one obtained while anonymous is
+                //refused after signing in ("The provided antiforgery token was meant for a different claims-based
+                //user than the current user") and vice versa. The browser never runs into this because it reloads
+                //the page and asks for a new token, but this connection outlives the sign-in. Rather than trying
+                //to predict every moment the identity changes, treat the rejection itself as the signal: throw the
+                //cached token away, ask for a fresh one and send the request again. The action never ran (the
+                //filter rejects before it), so replaying it is safe.
+                if (validated && sentToken != null && response.StatusCode == HttpStatusCode.BadRequest)
+                {
+                    _connection._antiforgeryToken = null;
+                    var freshToken = await GetAntiforgeryTokenAsync(cancellationToken);
+                    if (freshToken != null && freshToken != sentToken)
+                    {
+                        var retry = await CloneWithTokenAsync(request, freshToken);
+                        response.Dispose();
+                        response = await base.SendAsync(retry, cancellationToken);
+                        _connection.CaptureAntiforgeryToken(response);
+                    }
+                }
+
+                //Signing in or out invalidates the token we hold, so fetch a new one on the next write. After a
+                //sign-out also drop the cookies: the server asks for the authentication cookie to be deleted, but
+                //not every platform's cookie store obeys, and a leftover session with an anonymous token cannot
+                //be recovered from inside the app.
+                if (response.IsSuccessStatusCode && ChangesIdentity(request))
+                {
+                    if (IsSignOut(request)) _connection.ClearCookies();
+                    else _connection._antiforgeryToken = null;
+                }
+
                 return response;
             }
+
+            //A rejected request has to be rebuilt: an HttpRequestMessage cannot be sent twice.
+            static async Task<HttpRequestMessage> CloneWithTokenAsync(HttpRequestMessage request, string token)
+            {
+                var clone = new HttpRequestMessage(request.Method, request.RequestUri) { Version = request.Version };
+                foreach (var header in request.Headers) clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                if (request.Content != null)
+                {
+                    var body = await request.Content.ReadAsByteArrayAsync();
+                    var content = new ByteArrayContent(body);
+                    foreach (var header in request.Content.Headers) content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                    clone.Content = content;
+                }
+                clone.Headers.Remove(AntiforgeryTokenName);
+                clone.Headers.Add(AntiforgeryTokenName, token);
+                return clone;
+            }
+
+            static bool IsSignOut(HttpRequestMessage request)
+                => request.RequestUri?.AbsolutePath.EndsWith("/api/account/logout", StringComparison.OrdinalIgnoreCase) == true;
+
+            //The account endpoints (login, login_ticket, logout) are the writes that can change who is signed in.
+            static bool ChangesIdentity(HttpRequestMessage request)
+                => request.Method == HttpMethod.Post
+                   && request.RequestUri?.AbsolutePath.Contains("/api/account/", StringComparison.OrdinalIgnoreCase) == true;
 
             async Task<string?> GetAntiforgeryTokenAsync(CancellationToken cancellationToken)
             {

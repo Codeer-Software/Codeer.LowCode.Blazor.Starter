@@ -60,7 +60,10 @@ namespace LowCodeApp.Server
                 new CookieOptions
                 {
                     HttpOnly = false,
-                    Secure = true,
+                    //https のときだけ Secure を付ける (認証 cookie の既定 CookieSecurePolicy.SameAsRequest と同じ考え方)。
+                    //決め打ちで true にすると、平文 http で配信したときにクライアントが送り返さず全 API が CSRF で失敗する。
+                    //LAN 上の実機から http で繋いで確認したいときにこれが要る (MAUI 版の README を参照)
+                    Secure = ctx.Request.IsHttps,
                     SameSite = SameSiteMode.Lax
                 });
         }
