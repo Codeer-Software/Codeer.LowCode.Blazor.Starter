@@ -34,6 +34,19 @@
     <TrimMode>partial</TrimMode>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
   </PropertyGroup>
+  <!-- An iOS device can only run fully AOT compiled code: Apple does not allow generating machine code at
+       runtime, so there is no JIT. Anything that compiles or emits IL while the app runs therefore cannot work
+       there, and the low code script engine does exactly that - the app died with an unhandled exception while
+       it loaded the design. Android is unaffected because it keeps a JIT (the profiled AOT above only covers
+       the startup path), which is why the same build works there. The Mono interpreter executes IL without
+       producing machine code, so it stays within Apple's rules and dynamic code works again; enabling it at
+       all is what turns dynamic code support back on. "all" interprets every assembly, which costs runtime
+       performance - no difference worth noticing on current hardware, but if an old device needs the headroom,
+       narrow this to the assemblies that actually need dynamic code. A side effect is that the device build no
+       longer AOT compiles, taking it from tens of minutes down to a few. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+    <MtouchInterpreter>all</MtouchInterpreter>
+  </PropertyGroup>
   <!-- Root components are created by reflection (BlazorWebView RootComponents), so the trimmer does not see
        their constructors and removes them: startup then dies with "CtorNotLocated,
        Microsoft.AspNetCore.Components.Web.HeadOutlet" inside AttachToPageAsync, before any component of this

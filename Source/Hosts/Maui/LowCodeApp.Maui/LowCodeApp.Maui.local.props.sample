@@ -47,17 +47,13 @@
     <ArchiveOnBuild>true</ArchiveOnBuild>
   </PropertyGroup>
 
-  <!-- Uncomment if the app dies on an iOS device with an unhandled exception while it starts, but works on
-       Android and in the simulator. An iOS device can only run fully AOT compiled code - Apple does not allow
-       generating machine code at runtime - so anything that compiles or emits IL while the app runs cannot
-       work there. Android keeps a JIT (the profiled AOT in the .csproj only covers the startup path), which is
-       why the same build is fine on Android. The Mono interpreter executes IL without producing machine code,
-       so it stays within Apple's rules and dynamic code works again. "all" interprets every assembly, which
-       costs runtime performance - once the assembly that needs dynamic code is known, list just that one
-       instead: enabling the interpreter at all is what turns dynamic code support back on. A side effect is
-       that the device build no longer AOT compiles, which takes it from tens of minutes down to a few.
+  <!-- The .csproj enables the Mono interpreter for iOS Release builds (MtouchInterpreter=all), because an iOS
+       device cannot generate machine code at runtime and the low code script engine needs to. Override it here
+       if an old device needs the performance back: name only the assemblies that need dynamic code, since
+       enabling the interpreter at all is what turns dynamic code support on. Note that dropping it entirely
+       brings back both the startup crash and the tens of minutes of AOT compilation.
   <PropertyGroup Condition="'$(Configuration)' == 'Release' And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
-    <MtouchInterpreter>all</MtouchInterpreter>
+    <MtouchInterpreter>SomeAssembly,AnotherAssembly</MtouchInterpreter>
   </PropertyGroup>
   -->
 

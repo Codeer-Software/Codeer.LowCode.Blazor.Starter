@@ -278,6 +278,22 @@ than a cookie problem. The authentication cookie itself already behaves this way
 This is still a development arrangement: traffic is unencrypted, so keep it to a network you control, and give
 real testers a server with a real certificate.
 
+### iOS: the Mono interpreter, not full AOT
+
+`Release` builds for iOS set `MtouchInterpreter=all`. This is not an optimisation, it is what makes the app run
+at all: an iOS device cannot generate machine code at runtime (Apple does not allow it, so there is no JIT),
+and the low code script engine compiles scripts while the app runs. Without the interpreter the app dies with
+an unhandled exception while it loads the design - the loading screen stops part way and `#blazor-error-ui`
+shows "An unhandled error has occurred". Android is unaffected: it keeps a JIT, and the profiled AOT above only
+covers the startup path. Debug builds already use the interpreter by default (which is why the problem only
+appears in a published build).
+
+The interpreter executes IL instead of compiled machine code, so it is slower - no difference worth noticing on
+current hardware, but if an old device needs the headroom, narrow the setting to the assemblies that actually
+need dynamic code (`MtouchInterpreter=A,B`): enabling the interpreter at all is what turns dynamic code support
+back on, so the rest can stay AOT compiled. As a side effect of skipping AOT, the device build takes a few
+minutes instead of tens of them; expect the long build back if you narrow this.
+
 ### Trimming
 
 `Release` keeps `TrimMode=partial` and Profiled AOT, and the csproj roots
