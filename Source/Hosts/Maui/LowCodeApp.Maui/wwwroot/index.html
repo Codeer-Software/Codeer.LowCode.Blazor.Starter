@@ -20,6 +20,24 @@
       align-items: center;
       justify-content: center;
     }
+
+    /* Startup failure detail. Long stack traces have to stay readable and scrollable on a phone, which is the
+       only place a published build can be diagnosed. */
+    .init-error {
+      padding: 16px;
+    }
+
+    .init-error pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+      max-height: 60vh;
+      overflow: auto;
+      background: #f5f5f5;
+      padding: 8px;
+      user-select: text;
+      -webkit-user-select: text;
+    }
   </style>
 </head>
 

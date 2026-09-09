@@ -30,8 +30,17 @@ else if (_connectionError != null)
     </div>
   </div>
 }
+else if (_initError != null)
+{
+  <div class="init-error">
+    <h1>Startup failed</h1>
+    <p>The application design could not be loaded.</p>
+    <pre>@_initError</pre>
+    <button class="btn btn-primary" @onclick="() => NavigationManager.Refresh(true)">Retry</button>
+  </div>
+}
 
-@if (_connectionError == null && _loaderVisible)
+@if (_connectionError == null && _initError == null && _loaderVisible)
 {
   <div class="app-loading @(_isValid ? "app-loading-done" : null)"
        style="--blazor-load-percentage: @(_progress)%; --blazor-load-percentage-text: '@(_progress)%'">
@@ -59,6 +68,11 @@ else if (_connectionError != null)
   bool _isValid = false;
   bool _toLoginPage = false;
   string? _connectionError;
+
+  //Startup runs library code that is only exercised for real in a published build (trimming and, on iOS, full
+  //AOT). Without this the exception disappears into Blazor's generic "An unhandled error has occurred" banner,
+  //which is unusable on a device: no developer tools in Release, and iOS does not log managed exceptions.
+  string? _initError;
 
   //What the loading screen says and how far the ring has travelled. Startup is several seconds on a cold
   //start (the .NET runtime and the WebView have to come up first), so it reports which step is running
@@ -164,10 +178,20 @@ else if (_connectionError != null)
   private async Task InitPage()
   {
     _isValid = false;
-    await SetStage("Loading the application design", 55);
-    await AppInfoService.AsImplement().InitializeAppAsync();
-    await SetStage("Preparing the page", 85);
-    await NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName, JSRuntime);
+    try
+    {
+      await SetStage("Loading the application design", 55);
+      await AppInfoService.AsImplement().InitializeAppAsync();
+      await SetStage("Preparing the page", 85);
+      await NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName, JSRuntime);
+    }
+    catch (Exception e)
+    {
+      _initError = e.ToString();
+      _loaderVisible = false;
+      StateHasChanged();
+      return;
+    }
 
     //Let the ring travel to 100% (0.5s) and then rest there before handing over: arriving at 100% is the part
     //worth showing, and fading it out while it is still moving looks like the app gave up half way. The fade
