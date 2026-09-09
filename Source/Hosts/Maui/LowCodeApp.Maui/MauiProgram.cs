@@ -47,12 +47,15 @@ namespace LowCodeApp.Maui
             return app;
         }
 
-        //appsettings.json is bundled as a MauiAsset. appsettings.Development.json (optional) overrides it.
+        //appsettings.json is bundled as a MauiAsset. appsettings.Development.json (Debug only) overrides it,
+        //and appsettings.local.json (gitignored, bundled in every configuration) overrides both - that is the
+        //one place a machine specific server URL can reach a Release/TestFlight build.
         static IConfiguration LoadAppSettings()
         {
             var config = new ConfigurationBuilder();
             AddJsonAsset(config, "appsettings.json", optional: false);
             AddJsonAsset(config, "appsettings.Development.json", optional: true);
+            AddJsonAsset(config, "appsettings.local.json", optional: true);
             return config.Build();
         }
 

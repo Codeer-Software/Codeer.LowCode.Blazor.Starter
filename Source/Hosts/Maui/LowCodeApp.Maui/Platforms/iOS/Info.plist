@@ -38,6 +38,12 @@
             </array>
         </dict>
     </array>
+    <!-- 輸出コンプライアンス: 標準の HTTPS/TLS 以外の暗号を使っていないという申告。
+         これが無いと App Store Connect へのアップロードのたびに手動回答を求められ、
+         回答するまで TestFlight のビルドが「処理中」から進まない。
+         独自の暗号処理を足したときは true にして ITSEncryptionExportComplianceCode も設定する。 -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>XSAppIconAssets</key>
     <string>Assets.xcassets/appicon.appiconset</string>
     <!-- Allows plain http to the development server. Remove when the server is https only. -->

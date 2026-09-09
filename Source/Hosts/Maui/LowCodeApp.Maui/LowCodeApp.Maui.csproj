@@ -50,9 +50,23 @@
     <MauiFont Include="Resources\Fonts\*" />
     <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
     <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
-    <!-- Server connection settings, read at startup by MauiProgram -->
-    <MauiAsset Include="appsettings.json" />
-    <MauiAsset Include="appsettings.Development.json" Condition="Exists('appsettings.Development.json')" />
+    <!-- The SDK's default globs also pick these up as Content, which bundles them a second time - without a
+         logical name, so their full path is used and the .app ends up with a "D:" directory holding a copy of
+         the whole source tree path. That breaks unpacking the archive on Windows (Path.GetFullPath rejects the
+         embedded drive letter) and it ignores the Release condition below, shipping the Development file to
+         testers. The MauiAsset items right after are the only ones that should bundle these. -->
+    <Content Remove="appsettings*.json" />
+    <!-- Server connection settings, read at startup by MauiProgram with
+         FileSystem.OpenAppPackageFileAsync("appsettings.json"), so the logical name has to be the bare file
+         name. Without LogicalName the item's full path is used instead, which on iOS creates a "D:" directory
+         inside the .app: the file is then unreachable at runtime, and unpacking the archive on Windows fails
+         outright with "The given path's format is not supported" (Path.GetFullPath rejects the embedded
+         drive letter). Android tolerates it, so this only shows up when building for iOS. -->
+    <MauiAsset Include="appsettings.json" LogicalName="appsettings.json" />
+    <MauiAsset Include="appsettings.Development.json" LogicalName="appsettings.Development.json" Condition="Exists('appsettings.Development.json') And '$(Configuration)' != 'Release'" />
+    <!-- Machine specific overrides, gitignored. Bundled in every configuration, unlike the Development file:
+         a Release/TestFlight build needs some way to carry a real server URL without editing tracked files. -->
+    <MauiAsset Include="appsettings.local.json" LogicalName="appsettings.local.json" Condition="Exists('appsettings.local.json')" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
@@ -65,4 +79,9 @@
     <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.30" />
     <ProjectReference Include="..\..\Common\LowCodeApp.Client.Shared\LowCodeApp.Client.Shared.csproj" />
   </ItemGroup>
+  <!-- Machine/organisation specific publishing identity: bundle id, Apple team and signing, Android upload
+       keystore. Gitignored (*.local.props), so the tracked project keeps the neutral template defaults above
+       and nothing secret reaches the repository. Imported last, so its properties win.
+       See LowCodeApp.Maui.local.props.sample for the shape. -->
+  <Import Project="LowCodeApp.Maui.local.props" Condition="Exists('LowCodeApp.Maui.local.props')" />
 </Project>

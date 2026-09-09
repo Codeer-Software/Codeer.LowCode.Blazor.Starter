@@ -34,7 +34,11 @@ runtime from the app's *Settings* page (stored with MAUI `Preferences`).
 - For a physical device use the PC's LAN address - see *A physical device over the LAN* below.
 - Plain `http` is allowed for development by `android:usesCleartextTraffic="true"` (AndroidManifest.xml) and
   `NSAllowsArbitraryLoads` (Info.plist). Remove both when the server is `https` only.
-- Put machine-specific overrides in `appsettings.Development.json` (same shape, picked up automatically when present).
+- Three layers, each overriding the one before: `appsettings.json` (tracked, the template default),
+  `appsettings.Development.json` (machine-specific, **`Debug` only**) and `appsettings.local.json`
+  (machine-specific, **bundled in every configuration**, gitignored). Use the `local` one when a Release or
+  TestFlight build has to reach a real server - it is the only layer that gets there without editing a tracked
+  file. Same shape as `appsettings.json`, all optional.
 
 ### A physical device over the LAN
 
@@ -140,10 +144,11 @@ in `LowCodeApp.csproj`, then follow the standard .NET MAUI publishing steps for 
 
 The development conveniences described above are exactly what must not ship. Work through this list.
 
-1. **Delete `appsettings.Development.json`.** The csproj bundles it *when the file exists*
-   (`Condition="Exists(...)"`), so a build made with a local file still in place ships your machine's server URL
-   as the app's default - testers get `http://localhost:...` and a connection error. Put the real URL in
-   `appsettings.json` instead.
+1. **Set the server URL for the build.** `appsettings.Development.json` is bundled in `Debug` only, so a
+   Release build no longer ships your machine's URL by accident - but it also means testers get whatever
+   `appsettings.json` says, and its default is the Android emulator loopback, useless on a real device. Put the
+   address in `appsettings.local.json` (gitignored, bundled in every configuration) or, for a real deployment,
+   in `appsettings.json` itself.
 2. **The server must authenticate.** The branch that treats a server without authentication as usable is
    `#if DEBUG` only (see `LowCodePage.razor`), so a genuine Release build needs the Cookie variant (or another
    host that issues the authentication cookie).
@@ -153,13 +158,125 @@ The development conveniences described above are exactly what must not ship. Wor
 4. **Remove the cleartext permissions** once the server is https only: `android:usesCleartextTraffic="true"`
    in `Platforms/Android/AndroidManifest.xml` and `NSAllowsArbitraryLoads` in `Platforms/iOS/Info.plist`.
 5. **Sign with your own key.** A local Release build is signed with the auto-generated `CN=Android Debug`
-   certificate, which Google Play rejects. Create an upload keystore, keep it out of the repository, and pass
-   its path and password from the environment or a gitignored `.props` file - never from a tracked file.
+   certificate, which Google Play rejects; iOS will not even link without a signing identity. Both are
+   configured in `LowCodeApp.Maui.local.props` - see *Publishing identity* below.
 6. **Bump `ApplicationVersion`** on every upload (`ApplicationDisplayVersion` is the user-visible string).
 
 Do not reach for `-p:DefineConstants=DEBUG%3BTRACE` to get around 2 or 3. It builds an app that skips
 certificate validation entirely, which is fine on your desk and unacceptable in anyone else's hands. It is
 useful for measuring startup on a Release build against a development server, and for nothing else.
+
+### Publishing identity (`LowCodeApp.Maui.local.props`)
+
+The tracked project deliberately keeps the neutral template defaults - `com.companyname.lowcodeapp`, no signing.
+Anything specific to your organisation goes in `LowCodeApp.Maui.local.props`, which the csproj imports last when
+it exists, so its properties override the ones above. `*.local.props` is gitignored, so bundle identifiers,
+certificate names and keystore passwords stay out of the repository.
+
+```powershell
+copy LowCodeApp.Maui.local.props.sample LowCodeApp.Maui.local.props
+```
+
+Then edit it. `LowCodeApp.Maui.local.props.sample` documents every property; the short version is the bundle id,
+the version pair, and - per platform - the signing identity.
+
+### iOS: a TestFlight build
+
+Needs a paid Apple Developer Program membership and a Mac with Xcode. Visual Studio's *Pair to Mac* is enough to
+build from Windows, but the upload itself happens on the Mac.
+
+**Once, on the Apple side.** All of this is in the [Apple Developer](https://developer.apple.com/account) portal
+and [App Store Connect](https://appstoreconnect.apple.com):
+
+1. *Certificates, Identifiers & Profiles > Identifiers*: register an explicit App ID with your bundle id. It has
+   to match `ApplicationId` exactly and cannot be changed afterwards.
+2. *Certificates*: create an **Apple Distribution** certificate and install it in the Mac's keychain (this is
+   easiest from the Mac - the request is generated by Keychain Access). *Keychain Access > My Certificates* then
+   shows its full name, e.g. `Apple Distribution: Example Inc. (ABCDE12345)`; that string is `CodesignKey`.
+3. *Profiles*: create an **App Store** provisioning profile for that App ID, download it and double-click it on
+   the Mac to install. Its *name* (not the file name, not the UUID) is `CodesignProvision`.
+4. App Store Connect: *My Apps > +* and create the app record with the same bundle id.
+
+**Every build.**
+
+1. Bump `ApplicationVersion` in `LowCodeApp.Maui.local.props`. App Store Connect rejects a build number that has
+   already been uploaded, and it does so *after* the upload finishes.
+2. Archive. On the Mac (most reliable - Xcode's toolchain runs locally):
+
+   ```bash
+   dotnet publish -f net10.0-ios -c Release
+   ```
+
+   From Windows through the pairing, the same command works once *Pair to Mac* is connected; add
+   `-p:ServerAddress=<mac> -p:ServerUser=<user>` for a command line build outside Visual Studio. `ArchiveOnBuild`
+   is set in `local.props`, so the result is an `.xcarchive` plus an `.ipa` under
+   `bin/Release/net10.0-ios/ios-arm64/publish/`.
+3. Copy the `.ipa` to the Mac and upload it with **Transporter** (free, in the Mac App Store): sign in with the
+   Apple ID that has access to the app record, drag the `.ipa` in, *Deliver*.
+4. App Store Connect > *TestFlight*. The build shows as *Processing* for a few minutes, then becomes available to
+   internal testers (up to 100 people on your team, no beta review). External testers need a beta review pass.
+
+**Things that trip this up.**
+
+- **Export compliance.** `Info.plist` declares `ITSAppUsesNonExemptEncryption=false` - the app only uses standard
+  HTTPS. Without it, every single upload waits for a manual answer in App Store Connect before testers can
+  install. Set it to `true` (and add `ITSEncryptionExportComplianceCode`) if you add your own cryptography.
+- **The server must have a real certificate.** Release builds validate certificates; the bypass is `#if DEBUG`.
+  A TestFlight build pointed at a development server on a LAN address cannot connect at all. Testers can change
+  the address from the app's *Settings* page, but no address makes an untrusted certificate work.
+- **`NSAllowsArbitraryLoads` is still `true`** in `Info.plist`. Internal TestFlight accepts it, but App Store
+  review (and external TestFlight) asks why plain http is needed. Remove it once the server is https only.
+- **iOS always AOT compiles**, so the trimming notes below apply to every iOS Release build, not just Android's.
+
+### Pointing a Release build at a development server on the LAN
+
+A TestFlight or Play internal-test build is a Release build, so the certificate bypass in
+`ServerConnection.CreateHttpClient` is compiled out and the ASP.NET Core development certificate is rejected -
+`https://<lan ip>:7137/` cannot work at all. Testing an actual store build against the PC on the office network
+therefore means either giving the server a certificate the device trusts, or taking TLS out of the picture and
+talking plain `http`. The second is far less work, and the pieces are already here.
+
+1. **Run the server with `http-lan`** (binds `0.0.0.0:5085`, http only, so `UseHttpsRedirection` has no https
+   port to redirect to and leaves requests alone):
+
+   ```powershell
+   dotnet run --project Source/Hosts/Cookie/LowCodeApp.Server --launch-profile http-lan
+   ```
+
+2. **Open the port for the network profile the device is actually on.** Windows classifies each network as
+   Private or Public, and a rule scoped to Private does nothing on a Wi-Fi marked Public - which is the default
+   for a wireless network. Check with `Get-NetConnectionProfile`, then, from an elevated PowerShell, either mark
+   that network Private (preferred - it is a network you control):
+
+   ```powershell
+   Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private
+   New-NetFirewallRule -DisplayName "LowCodeApp Server http (LAN)" -Direction Inbound -Protocol TCP -LocalPort 5085 -Profile Private -Action Allow
+   ```
+
+   or, if the network must stay Public, add `-Profile Public` to the rule instead. Do not do that on a network
+   you do not control.
+
+3. **Put the PC's address on that interface in `appsettings.local.json`**, e.g.
+
+   ```json
+   { "Server": { "BaseUrl": "http://192.168.3.11:5085/" } }
+   ```
+
+   A machine with several adapters has several addresses; use the one on the same subnet as the phone
+   (`Get-NetIPAddress -AddressFamily IPv4`). It usually comes from DHCP, so it changes - the app's *Settings*
+   page fixes that without a rebuild.
+
+4. **iOS lets this through because of `NSAllowsArbitraryLoads`** in `Info.plist`, and Android because of
+   `android:usesCleartextTraffic="true"`. Removing either (which a store release should) also removes this
+   arrangement.
+
+The antiforgery cookie matters here. The Cookie variant sets it with `Secure = ctx.Request.IsHttps`, so it is
+marked `Secure` over https and plain over http. Were it hardcoded to `true`, `CookieContainer` would refuse to
+send it back over http and every API call would fail CSRF validation - which looks like a broken login rather
+than a cookie problem. The authentication cookie itself already behaves this way (`CookieSecurePolicy.SameAsRequest`).
+
+This is still a development arrangement: traffic is unencrypted, so keep it to a network you control, and give
+real testers a server with a real certificate.
 
 ### Trimming
 
