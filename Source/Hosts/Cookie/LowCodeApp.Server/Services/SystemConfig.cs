@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.SystemSettings;
 using LowCodeApp.Client.Shared.Services;
+using LowCodeApp.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
@@ -30,6 +31,8 @@ namespace LowCodeApp.Server.Services
         public SendGridSettings SendGrid { get; set; } = new();
         public GmailSettings Gmail { get; set; } = new();
         public AISettings AISettings { get; set; } = new();
+        //AIChatField のサーバー側 (AI/AIChatAgentTable)。AI が読むデータソース等
+        public AIChatSettings AIChat { get; set; } = new();
         //ID/パスワードのログイン (表・列はユーザーモジュールのデザインから: IdField / LoginAccountContractField / PasswordHashField)。外部 IdP 専用にするなら false (ログイン画面はプロバイダのボタンだけになる)
         public bool AllowPasswordLogin { get; set; } = true;
         //外部 IdP (Entra ID / Google / AWS Cognito / OIDC) = 種類ごとの設定 (使うものだけ書けばよい)。実体 (IExternalLoginProvider) は Services/ExternalLoginTable が組み立てる

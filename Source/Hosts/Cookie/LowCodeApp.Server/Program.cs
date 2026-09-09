@@ -13,6 +13,7 @@ using System.Text.Json.Serialization;
 using LowCodeApp.Client.Shared.Samples;
 using LowCodeApp.Server;
 using LowCodeApp.Server.Services;
+using LowCodeApp.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
@@ -53,6 +54,7 @@ SystemConfig.Instance.GraphApi = builder.Configuration.GetSection("GraphApi").Ge
 SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Get<SendGridSettings>() ?? new();
 SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
 SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
+SystemConfig.Instance.AIChat = builder.Configuration.GetSection("AIChat").Get<AIChatSettings>() ?? new();
 SystemConfig.Instance.AllowPasswordLogin = builder.Configuration.GetValue<bool?>("AllowPasswordLogin") ?? true;
 //外部 IdP の設定 (種類ごとのセクション。実体は Services/ExternalLoginTable が組み立てる)
 SystemConfig.Instance.EntraLogin = builder.Configuration.GetSection("EntraLogin").Get<EntraLoginSettings>() ?? new();

@@ -23,7 +23,7 @@
   <ItemGroup>
     <!-- Codeer.LowCode.Blazor のフィールド/ページ用 Selenium ドライバ (PageObject が使う) -->
     <PackageReference Include="Codeer.LowCode.Blazor.SeleniumDrivers" Version="0.29.0" />
-    <PackageReference Include="Codeer.LowCode.Blazor.Extras.SeleniumDrivers" Version="0.2.0" />
+    <PackageReference Include="Codeer.LowCode.Blazor.Extras.SeleniumDrivers" Version="0.3.0" />
     <PackageReference Include="Codeer.LowCode.Bindings.Blazor-ApexCharts.SeleniumDrivers" Version="0.1.0" />
     <PackageReference Include="Selenium.StandardControls" Version="0.61.0" />
     <!-- テストデータ (DataManager): 本体と同じマルチ DB アクセス層 -->

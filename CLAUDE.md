@@ -84,6 +84,7 @@
   - `Services/CustomizedModuleDataIO.cs` — 保存・更新・一括 INSERT のフック（パスワードハッシュはここ）
   - `Services/FileStorageTable.cs` — appsettings の保存先設定 → `IFileStorage`（FileSystem / Azure Blob / S3）
   - `Services/MailSenderTable.cs` — 送信インフラ名 → `IMailSender`（Smtp / GraphApi / Gmail）
+  - `AI/AIChatAgentTable.cs`（Cookie）— AIChatField の Agent 名 → `IAIChatAgent`。既定（空 / `RawDataAccess`）は Extras.Server の `RawDataAccessAgent`（AI がアプリの DB を読み取り専用 SQL で集計・グラフ化して答える。`AISettings` の Azure OpenAI が必要）。受け口は `Controllers/AIChatController.cs`。補足文書はデザインプロジェクトの `Resources/{DocumentFolder}/*.md|*.txt`（本体の `DesignDataFileManager.GetResourceTexts` で読む）
   - `Services/DataService.cs` — 1 リクエスト分の DB アクセス・現在ユーザー（`IAuthenticationContext`）
   - `Controllers/TestAPIController.cs` — 独自 Web API を足すときの雛形
 - `LowCodeApp.Client`: Blazor WebAssembly。`Pages/LowCodePage.razor` がローコードページのホスト
@@ -108,7 +109,7 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Desi
 - 前提: .NET 10 SDK（Visual Studio 2026 に同梱）。<!-- maintainer-only -->リポジトリのホストは .NET 8（フレームワークの対象）。`export-app` が書き出すアプリは net10.0 と最新パッケージに上げる。<!-- /maintainer-only -->
 - Visual Studio 2026: `LowCodeApp.sln` を開き `LowCodeApp.Server` を F5。デザイナは `LowCodeApp.Designer` を「新しいインスタンスを開始」
 - VS Code: ルートの `.vscode/launch.json` に **Server** / **Designer** 構成がある（Cookie と `DesignProjects/Project/design`。デザインプロジェクトをリネームしたら `Project` を置換する）。拡張は C# Dev Kit
-- **サーバーは Claude Code が勝手に再起動しない**（ユーザーが VS / VS Code で起動していることが多い）。再起動が必要なときはその旨を伝える
+- **サーバーの扱い**: ユーザーが VS / VS Code で起動していればそれを使う（勝手に止めない・再起動しない。再起動が必要なときはその旨を伝える）。起動していなければ Claude Code が上の `dotnet run` をバックグラウンドで起動してよい（動作確認用。自分で起動したものは自分で止めてよい）。ユーザーに「起動しないで」「止めて」と言われたらやめる
 - C# を変えたら Server / Designer の再ビルドと再起動が必要。デザインの変更はデプロイだけで反映（スクリプト変更はサーバー再起動）
 
 ## appsettings リファレンス（`appsettings.json` / `appsettings.Development.json`）
@@ -131,7 +132,8 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Desi
 | `IsLicenseAutoUpdate` | bool | ライセンスの自動更新。`DomainLicense`（string）はドメイン単位ライセンスのキー。**トライアルは何も設定しなくても動く** |
 | `Mail` | `{ DefaultInfraName, DefaultBulkInfraName, HistoryModuleName }` | メール送信の既定インフラ名（`MailSenderTable` のキー）と送信履歴モジュール |
 | `Smtp` / `GraphApi` / `Gmail` | | 送信インフラごとの設定。項目は `api --type Codeer.LowCode.Blazor.Extras.Server.Mail.SmtpSettings --assembly <同上の dll パス>` 等で確認 |
-| `AISettings` | `{ OpenAIEndPoint, OpenAIKey, ChatModel, DocumentAnalysisEndPoint, DocumentAnalysisKey }` | AI 文書解析（Azure OpenAI / Document Intelligence）。未使用なら空 |
+| `AISettings` | `{ OpenAIEndPoint, OpenAIKey, ChatModel, DocumentAnalysisEndPoint, DocumentAnalysisKey }` | AI 文書解析と AI チャット（Azure OpenAI / Document Intelligence）。未使用なら空 |
+| `AIChat`（Cookie） | `{ RawDataAccessDataSources: [] }` | AI チャット（`RawDataAccessAgent`）が読むデータソース名。空なら `DataSources` の全部。**何を読めるかは DB 側で決める**: 本番は AI 用の読み取り専用 DB ユーザー（見せてよい表・列だけ GRANT）で接続するデータソースを別に用意してここに書く |
 | （ログインのユーザーテーブル） | 設定なし | ユーザーモジュール（`CurrentUserModuleDesignName`）のデザインから引く: 表 = `DbTable`、ID = `IdField`、ログイン ID / 外部 IdP の突き合わせ / 有効フラグ / 表示名 = `LoginAccountContractField` の役割、ハッシュ / ソルト = 契約の照合用の列。初回起動時にユーザーが 0 件なら `admin`/`admin` を作る |
 | `AllowPasswordLogin`（Cookie） | `true` | ID/パスワードのログインを出すか。外部 IdP 専用なら `false` |
 | `EntraLogin` / `GoogleLogin` / `CognitoLogin` / `OidcLogins`（Cookie） | なし | 外部 IdP。`ClientId` を書いたものだけ有効（Extras の `docs/ExternalLogin.md`） |
@@ -174,6 +176,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 | 保存・更新時の処理 | `Server/Services/CustomizedModuleDataIO.cs` の override |
 | 独自 Web API | `Server/Controllers/` に Controller を追加（`TestAPIController` が雛形）。スクリプトからは Extras の `WebApiService` で呼ぶ（`_script_catalog.md` に載る） |
 | ファイル保存先・メール送信の独自実装 | `IFileStorage` → `FileStorageTable`、`IMailSender` → `MailSenderTable` に 1 行 |
+| AI チャットの独自 Agent | `IAIChatAgent` を実装して `Server/AI/AIChatAgentTable.cs` に 1 行。AIChatField のデザインの `Agent` にその名前を書く |
 | デザイナのメニュー・チェック・テンプレート | `Designer/App.xaml.cs`（`DesignerEnvironment.AddMainMenu` / `AddCustomDesignCheckHandler` / `ProjectCatalog.Add`）。テンプレート・headless verb の登録は `base.OnStartup(e)` より前 |
 
 ## Claude Code が作業するときの原則
