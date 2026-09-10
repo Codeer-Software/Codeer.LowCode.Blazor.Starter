@@ -155,6 +155,9 @@ else if (_initError != null)
     catch (Exception e)
     {
       _connectionError = e.Message;
+      //Same reasoning as _initError below: on a device Release build this is often the only trace of why
+      //the app never got past the loading screen.
+      LowCodeApp.Maui.Services.AppLog.Write("LowCodePage.OnInitializedAsync", e);
       _toLoginPage = true;
       return;
     }
@@ -188,6 +191,7 @@ else if (_initError != null)
     catch (Exception e)
     {
       _initError = e.ToString();
+      LowCodeApp.Maui.Services.AppLog.Write("LowCodePage.InitPage", e);
       _loaderVisible = false;
       StateHasChanged();
       return;

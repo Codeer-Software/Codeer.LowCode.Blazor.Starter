@@ -10,6 +10,10 @@ namespace LowCodeApp.Maui
     {
         public static MauiApp CreateMauiApp()
         {
+            //Must run before anything else can throw - the whole point is to catch crashes that would
+            //otherwise only show up as an opaque TestFlight crash count with no C# call site.
+            AppLog.Initialize();
+
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
