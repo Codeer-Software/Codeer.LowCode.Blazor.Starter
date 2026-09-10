@@ -213,8 +213,12 @@ and [App Store Connect](https://appstoreconnect.apple.com):
    `bin/Release/net10.0-ios/ios-arm64/publish/`.
 3. Copy the `.ipa` to the Mac and upload it with **Transporter** (free, in the Mac App Store): sign in with the
    Apple ID that has access to the app record, drag the `.ipa` in, *Deliver*.
-4. App Store Connect > *TestFlight*. The build shows as *Processing* for a few minutes, then becomes available to
-   internal testers (up to 100 people on your team, no beta review). External testers need a beta review pass.
+4. App Store Connect > *TestFlight*. The build shows as *Processing* for a few minutes.
+5. **Assign the build to the tester group** (the group's *Builds* tab). This is the step that sends the
+   invitation mails, so a tester added after the previous build was assigned hears nothing until it runs again.
+   The group setting *Automatically distribute builds* only covers builds uploaded from Xcode, so it does not
+   help when Transporter did the upload. Internal testers (up to 100 people on your team) get the build within
+   minutes and need no beta review; external testers need a beta review pass.
 
 **Things that trip this up.**
 
