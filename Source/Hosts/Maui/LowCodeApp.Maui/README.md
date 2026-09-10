@@ -228,6 +228,57 @@ and [App Store Connect](https://appstoreconnect.apple.com):
   review (and external TestFlight) asks why plain http is needed. Remove it once the server is https only.
 - **iOS always AOT compiles**, so the trimming notes below apply to every iOS Release build, not just Android's.
 
+### Android: a Play internal test
+
+Needs a Google Play Console developer account. Internal testing takes up to 100 testers, has no review wait, and
+the build is available minutes after the upload finishes.
+
+**Once, on the Play side.**
+
+1. Create the upload key. A local Release build is otherwise signed with the auto generated `CN=Android Debug`
+   certificate, which Play rejects. Keep the keystore outside the repository and back it up - losing it means a
+   support request to register a new upload key.
+
+   ```powershell
+   keytool -genkeypair -v -keystore D:\keys\lowcodeapp-upload.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10950 -storetype pkcs12
+   ```
+
+   Play requires a key valid past 22 October 2033, so do not shorten `-validity`. Point
+   `AndroidSigningKeyStore` at it in `LowCodeApp.Maui.local.props` and keep the password in an environment
+   variable rather than in the file - see *Publishing identity* above.
+2. Play Console: *Create app*. The package name has to match `ApplicationId` exactly and cannot be changed
+   afterwards. Leave **Play App Signing** enabled (the default): the key above only signs uploads, and Google
+   signs what reaches devices.
+3. Fill in *App content*. Data safety, content rating, target audience, ads and a privacy policy URL are all
+   required before any track - internal testing included - can be released. This app signs users in, so the
+   data safety form has to account for the credentials it handles.
+4. *Testing > Internal testing*: create the track, add testers by email (or as a mailing list), and share the
+   opt-in link with them.
+
+**Every build.**
+
+1. Bump `ApplicationVersion` in `LowCodeApp.Maui.local.props`. It becomes the Android version code, and Play
+   rejects a version code that has already been uploaded.
+2. Publish:
+
+   ```powershell
+   dotnet publish Source/Hosts/Maui/LowCodeApp.Maui/LowCodeApp.Maui.csproj -f net10.0-android -c Release
+   ```
+
+   The result is `bin/Release/net10.0-android/publish/<package>-Signed.aab`. Upload that one - the unsigned
+   `.aab` next to it is rejected.
+3. Play Console > *Internal testing > Create new release*, drop the `.aab` in, roll it out. Testers get it from
+   the opt-in link; the first install can take a few minutes to appear.
+
+**Things that trip this up.**
+
+- **The version code is shared with iOS.** `ApplicationVersion` in `local.props` feeds both, so a TestFlight
+  upload and a Play upload consume the same number. That is harmless - both stores only require their own
+  numbers to increase - but do not expect them to line up with each other.
+- **`usesCleartextTraffic="true"`** is still in `Platforms/Android/AndroidManifest.xml`. Internal testing
+  accepts it; remove it once the server is https only.
+- **A LAN server means the testers have to be on that LAN**, with the server running. See the section below.
+
 ### Pointing a Release build at a development server on the LAN
 
 A TestFlight or Play internal-test build is a Release build, so the certificate bypass in
