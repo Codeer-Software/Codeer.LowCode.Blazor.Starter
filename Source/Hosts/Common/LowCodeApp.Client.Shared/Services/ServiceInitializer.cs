@@ -27,6 +27,7 @@ namespace LowCodeApp.Client.Shared.Services
             TotpResetClient.StatusEndPoint = "/api/account/totp/status";
             TotpResetClient.ResetEndPoint = "/api/account/totp/reset";
             AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";
+            AIChatField.EndPoint = "/api/ai_chat";
             BulkFileReader.ParseFileEndPoint = "/api/module_data/parse_file";
             BulkFileTransferService.ListFileByDataEndPoint = "/api/module_data/list_file_by_data";
             BulkFileTransferService.BulkSubmitEndPoint = "/api/module_data/bulk_submit";

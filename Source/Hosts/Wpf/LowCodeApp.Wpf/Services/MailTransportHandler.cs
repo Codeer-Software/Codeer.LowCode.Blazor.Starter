@@ -12,7 +12,7 @@ namespace LowCodeApp.Wpf.Services
     public class MailTransportHandler : IMailTransportHandler
     {
         public async Task<MailSendResult> SendAsync(MailSendRequest request)
-            => await RunAsync(async (dispatcher, _) => await dispatcher.SendAsync(request));
+            => await RunAsync(async (dispatcher, io) => await dispatcher.SendAsync(request, io));
 
         public async Task<MailSendResult> SendBulkSearchAsync(MailBulkSearchRequest request)
             => await RunAsync(async (dispatcher, io) => await new MailBulkSearch(dispatcher, io, DesignerService.GetDesignData(), LogError).SendAsync(request));

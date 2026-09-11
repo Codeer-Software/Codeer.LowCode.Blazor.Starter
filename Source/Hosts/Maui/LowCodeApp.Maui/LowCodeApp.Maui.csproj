@@ -89,7 +89,7 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.30" />
+    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.33" />
     <ProjectReference Include="..\..\Common\LowCodeApp.Client.Shared\LowCodeApp.Client.Shared.csproj" />
   </ItemGroup>
   <!-- Machine/organisation specific publishing identity: bundle id, Apple team and signing, Android upload
