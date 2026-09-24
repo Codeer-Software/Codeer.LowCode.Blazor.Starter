@@ -85,6 +85,7 @@
   - `Services/FileStorageTable.cs` — appsettings の保存先設定 → `IFileStorage`（FileSystem / Azure Blob / S3）
   - `Services/MailSenderTable.cs` — 送信インフラ名 → `IMailSender`（Smtp / GraphApi / Gmail）
   - `AI/AIChatAgentTable.cs`（Cookie）— AIChatField の Agent 名 → `IAIChatAgent`。既定（空 / `RawDataAccess`）は Extras.Server の `RawDataAccessAgent`（AI がアプリの DB を読み取り専用 SQL で集計・グラフ化して答える。`AISettings` の Azure OpenAI が必要）。受け口は `Controllers/AIChatController.cs`。補足文書はデザインプロジェクトの `Resources/{DocumentFolder}/*.md|*.txt`（本体の `DesignDataFileManager.GetResourceTexts` で読む）
+  - `AI/SemanticSearchIndex.cs` / `AI/EmbeddingProviderTable.cs`（Cookie）— SemanticSearchField（意味検索）のサーバー側入口 `SemanticSearchService` をプロセスに 1 つ。埋め込みプロバイダは appsettings の `SemanticSearch.EmbeddingProvider` の呼び名（`AzureOpenAI` / 独自）で対応表から選ぶ。保存時の索引付けは `CustomizedModuleDataIO`、再索引 API は `Controllers/SemanticSearchController.cs`、AI チャットの search_records は `AIChatAgentTable` が同じインスタンスを渡す。DB 側ベクトル検索なので対象モジュールのデータソースは PostgreSQL（pgvector）か SQL Server 2025
   - `Services/DataService.cs` — 1 リクエスト分の DB アクセス・現在ユーザー（`IAuthenticationContext`）
   - `Controllers/TestAPIController.cs` — 独自 Web API を足すときの雛形
 - `LowCodeApp.Client`: Blazor WebAssembly。`Pages/LowCodePage.razor` がローコードページのホスト
@@ -133,6 +134,8 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Desi
 | `Mail` | `{ DefaultInfraName, DefaultBulkInfraName, HistoryModuleName }` | メール送信の既定インフラ名（`MailSenderTable` のキー）と送信履歴モジュール |
 | `Smtp` / `GraphApi` / `Gmail` | | 送信インフラごとの設定。項目は `api --type Codeer.LowCode.Blazor.Extras.Server.Mail.SmtpSettings --assembly <同上の dll パス>` 等で確認 |
 | `AISettings` | `{ OpenAIEndPoint, OpenAIKey, ChatModel, DocumentAnalysisEndPoint, DocumentAnalysisKey }` | AI 文書解析と AI チャット（Azure OpenAI / Document Intelligence）。未使用なら空 |
+| `SemanticSearch`（Cookie） | `{ EmbeddingProvider: "" }` | 意味検索（SemanticSearchField）の埋め込みプロバイダの呼び名（`EmbeddingProviderTable` のキー）。空なら文章だけ保存され意味検索なし |
+| `AzureOpenAIEmbedding`（Cookie） | `{ EndPoint, Key, Deployment, Dimensions }` | `EmbeddingProvider: "AzureOpenAI"` のときの Azure OpenAI 埋め込みモデル。`Dimensions` は DB のベクトル列の次元と合わせる |
 | `AIChat`（Cookie） | `{ RawDataAccessDataSources: [] }` | AI チャット（`RawDataAccessAgent`）が読むデータソース名。空なら `DataSources` の全部。**何を読めるかは DB 側で決める**: 本番は AI 用の読み取り専用 DB ユーザー（見せてよい表・列だけ GRANT）で接続するデータソースを別に用意してここに書く |
 | （ログインのユーザーテーブル） | 設定なし | ユーザーモジュール（`CurrentUserModuleDesignName`）のデザインから引く: 表 = `DbTable`、ID = `IdField`、ログイン ID / 外部 IdP の突き合わせ / 有効フラグ / 表示名 = `LoginAccountContractField` の役割、ハッシュ / ソルト = 契約の照合用の列。初回起動時にユーザーが 0 件なら `admin`/`admin` を作る |
 | `AllowPasswordLogin`（Cookie） | `true` | ID/パスワードのログインを出すか。外部 IdP 専用なら `false` |
@@ -177,6 +180,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 | 独自 Web API | `Server/Controllers/` に Controller を追加（`TestAPIController` が雛形）。スクリプトからは Extras の `WebApiService` で呼ぶ（`_script_catalog.md` に載る） |
 | ファイル保存先・メール送信の独自実装 | `IFileStorage` → `FileStorageTable`、`IMailSender` → `MailSenderTable` に 1 行 |
 | AI チャットの独自 Agent | `IAIChatAgent` を実装して `Server/AI/AIChatAgentTable.cs` に 1 行。AIChatField のデザインの `Agent` にその名前を書く |
+| 意味検索の埋め込みモデルを差し替える | `IEmbeddingProvider` を実装して `Server/AI/EmbeddingProviderTable.cs` に 1 行。appsettings の `SemanticSearch.EmbeddingProvider` にその名前を書く |
 | デザイナのメニュー・チェック・テンプレート | `Designer/App.xaml.cs`（`DesignerEnvironment.AddMainMenu` / `AddCustomDesignCheckHandler` / `ProjectCatalog.Add`）。テンプレート・headless verb の登録は `base.OnStartup(e)` より前 |
 
 ## Claude Code が作業するときの原則
