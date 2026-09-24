@@ -150,7 +150,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 ホストが配信するデザインは 1 つ（`DesignFileDirectory` の `App.zip`）。デザインプロジェクトは `DesignProjects/` にいくつ置いてもよいが、
 サーバーが読むのは最後にデプロイしたもの。
 
-- **表示を切り替える**: 見たいデザインを `deploy "DesignProjects/<名>/design" --out Local/deploy.json` でデプロイし直す（App.zip が上書きされる。サーバー再起動は不要、ホットリロードで反映）。標準テンプレートどうしなら接続文字列の変更は要らない（ホストの appsettings に全テンプレートのデータソースが入っている）
+- **表示を切り替える**: 見たいデザインを `deploy "DesignProjects/<名>/design" --out Local/deploy.json` でデプロイし直す（App.zip が上書きされる。サーバー再起動は不要、ホットリロードで反映）。ユーザーのアプリ（`DesignProjects/Project`）はデータソース `Main`（`Local/Data/main.db`）、標準テンプレートから作ったものは各テンプレートのデータソース（`C:\Codeer.LowCode.Blazor.Local\Data`）で、どちらもホストの appsettings に入っているので接続文字列の変更は要らない（ホストの appsettings に全テンプレートのデータソースが入っている）
 - **サンプル集を追加する**（ユーザーが「サンプルを見たい」と言ったとき）: `template-create --name PatternShowcase --out-dir DesignProjects/PatternShowcase/design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir Local/Designs --out Local/tc.json` → `claude-workspace DesignProjects/PatternShowcase --project design`。これで表示はサンプルに切り替わるので、ユーザーのアプリに戻すときは上の deploy
 - **サンプル集を消す**: デザイナを終了 → `DesignProjects/PatternShowcase/` を削除 → `C:\Codeer.LowCode.Blazor.Local\Data\sqlite_patterns_v*.db` を削除 → ユーザーのアプリを deploy し直す
 
@@ -159,7 +159,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 1. 作る: `template-create --name Empty --out-dir DesignProjects/<アプリ名>/design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir Local/Designs --out Local/tc.json`
    （テンプレートはすべて Cookie 認証向けで AppUser と admin/admin を含む。`template-list` で一覧。テンプレート付属の SQLite が `C:\Codeer.LowCode.Blazor.Local\Data` に置かれ（デザイナの GUI がテンプレートから作るときと同じ場所。サーバーの `ConnectionStrings` もここを指したままにしてある）、`design/designer.settings.Development.json` の接続文字列がそこを指し、`Local/Designs/App.zip` が**この新しいデザインで上書き**される）
 2. ワークスペースを展開: `claude-workspace DesignProjects/<アプリ名> --project design --out Local/cw.json`（`CLAUDE.md` / `ClaudeCodeForDesigner/` / `Project.md` / `ddl/` / `docs/` ができる）
-3. サーバーの `appsettings.Development.json` の `ConnectionStrings` を確認する。標準テンプレートのデータソース名（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）と DB ファイル名は既に入っているので、標準テンプレートから作ったデザインなら変更不要。自前のデータソース名や DB にしたときだけ、`DataSources[]`（`appsettings.json`）と接続文字列を足す。サーバーを再起動
+3. サーバーの `appsettings.Development.json` の `ConnectionStrings` を確認する。標準テンプレートのデータソース名（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）と DB ファイル名は既に入っているので、標準テンプレートから作ったデザインなら変更不要。ユーザーのアプリ本体（セットアップの `DesignProjects/Project`）だけは、このアプリ固有の DB を持つためデータソース `Main`（`Local/Data/main.db`）に付け替えてある（手順は `ClaudeCodeForDeveloper/claude-code-setup.md` Step 6）。自前のデータソース名や DB にしたときだけ、`DataSources[]`（`appsettings.json`）と接続文字列を足す。サーバーを再起動
 4. 以後のデザイン作業は `DesignProjects/<アプリ名>/` で Claude Code を起動して行う。`.vscode/launch.json` の Designer 構成のフォルダも差し替える
 
 
@@ -192,8 +192,8 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 ## 初回セットアップの手順（手動で行う場合の要約。Claude Code は ClaudeCodeForDeveloper/claude-code-setup.md）
 
 1. サーバープロジェクトの `appsettings.Development.json`: 接続文字列、`DesignFileDirectory`、`FileSystemStorages`。
-   既定は `C:\Codeer.LowCode.Blazor.Local\...` を指す。接続文字列（DB）はデザイナのテンプレートが DB を置く場所と同じなのでそのまま使い、
-   `DesignFileDirectory` / `FileSystemStorages` / `FontFileDirectory` はアプリ固有の場所（`<ROOT>\Local\...`）に向けてよい
+   既定は `C:\Codeer.LowCode.Blazor.Local\...` を指す。テンプレート用の接続文字列はデザイナのテンプレートが DB を置く場所と同じなのでそのまま使い、
+   `DesignFileDirectory` / `FileSystemStorages` / `FontFileDirectory` はアプリ固有の場所（`<ROOT>\Local\...`）に向ける
 2. `LowCodeApp.Designer` を起動してデザインプロジェクトを作る（テンプレートから選べる。デプロイ先を `DesignFileDirectory` に合わせる）か、
    `LowCodeApp.Designer.exe template-create --name <テンプレ> --out-dir DesignProjects\<デザイン名>\design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir <DesignFileDirectory>`
 3. サーバーを起動。`Source/Hosts/Cookie/` は初回起動時に `admin`/`admin` のユーザーが自動作成される
