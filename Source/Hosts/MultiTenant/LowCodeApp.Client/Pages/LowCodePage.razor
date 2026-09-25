@@ -58,7 +58,11 @@ else
 
     if (!string.IsNullOrEmpty(Services.AppInfoService.CurrentUserId)) return;
     _toLoginPage = true;
-    NavigationManager.NavigateTo("/login?redirect=" + NavigationManager.Uri);
+    //The login page lives outside Blazor (login.html), so leave the app with a full navigation,
+    //the same way index.html does. An in-app "/login" URL would be caught by the /{PageFrameName}
+    //route above and the page would never finish loading.
+    var returnUrl = "/" + NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+    NavigationManager.NavigateTo(returnUrl == "/" ? "login.html" : "login.html?returnUrl=" + Uri.EscapeDataString(returnUrl), forceLoad: true);
   }
 
   protected override async Task OnParametersSetAsync()

@@ -85,6 +85,7 @@
   - `Services/FileStorageTable.cs` — appsettings の保存先設定 → `IFileStorage`（FileSystem / Azure Blob / S3）
   - `Services/MailSenderTable.cs` — 送信インフラ名 → `IMailSender`（Smtp / GraphApi / Gmail）
   - `AI/AIChatAgentTable.cs`（Cookie）— AIChatField の Agent 名 → `IAIChatAgent`。既定（空 / `RawDataAccess`）は Extras.Server の `RawDataAccessAgent`（AI がアプリの DB を読み取り専用 SQL で集計・グラフ化して答える。`AISettings` の Azure OpenAI が必要）。受け口は `Controllers/AIChatController.cs`。補足文書はデザインプロジェクトの `Resources/{DocumentFolder}/*.md|*.txt`（本体の `DesignDataFileManager.GetResourceTexts` で読む）
+  - `AI/SemanticSearchIndex.cs` / `AI/EmbeddingProviderTable.cs`（Cookie）— SemanticSearchField（意味検索）のサーバー側入口 `SemanticSearchService` をプロセスに 1 つ。埋め込みプロバイダは appsettings の `SemanticSearch.EmbeddingProvider` の呼び名（`AzureOpenAI` / 独自）で対応表から選ぶ。保存時の索引付けは `CustomizedModuleDataIO`、再索引 API は `Controllers/SemanticSearchController.cs`、AI チャットの search_records は `AIChatAgentTable` が同じインスタンスを渡す。DB 側ベクトル検索なので対象モジュールのデータソースは PostgreSQL（pgvector）か SQL Server 2025
   - `Services/DataService.cs` — 1 リクエスト分の DB アクセス・現在ユーザー（`IAuthenticationContext`）
   - `Controllers/TestAPIController.cs` — 独自 Web API を足すときの雛形
 - `LowCodeApp.Client`: Blazor WebAssembly。`Pages/LowCodePage.razor` がローコードページのホスト
@@ -133,6 +134,8 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Desi
 | `Mail` | `{ DefaultInfraName, DefaultBulkInfraName, HistoryModuleName }` | メール送信の既定インフラ名（`MailSenderTable` のキー）と送信履歴モジュール |
 | `Smtp` / `GraphApi` / `Gmail` | | 送信インフラごとの設定。項目は `api --type Codeer.LowCode.Blazor.Extras.Server.Mail.SmtpSettings --assembly <同上の dll パス>` 等で確認 |
 | `AISettings` | `{ OpenAIEndPoint, OpenAIKey, ChatModel, DocumentAnalysisEndPoint, DocumentAnalysisKey }` | AI 文書解析と AI チャット（Azure OpenAI / Document Intelligence）。未使用なら空 |
+| `SemanticSearch`（Cookie） | `{ EmbeddingProvider: "" }` | 意味検索（SemanticSearchField）の埋め込みプロバイダの呼び名（`EmbeddingProviderTable` のキー）。空なら文章だけ保存され意味検索なし |
+| `AzureOpenAIEmbedding`（Cookie） | `{ EndPoint, Key, Deployment, Dimensions }` | `EmbeddingProvider: "AzureOpenAI"` のときの Azure OpenAI 埋め込みモデル。`Dimensions` は DB のベクトル列の次元と合わせる |
 | `AIChat`（Cookie） | `{ RawDataAccessDataSources: [] }` | AI チャット（`RawDataAccessAgent`）が読むデータソース名。空なら `DataSources` の全部。**何を読めるかは DB 側で決める**: 本番は AI 用の読み取り専用 DB ユーザー（見せてよい表・列だけ GRANT）で接続するデータソースを別に用意してここに書く |
 | （ログインのユーザーテーブル） | 設定なし | ユーザーモジュール（`CurrentUserModuleDesignName`）のデザインから引く: 表 = `DbTable`、ID = `IdField`、ログイン ID / 外部 IdP の突き合わせ / 有効フラグ / 表示名 = `LoginAccountContractField` の役割、ハッシュ / ソルト = 契約の照合用の列。初回起動時にユーザーが 0 件なら `admin`/`admin` を作る |
 | `AllowPasswordLogin`（Cookie） | `true` | ID/パスワードのログインを出すか。外部 IdP 専用なら `false` |
@@ -150,16 +153,16 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 ホストが配信するデザインは 1 つ（`DesignFileDirectory` の `App.zip`）。デザインプロジェクトは `DesignProjects/` にいくつ置いてもよいが、
 サーバーが読むのは最後にデプロイしたもの。
 
-- **表示を切り替える**: 見たいデザインを `deploy "DesignProjects/<名>/design" --out Local/deploy.json` でデプロイし直す（App.zip が上書きされる。サーバー再起動は不要、ホットリロードで反映）。標準テンプレートどうしなら接続文字列の変更は要らない（ホストの appsettings に全テンプレートのデータソースが入っている）
-- **サンプル集を追加する**（ユーザーが「サンプルを見たい」と言ったとき）: `template-create --name PatternShowcase --out-dir DesignProjects/PatternShowcase/design --data-dir Local/Data --deploy-dir Local/Designs --out Local/tc.json` → `claude-workspace DesignProjects/PatternShowcase --project design`。これで表示はサンプルに切り替わるので、ユーザーのアプリに戻すときは上の deploy
-- **サンプル集を消す**: デザイナを終了 → `DesignProjects/PatternShowcase/` を削除 → `Local/Data/sqlite_patterns_v*.db` を削除 → ユーザーのアプリを deploy し直す
+- **表示を切り替える**: 見たいデザインを `deploy "DesignProjects/<名>/design" --out Local/deploy.json` でデプロイし直す（App.zip が上書きされる。サーバー再起動は不要、ホットリロードで反映）。ユーザーのアプリ（`DesignProjects/Project`）はデータソース `Main`（`Local/Data/main.db`）、標準テンプレートから作ったものは各テンプレートのデータソース（`C:\Codeer.LowCode.Blazor.Local\Data`）で、どちらもホストの appsettings に入っているので接続文字列の変更は要らない（ホストの appsettings に全テンプレートのデータソースが入っている）
+- **サンプル集を追加する**（ユーザーが「サンプルを見たい」と言ったとき）: `template-create --name PatternShowcase --out-dir DesignProjects/PatternShowcase/design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir Local/Designs --out Local/tc.json` → `claude-workspace DesignProjects/PatternShowcase --project design`。これで表示はサンプルに切り替わるので、ユーザーのアプリに戻すときは上の deploy
+- **サンプル集を消す**: デザイナを終了 → `DesignProjects/PatternShowcase/` を削除 → `C:\Codeer.LowCode.Blazor.Local\Data\sqlite_patterns_v*.db` を削除 → ユーザーのアプリを deploy し直す
 
 新しいデザインプロジェクトを作って切り替える手順（DESIGNER_EXE = `Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe`。GUI 系 exe なので `Start-Process -Wait` + `--out`）:
 
-1. 作る: `template-create --name Empty --out-dir DesignProjects/<アプリ名>/design --data-dir Local/Data --deploy-dir Local/Designs --out Local/tc.json`
-   （テンプレートはすべて Cookie 認証向けで AppUser と admin/admin を含む。`template-list` で一覧。テンプレート付属の SQLite が `Local/Data` に置かれ、`design/designer.settings.Development.json` の接続文字列がそこを指し、`Local/Designs/App.zip` が**この新しいデザインで上書き**される）
+1. 作る: `template-create --name Empty --out-dir DesignProjects/<アプリ名>/design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir Local/Designs --out Local/tc.json`
+   （テンプレートはすべて Cookie 認証向けで AppUser と admin/admin を含む。`template-list` で一覧。テンプレート付属の SQLite が `C:\Codeer.LowCode.Blazor.Local\Data` に置かれ（デザイナの GUI がテンプレートから作るときと同じ場所。サーバーの `ConnectionStrings` もここを指したままにしてある）、`design/designer.settings.Development.json` の接続文字列がそこを指し、`Local/Designs/App.zip` が**この新しいデザインで上書き**される）
 2. ワークスペースを展開: `claude-workspace DesignProjects/<アプリ名> --project design --out Local/cw.json`（`CLAUDE.md` / `ClaudeCodeForDesigner/` / `Project.md` / `ddl/` / `docs/` ができる）
-3. サーバーの `appsettings.Development.json` の `ConnectionStrings` を確認する。標準テンプレートのデータソース名（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）と DB ファイル名は既に入っているので、標準テンプレートから作ったデザインなら変更不要。自前のデータソース名や DB にしたときだけ、`DataSources[]`（`appsettings.json`）と接続文字列を足す。サーバーを再起動
+3. サーバーの `appsettings.Development.json` の `ConnectionStrings` を確認する。標準テンプレートのデータソース名（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）と DB ファイル名は既に入っているので、標準テンプレートから作ったデザインなら変更不要。ユーザーのアプリ本体（セットアップの `DesignProjects/Project`）だけは、このアプリ固有の DB を持つためデータソース `Main`（`Local/Data/main.db`）に付け替えてある（手順は `ClaudeCodeForDeveloper/claude-code-setup.md` Step 6）。自前のデータソース名や DB にしたときだけ、`DataSources[]`（`appsettings.json`）と接続文字列を足す。サーバーを再起動
 4. 以後のデザイン作業は `DesignProjects/<アプリ名>/` で Claude Code を起動して行う。`.vscode/launch.json` の Designer 構成のフォルダも差し替える
 
 
@@ -177,6 +180,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 | 独自 Web API | `Server/Controllers/` に Controller を追加（`TestAPIController` が雛形）。スクリプトからは Extras の `WebApiService` で呼ぶ（`_script_catalog.md` に載る） |
 | ファイル保存先・メール送信の独自実装 | `IFileStorage` → `FileStorageTable`、`IMailSender` → `MailSenderTable` に 1 行 |
 | AI チャットの独自 Agent | `IAIChatAgent` を実装して `Server/AI/AIChatAgentTable.cs` に 1 行。AIChatField のデザインの `Agent` にその名前を書く |
+| 意味検索の埋め込みモデルを差し替える | `IEmbeddingProvider` を実装して `Server/AI/EmbeddingProviderTable.cs` に 1 行。appsettings の `SemanticSearch.EmbeddingProvider` にその名前を書く |
 | デザイナのメニュー・チェック・テンプレート | `Designer/App.xaml.cs`（`DesignerEnvironment.AddMainMenu` / `AddCustomDesignCheckHandler` / `ProjectCatalog.Add`）。テンプレート・headless verb の登録は `base.OnStartup(e)` より前 |
 
 ## Claude Code が作業するときの原則
@@ -193,9 +197,10 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 
 1. サーバープロジェクトの `appsettings.Development.json`: 接続文字列、`DesignFileDirectory`、`FileSystemStorages`。
    このファイルは gitignore 対象なので、同じフォルダの `appsettings.Development.json.sample` をコピーして作る。
-   sample の既定は `C:\Codeer.LowCode.Blazor.Local\...` を指す
-2. `LowCodeApp.Designer` を起動してデザインプロジェクトを作る（テンプレートから選べる）か、
-   `LowCodeApp.Designer.exe template-create --name <テンプレ> --out-dir DesignProjects\<デザイン名>\design --data-dir <Local\Data> --deploy-dir <DesignFileDirectory>`
+   sample の既定は `C:\Codeer.LowCode.Blazor.Local\...` を指す。テンプレート用の接続文字列はデザイナのテンプレートが DB を置く場所と同じなのでそのまま使い、
+   `DesignFileDirectory` / `FileSystemStorages` / `FontFileDirectory` はアプリ固有の場所（`<ROOT>\Local\...`）に向ける
+2. `LowCodeApp.Designer` を起動してデザインプロジェクトを作る（テンプレートから選べる。デプロイ先を `DesignFileDirectory` に合わせる）か、
+   `LowCodeApp.Designer.exe template-create --name <テンプレ> --out-dir DesignProjects\<デザイン名>\design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir <DesignFileDirectory>`
 3. サーバーを起動。`Source/Hosts/Cookie/` は初回起動時に `admin`/`admin` のユーザーが自動作成される
 <!-- maintainer-only -->4. `Source/Hosts/Maui/` はサーバーを先に起動してからアプリを起動（`LowCodeApp.Maui/README.md`）<!-- /maintainer-only -->
 

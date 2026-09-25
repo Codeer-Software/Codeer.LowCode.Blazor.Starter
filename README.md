@@ -57,10 +57,11 @@ Entra ID / Google / AWS Cognito / 汎用 OIDC でのログインは `appsettings
 2. `LowCodeApp.sln` を開きます。必要なもの: .NET 8 SDK（リポジトリのホストは .NET 8。`export-app` で書き出したアプリは .NET 10 と最新パッケージに上がるので .NET 10 SDK）、`Source/Hosts/Maui/` は .NET 10 SDK と `maui-android` / `maui-ios` ワークロード。
    Visual Studio が無い場合は `dotnet build Source/Hosts/Cookie/LowCodeApp.sln`。`.vscode/` に VS Code（C# Dev Kit）用の起動設定があります。
 3. サーバープロジェクト（`LowCodeApp.Server`）の `appsettings.Development.json` を確認します:
-   接続文字列、`DesignFileDirectory`、ファイル保存先。既定は `C:\Codeer.LowCode.Blazor.Local\...` を指しているので、そのフォルダを作るかパスを変えます。
+   接続文字列、`DesignFileDirectory`、ファイル保存先。既定は `C:\Codeer.LowCode.Blazor.Local\...` を指しているので、そのフォルダを作るかパスを変えます
+   （接続文字列はデザイナのテンプレートが DB を置く `C:\Codeer.LowCode.Blazor.Local\Data` と揃っているので、そのままにしておくとテンプレートから作ったデザインがそのまま動きます）。
    各設定の意味は `CLAUDE.md` にあります。
 4. デザインプロジェクトを作ります。`LowCodeApp.Designer` を起動してテンプレートを選ぶか、GUI なしなら
-   `LowCodeApp.Designer.exe template-create --name Empty --out-dir DesignProjects\<名前>\design --data-dir <Local\Data> --deploy-dir <DesignFileDirectory>`（テンプレート一覧は `template-list`。サンプル集は `PatternShowcase`）。
+   `LowCodeApp.Designer.exe template-create --name Empty --out-dir DesignProjects\<名前>\design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir <DesignFileDirectory>`（テンプレート一覧は `template-list`。サンプル集は `PatternShowcase`）。
    そのあとサーバーを起動します。`Source/Hosts/Maui/` は先に `Cookie` サーバーを起動し、アプリからその URL を指定します。
 
 リネーム: ソリューションとプロジェクトの名前は `LowCodeApp` です。ファイル名・フォルダ名・ファイル内容（名前空間、`x:Class`、`*.styles.css` のリンク）の

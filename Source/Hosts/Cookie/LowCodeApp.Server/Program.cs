@@ -15,6 +15,7 @@ using LowCodeApp.Server;
 using LowCodeApp.Server.Services;
 using LowCodeApp.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
@@ -55,6 +56,9 @@ SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Ge
 SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
 SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
 SystemConfig.Instance.AIChat = builder.Configuration.GetSection("AIChat").Get<AIChatSettings>() ?? new();
+//意味検索 (SemanticSearchField) の埋め込みプロバイダ: 呼び名は SemanticSearch.EmbeddingProvider、プロバイダ設定はそれぞれ独立したセクション (使うものだけ書けばよい)
+SystemConfig.Instance.SemanticSearch = builder.Configuration.GetSection("SemanticSearch").Get<SemanticSearchSettings>() ?? new();
+SystemConfig.Instance.AzureOpenAIEmbedding = builder.Configuration.GetSection("AzureOpenAIEmbedding").Get<AzureOpenAIEmbeddingSettings>() ?? new();
 SystemConfig.Instance.AllowPasswordLogin = builder.Configuration.GetValue<bool?>("AllowPasswordLogin") ?? true;
 //外部 IdP の設定 (種類ごとのセクション。実体は Services/ExternalLoginTable が組み立てる)
 SystemConfig.Instance.EntraLogin = builder.Configuration.GetSection("EntraLogin").Get<EntraLoginSettings>() ?? new();
@@ -169,6 +173,26 @@ var htmlNoCache = new StaticFileOptions
     }
 };
 app.UseStaticFiles(htmlNoCache);
+
+// API responses are never served from the browser cache unless the action set its own
+// Cache-Control (FileWithETag uses no-cache + ETag so downloads can still be revalidated).
+// Without this, a browser restoring its tabs (cache-first load) can replay yesterday's
+// api/account/current_user 200 and start the app as "signed in" after the cookie is gone.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        context.Response.OnStarting(() =>
+        {
+            if (string.IsNullOrEmpty(context.Response.Headers.CacheControl))
+            {
+                context.Response.Headers.CacheControl = "no-store";
+            }
+            return Task.CompletedTask;
+        });
+    }
+    await next();
+});
 
 app.UseRouting();
 

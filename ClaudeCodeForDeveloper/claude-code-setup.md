@@ -104,24 +104,30 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 
 ## Step 4. ローカルの置き場を作り、appsettings を書き換える
 
-サーバーの設定は `appsettings.Development.json`。**このファイルはリポジトリに入っていない**（接続文字列や
-API キーが入る場所なので gitignore 対象）。同じフォルダの `appsettings.Development.json.sample` をコピーして
-作る。sample のパスは `C:\Codeer.LowCode.Blazor.Local\...` という固定パスなので、これを **ROOT 配下**に向ける。
+サーバーの設定は `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.Server\appsettings.Development.json`。**このファイルはリポジトリに入っていない**
+（接続文字列や API キーが入る場所なので gitignore 対象）。同じフォルダの `appsettings.Development.json.sample` をコピーして作る。
+sample のパスは `C:\Codeer.LowCode.Blazor.Local\...` という固定パスになっている。データソースは 2 種類に分けて考える:
 
-1. フォルダを作る: `<ROOT>\Local\Data`、`<ROOT>\Local\Designs`、`<ROOT>\Local\Storages`（`<ROOT>\Local\Font` は Step 2 の export-app が作り、PDF 出力用の Noto Sans JP（`NotoSansJP.ttf` / `NotoSansJP#b.ttf`、SIL Open Font License）が入っている）
+- **`Main`** = このアプリ（Step 6 で作るデザインプロジェクト）の DB。**ROOT 配下**（`<ROOT>\Local\Data\main.db`）に置く。別のアプリと DB を取り合わない
+- **それ以外**（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）= デザイナのテンプレート用。**`C:\Codeer.LowCode.Blazor.Local\Data` のまま触らない。**
+  デザイナの GUI でテンプレートから作ったデザインプロジェクトはこの場所に DB を置き `designer.settings.Development.json` もここを指すので、そのままこのサーバーで動く
+
+デザインの配信先・ファイル保存先・フォントもこのアプリ固有なので ROOT 配下に向ける（別のアプリと `App.zip` を取り合わないため）。
+
+1. フォルダを作る: `<ROOT>\Local\Data`、`<ROOT>\Local\Designs`、`<ROOT>\Local\Storages`、`C:\Codeer.LowCode.Blazor.Local\Data`（`<ROOT>\Local\Font` は Step 2 の export-app が作り、PDF 出力用の Noto Sans JP（`NotoSansJP.ttf` / `NotoSansJP#b.ttf`、SIL Open Font License）が入っている）
 2. `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.Server\appsettings.Development.json.sample` を同じフォルダの
    `appsettings.Development.json` にコピーする（既にあれば上書きしない）
 3. コピーした `appsettings.Development.json` を編集する（JSON として読んで書き戻す。`\` は JSON 内で `\\`）:
-   - `ConnectionStrings` の各値: `Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\<ファイル名>` → `Data Source=<ROOT>\\Local\\Data\\<ファイル名>`（ファイル名はそのまま）
+   - `ConnectionStrings` に **`Main` を追加**: `"Main": "Data Source=<ROOT>\\Local\\Data\\main.db;"`
+   - `ConnectionStrings` の他の値は **変えない**（`Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\<ファイル名>` のまま）
    - `FileSystemStorages[*].Directory` → `<ROOT>\\Local\\Storages`
    - `DesignFileDirectory` → `<ROOT>\\Local\\Designs`
    - `FontFileDirectory` → `<ROOT>\\Local\\Font`
    - 他の項目は触らない
+4. 同じフォルダの `appsettings.json` の `DataSources` 配列に **`{ "Name": "Main", "DataSourceType": "SQLite" }` を追加**する（既存の要素は触らない。`Main` はこのアプリを CCFDev で作るときだけ足すもので、リポジトリや Visual Studio のテンプレートには入っていない）
 
-要するに、文字列 `C:\\Codeer.LowCode.Blazor.Local` を `<ROOT>\\Local` に置換する（`DesignFileDirectory` は全ホストで `...\\Designs`）。
-`ConnectionStrings` には全テンプレート分（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）が入っているので、どのテンプレートで
-デザインプロジェクトを作ってもサーバー側の追加設定は要らない（`template-create --data-dir` が置く DB ファイル名と一致している）。
-DB は SQLite（ファイル）なので DB サーバーのインストールは不要。PostgreSQL 等に変えたいという話が出たら、
+テンプレート用のデータソース名と DB ファイル名は、デザイナの GUI も `template-create --data-dir` も同じものを使うので、どのテンプレートでデザインプロジェクトを
+作ってもサーバー側の追加設定は要らない。DB は SQLite（ファイル）なので DB サーバーのインストールは不要。PostgreSQL 等に変えたいという話が出たら、
 セットアップ完了後に `CLAUDE.md` の「appsettings リファレンス」を見て対応する（今はやらない）。
 
 ## Step 5. ビルド
@@ -169,11 +175,36 @@ Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
 Get-Content "<ROOT>\Local\template-create.json"
 ```
 
-これ 1 回で次が済む: `<ROOT>\DesignProjects\Project\design` にデザインプロジェクト（`app.clprj` / `Modules` / `PageFrames` …）が展開され、
-テンプレート付属の DB（SQLite。`app_users` テーブルと admin だけ入っている）が `<ROOT>\Local\Data` に置かれ、`design\designer.settings.Development.json` の接続文字列がそのパスに
-書き換わり、デプロイ先が `<ROOT>\Local\Designs` に設定されて **`App.zip` がそこに出力**される（サーバーはこの zip を読む）。
+これで `<ROOT>\DesignProjects\Project\design` にデザインプロジェクト（`app.clprj` / `Modules` / `PageFrames` …）が展開され、テンプレート付属の DB
+（SQLite。`app_users` テーブルと admin が入っている）が `<ROOT>\Local\Data\sqlite_sample_v2.db` に置かれ、デプロイ先が `<ROOT>\Local\Designs` に設定される。
+判定: JSON に `"error"` が無く、`deploy.success` が `true`。
 
-判定: JSON に `"error"` が無く、`deploy.success` が `true`。`<ROOT>\Local\Designs\App.zip` が存在する。
+テンプレートのデータソース名は `SampleSQLite` なので、このアプリ用の **`Main`** に付け替える（DB ファイルも `main.db` に。テンプレート用の `SampleSQLite` は
+デザイナの GUI で作るプロジェクトのために `C:\Codeer.LowCode.Blazor.Local\Data` 側に残す）:
+
+```powershell
+$design = "<ROOT>\DesignProjects\Project\design"
+Rename-Item "<ROOT>\Local\Data\sqlite_sample_v2.db" "main.db"
+$utf8 = New-Object System.Text.UTF8Encoding $false
+Get-ChildItem $design -Recurse -Filter *.json | ForEach-Object {
+  $t = [IO.File]::ReadAllText($_.FullName)
+  $u = $t.Replace('"SampleSQLite"', '"Main"').Replace('sqlite_sample_v2.db', 'main.db')
+  if ($u -ne $t) { [IO.File]::WriteAllText($_.FullName, $u, $utf8) }
+}
+# テンプレート DB に入っているサンプル表（Empty のデザインは使わない）を消して、このアプリの表だけにする
+Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
+  "sql", $design, "--datasource", "Main",
+  "--query", "DROP TABLE IF EXISTS Recipes; DROP TABLE IF EXISTS Ingredients; DROP TABLE IF EXISTS CookingSteps; DROP TABLE IF EXISTS Authors; DROP TABLE IF EXISTS Colors;",
+  "--out", "<ROOT>\Local\sql.json")
+# データソース名を変えたので App.zip を作り直す
+Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
+  "deploy", $design, "--out", "<ROOT>\Local\deploy.json")
+Get-Content "<ROOT>\Local\deploy.json"
+```
+
+書き換わるのは `design\designer.settings.json`（`DataSources[0].Name`）、`design\designer.settings.Development.json`（接続文字列のキーと `main.db`）、
+`design\Modules\AppUser.mod.json`（`DataSourceName`）。判定: `sql.json` と `deploy.json` に `"error"` が無く、`deploy.json` の `success` が `true`、`<ROOT>\Local\Designs\App.zip` が存在する。
+以後このアプリのモジュールはデータソース `Main`（`<ROOT>\Local\Data\main.db`）に作る。
 
 ## Step 7. Claude Code 用ワークスペースを展開する（デザインを AI で編集できるようにする）
 
@@ -262,12 +293,12 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 | ビルドは通るが `LowCodeApp.Designer.exe` が無い | `Source\Hosts\Common\LowCodeApp.Designer\bin\Debug\net8.0-windows\` を再確認。無ければ `dotnet build "<ROOT>\Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj"` |
 | `template-create` の JSON に `template not found` | `Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("template-list","--out","<ROOT>\Local\tl.json")` で一覧を出し `folderName` を確認する |
 | `template-create` の JSON に `--out-dir must be empty` | `<ROOT>\DesignProjects\Project\design` に既にファイルがある。中身を確認し、ユーザーの物でなければ削除して再実行 |
-| 頼まれていないサンプル（PatternShowcase 等）を作ってしまった | デザイナを終了 → `DesignProjects\PatternShowcase` を削除 → `Local\Data\sqlite_patterns_v*.db` を削除 → ユーザーのアプリを `deploy "<ROOT>\DesignProjects\Project\design"` でデプロイし直す（App.zip が上書きされる）。ユーザーに何を消したか報告する |
+| 頼まれていないサンプル（PatternShowcase 等）を作ってしまった | デザイナを終了 → `DesignProjects\PatternShowcase` を削除 → `C:\Codeer.LowCode.Blazor.Local\Data\sqlite_patterns_v*.db` を削除 → ユーザーのアプリを `deploy "<ROOT>\DesignProjects\Project\design"` でデプロイし直す（App.zip が上書きされる）。ユーザーに何を消したか報告する |
 | `template-create` や `claude-workspace` を実行するとデザイナの **ウィンドウが開いて** JSON ができない | デザイナのパッケージが古い（`template-create` は Codeer.LowCode.Blazor.Designer 1.3.24 以降）。`Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj` の `Codeer.LowCode.Blazor.Designer` の版を確認する。このリポジトリを最新から取得していれば起きない |
 | サーバー起動で `address already in use` | ポートが使用中。`launchSettings.json` の `applicationUrl` のポート番号を空いている番号に変えて再起動し、完了メッセージの URL も合わせる |
 | ブラウザで開くと真っ白／`design not found` | `<ROOT>\Local\Designs\App.zip` が無い。Step 6 のデプロイが失敗している。`Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("deploy","<ROOT>\DesignProjects\Project\design","--out","<ROOT>\Local\deploy.json")` で作り直す |
 | `developer-workspace` / `claude-workspace` で `--out` の JSON ができない（ウィンドウが開く） | デザイナのパッケージが古い（`developer-workspace` は Codeer.LowCode.Blazor.Designer.Standard 0.8.3 以降）。このリポジトリを最新から取得していれば起きない |
-| ログインできない（Cookie） | サンプル DB に `admin` がいるはず。`appsettings.Development.json` の `ConnectionStrings` が `<ROOT>\Local\Data\...` を指しているか、ファイルが存在するかを確認 |
+| ログインできない（Cookie） | サンプル DB に `admin` がいるはず。`appsettings.Development.json` の `ConnectionStrings.Main` が `<ROOT>\Local\Data\main.db` を指しているか、そのファイルが存在するか、デザインの `designer.settings.Development.json` も同じパスかを確認 |
 | `winget` が見つからない | Step 1 の dotnet-install.ps1 経路 |
 | PowerShell で `&` でデザイナ exe を呼ぶと即戻って何も起きない | 正常（GUI サブシステム）。必ず `Start-Process -Wait` + `--out` |
 | Excel / PDF 出力でフォントのエラー | `<ROOT>\Local\Font` に `NotoSansJP.ttf` と `NotoSansJP#b.ttf` があるか確認する（export-app が置く。無ければ Starter の `Source\Hosts\Common\Font` からコピー） |
@@ -277,7 +308,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 
 - Codeer.LowCode.Blazor.Designer **1.3.24 以降**（`template-create` / `deploy` / `api` サブコマンド、起動引数でのプロジェクトオープン）
 - Codeer.LowCode.Blazor.Designer.Standard **0.8.6 以降**（全テンプレートが Cookie 認証ホスト向け = AppUser + admin/admin 同梱、`template-create --data-dir` によるサンプル DB 配置、`developer-workspace`、デザインプロジェクトのフォルダ名の既定 `design`）
-- 各バリアントの `appsettings.Development.json.sample` の既定パスが `C:\Codeer.LowCode.Blazor.Local\...`（Step 4 の置換の前提）。
-  実ファイルは gitignore 対象で、Step 4 が sample からコピーして作る
+- 各バリアントの `appsettings.Development.json.sample` の既定パスが `C:\Codeer.LowCode.Blazor.Local\...`（Step 4 の前提。実ファイルは
+  gitignore 対象で、Step 4 が sample からコピーして作る。`Main` と配信先・保存先・フォントだけ ROOT 配下に置換し、テンプレート用の DB はそのまま使う）
 - ポート: `Properties/launchSettings.json` の `https` プロファイル（Cookie 7137）
 <!-- /maintainer-only -->
