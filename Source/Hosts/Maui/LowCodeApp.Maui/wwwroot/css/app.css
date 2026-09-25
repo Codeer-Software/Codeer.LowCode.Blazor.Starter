@@ -90,9 +90,11 @@ button.image-button.focus-visual:focus {
         .loading-progress circle:last-child {
             stroke: #1b6ec2;
             stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            /* Each startup step moves the ring to its own target. Decelerating over half a second reads as
-               the ring travelling there; the 0.05s of the Blazor WebAssembly template reads as a jump. */
-            transition: stroke-dasharray 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            /* Each startup step moves the ring to its own target. Decelerating reads as the ring travelling
+               there; the 0.05s of the Blazor WebAssembly template reads as a jump. Kept under the 0.3s that
+               the loading screen waits before it starts fading (.app-loading), so the last step actually
+               arrives at 100% instead of being cut off part way - which is what the eye notices. */
+            transition: stroke-dasharray 0.25s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
 .loading-progress-text {

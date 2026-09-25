@@ -84,8 +84,12 @@ else if (_initError != null)
 
   //Renders the new text before the next step blocks: without yielding, the whole method runs to completion
   //and only the last stage is ever painted.
+  //Once the loading screen is gone these stages have no audience, and paying for them is not free: each call
+  //renders a page nobody is looking at and yields back to the renderer, on a navigation whose real work is
+  //only a few tens of milliseconds.
   async Task SetStage(string stage, int progress)
   {
+    if (!_loaderVisible) return;
     _stage = stage;
     _progress = progress;
     StateHasChanged();
@@ -197,12 +201,19 @@ else if (_initError != null)
       return;
     }
 
-    //Let the ring travel to 100% (0.5s) and then rest there before handing over: arriving at 100% is the part
-    //worth showing, and fading it out while it is still moving looks like the app gave up half way. The fade
-    //itself waits another 0.3s (app-loading in app.css), so 100% stands still for about half a second.
-    _progress = 100;
-    StateHasChanged();
-    await Task.Delay(700);
+    //Show the ring arriving at 100% before handing over: fading it out while it is still moving reads as the
+    //app having given up half way. This costs nothing, because the fade already waits 0.3s before it starts
+    //(app-loading in app.css) and the ring's own transition is shorter than that - so the arrival happens
+    //inside a pause that exists anyway. There used to be a Task.Delay here to buy that time; it ran on every
+    //navigation, where measurement showed it was 90-95% of a page switch that is otherwise a few tens of
+    //milliseconds of real work. Run this on every navigation that still has the loading screen up: startup
+    //calls InitPage twice (the entry route redirects to the real first page) and it is the second call that
+    //hands over, so letting only the first one set 100% left the ring stuck at the 85% of the step before.
+    if (_loaderVisible)
+    {
+      _progress = 100;
+      StateHasChanged();
+    }
 
     _isValid = true;
   }
