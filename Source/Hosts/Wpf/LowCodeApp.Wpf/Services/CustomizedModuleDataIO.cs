@@ -4,6 +4,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.DbAccess;
+using Codeer.LowCode.Blazor.Extras.Server.EditHistory;
 using Codeer.LowCode.Blazor.Extras.Services;
 
 namespace LowCodeApp.Wpf.Services
@@ -23,9 +24,12 @@ namespace LowCodeApp.Wpf.Services
             : base(designData, authenticationContext, dbAccess, temporaryFileManager)
         {
             _designData = designData;
+            //編集履歴: EditHistoryField を置いたモジュールの保存ごとに履歴モジュールへスナップショットを書き、履歴モジュールを読むときは Snapshot を読む人の権限に落とす (結線はこの 1 行)
+            AddInterceptor(new EditHistoryRecorder(designData));
             DbAccess = dbAccess;
             TemporaryFileManager = temporaryFileManager;
         }
+
 
         protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
         {
