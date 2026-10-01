@@ -6,6 +6,7 @@ using Codeer.LowCode.Blazor.Utils;
 using Microsoft.AspNetCore.Authorization;
 using LowCodeApp.Client;
 using LowCodeApp.Server.Services;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -22,12 +23,15 @@ namespace LowCodeApp.Server.Controllers
         readonly DataService _dataService;
         readonly ExternalLoginService _externalLogins;
         readonly IDistributedCache _cache;
+        //監査ログ: ログインは認証前なのでユーザーが Cookie から取れない。試行したログイン名と、成功したユーザー Id をここから足す。記録自体はミドルウェア
+        readonly AuditContext _audit;
 
-        public AccountController(DataService dataService, ExternalLoginService externalLogins, IDistributedCache cache)
+        public AccountController(DataService dataService, ExternalLoginService externalLogins, IDistributedCache cache, AuditContext audit)
         {
             _dataService = dataService;
             _externalLogins = externalLogins;
             _cache = cache;
+            _audit = audit;
         }
 
         [Authorize]
@@ -54,14 +58,15 @@ namespace LowCodeApp.Server.Controllers
                 Providers = _externalLogins.Options,
             };
 
-        [HttpPost("login")]
+        [HttpPost("login"), Audit(AuditCategory.Authentication)]
         public async Task<IActionResult> Login(LoginInfo? loginInfo)
         {
             if (loginInfo == null) throw new ArgumentException(nameof(loginInfo));
             if (!SystemConfig.Instance.AllowPasswordLogin) return NotFound();
+            _audit.Event.Detail = $"LoginName={loginInfo.Id}";
 
             //ID/パスワードの照合。表・列はユーザーモジュールのデザイン (IdField / LoginAccountContractField の役割 / PasswordHashField のハッシュ・ソルト) から引く
-            var designData = DesignerService.GetDesignData();
+            var designData = _dataService.Design.DesignData;
             var accounts = LoginAccountStore.Create(designData, _dataService.DbAccess);
             if (accounts == null || !accounts.HasPassword) return NotFound();
 
@@ -75,6 +80,8 @@ namespace LowCodeApp.Server.Controllers
             if (totp != null)
             {
                 var result = await totp.VerifyAsync(account.UserId, account.LoginName, loginInfo.TwoFactorCode);
+                if (result.Status == TotpLoginStatus.InvalidCode) _audit.Deny($"LoginName={loginInfo.Id}; TwoFactor={result.Status}");
+                else if (result.Status != TotpLoginStatus.Ok) _audit.Event.Detail += $"; TwoFactor={result.Status}";
                 if (result.Status != TotpLoginStatus.Ok) return Ok(result);
             }
             else if (accounts.HasTwoFactorEmail)
@@ -84,8 +91,14 @@ namespace LowCodeApp.Server.Controllers
                 var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin,
                     message => dispatcher.SendAsync(SystemConfig.Instance.EmailOtpLogin.MailInfraName, message), _cache);
                 var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail ?? string.Empty, loginInfo.TwoFactorCode);
+                if (result.Status == EmailOtpLoginStatus.InvalidCode) _audit.Deny($"LoginName={loginInfo.Id}; TwoFactor={result.Status}");
+                else if (result.Status != EmailOtpLoginStatus.Ok) _audit.Event.Detail += $"; TwoFactor={result.Status}";
                 if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);
             }
+
+            //監査ログ: ユーザー Id は Cookie を発行する (ログインが成立する) ときだけ入れる。パスワードが合っただけの二要素待ちの行は
+            //Success でも user_id が空 (アカウントは Detail の LoginName)。「成立 = Success で user_id がある行」で引ける
+            _audit.Event.UserId = account.UserId;
 
             var claims = new List<Claim>
             {
@@ -108,16 +121,18 @@ namespace LowCodeApp.Server.Controllers
         //ユーザー行に解決し、パスワードログインと同じ Cookie を発行する。
         //persistent=true は「ログイン状態を保持する」(ブラウザを閉じても残る Cookie)。
         //mobile=true はネイティブアプリ (システムブラウザ) の流れで、Cookie の代わりに使い捨てチケットをアプリへ返す
-        [HttpGet("login/{provider}")]
+        [HttpGet("login/{provider}"), Audit(AuditCategory.Authentication)]
         public IActionResult ExternalLogin(string provider, string? returnUrl, bool mobile = false, bool persistent = false)
             => _externalLogins.Challenge(this, provider, returnUrl, mobile, persistent);
 
         //ネイティブアプリ: システムブラウザで受け取った使い捨てチケットを認証 Cookie に交換する
-        [HttpPost("login_ticket")]
+        [HttpPost("login_ticket"), Audit(AuditCategory.Authentication)]
         public async Task<IActionResult> LoginTicket(LoginTicket? ticket)
         {
             var redeemed = await _externalLogins.RedeemMobileTicketAsync(ticket?.Ticket);
             if (redeemed == null) return Unauthorized();
+            _audit.Event.UserId = redeemed.Value.User.UserId;
+            _audit.Event.Detail = $"Provider={redeemed.Value.Provider}";
 
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
@@ -131,7 +146,7 @@ namespace LowCodeApp.Server.Controllers
         //(fetch からは不可)。その場合は Cookie を残したまま ExternalLogout の URL を返し、クライアントがそこへ遷移する (二段構え)。
         //mobile=true (ネイティブアプリ) は Cookie を破棄するだけ
         [Authorize]
-        [HttpPost("logout")]
+        [HttpPost("logout"), Audit(AuditCategory.Authentication)]
         public async Task<IActionResult> Logout(bool mobile = false)
         {
             if (!mobile)
@@ -145,7 +160,7 @@ namespace LowCodeApp.Server.Controllers
         }
 
         //Cookie を破棄し IdP のセッションも終わらせてログイン画面へ戻る (GET: ブラウザ遷移)
-        [HttpGet("logout/{provider}")]
+        [HttpGet("logout/{provider}"), Audit(AuditCategory.Authentication)]
         public Task<IActionResult> ExternalLogout(string provider)
             => _externalLogins.SignOutAsync(this, provider, LoginPage);
 
@@ -155,17 +170,17 @@ namespace LowCodeApp.Server.Controllers
         [HttpGet("totp/status")]
         public async Task<IActionResult> GetTotpStatus()
         {
-            var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
+            var totp = TotpLogin.Create(_dataService.Design.DesignData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
             if (totp == null) return Ok(new TotpStatus());
             var current = await totp.FindAsync(DataService.GetCurrentUserId(HttpContext));
             return Ok(new TotpStatus { Enabled = true, Registered = current?.IsConfirmed == true });
         }
 
         [Authorize]
-        [HttpPost("totp/reset")]
+        [HttpPost("totp/reset"), Audit(AuditCategory.Authentication)]
         public async Task<IActionResult> TotpReset()
         {
-            var totp = TotpLogin.Create(DesignerService.GetDesignData(), SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
+            var totp = TotpLogin.Create(_dataService.Design.DesignData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
             if (totp == null) return NotFound();
             await totp.ResetAsync(DataService.GetCurrentUserId(HttpContext));
             return Ok(new TotpStatus { Enabled = true, Registered = false });

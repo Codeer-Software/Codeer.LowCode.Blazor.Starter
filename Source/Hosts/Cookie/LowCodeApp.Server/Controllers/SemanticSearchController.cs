@@ -1,5 +1,6 @@
 using Codeer.LowCode.Blazor.Extras.SemanticSearch;
 using Codeer.LowCode.Blazor.Extras.Server.AI.SemanticSearch;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using LowCodeApp.Server.AI;
 using LowCodeApp.Server.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +32,7 @@ namespace LowCodeApp.Server.Controllers
         //ジョブの所有者。他人のジョブは見えない (同じモジュールの走行中ジョブに合流した人は見える)
         string Owner => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.Identity?.Name ?? string.Empty;
 
-        [HttpPost]
+        [HttpPost, Audit(AuditCategory.Admin)]
         public async Task<ActionResult<SemanticSearchReindexResponse>> Start([FromBody] SemanticSearchReindexRequest request)
         {
             //バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡す

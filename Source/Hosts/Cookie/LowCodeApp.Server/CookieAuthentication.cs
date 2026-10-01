@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using LowCodeApp.Server.Services;
 using Codeer.LowCode.Blazor.DbAccess;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
 
 namespace LowCodeApp.Server
@@ -65,13 +66,29 @@ namespace LowCodeApp.Server
                 });
         }
 
-        //ユーザーが 0 件なら admin / admin を作る (表・列はユーザーモジュールのデザインから。パスワードログインがある構成だけ)
+        //ユーザーが 0 件なら admin / admin を作る (表・列はユーザーモジュールのデザインから。パスワードログインがある構成だけ)。
+        //監査ログ: リクエストの外で作る唯一のアカウントなので System の行として残す (ログの中で「この管理者はどこから来たか」が追える)
         static async Task CreateInitialUserAsync(WebApplication app)
         {
             await using var dbAccessor = new DbAccessor(SystemConfig.Instance.DataSources);
-            var accounts = LoginAccountStore.Create(DesignerService.GetDesignData(), dbAccessor);
+            var designData = DesignerService.GetDesignData();
+            var accounts = LoginAccountStore.Create(designData, dbAccessor);
             if (accounts == null || !accounts.HasPassword || await accounts.AnyAsync()) return;
-            await accounts.AddAsync("admin", "admin");
+            var userId = await accounts.AddAsync("admin", "admin");
+            try
+            {
+                await app.Services.GetRequiredService<AuditLogger>().WriteAsync(new AuditEvent
+                {
+                    Category = AuditCategory.System,
+                    Action = "Account.InitialUserCreated",
+                    Targets = { new AuditTarget { Module = designData.AppSettings.CurrentUserModuleDesignName, Id = userId, Operation = "Add" } },
+                    Detail = "LoginName=admin",
+                });
+            }
+            catch (AuditLogException)
+            {
+                //起動時の非同期処理で失敗にする相手がいない (Critical には残っている)
+            }
         }
     }
 }

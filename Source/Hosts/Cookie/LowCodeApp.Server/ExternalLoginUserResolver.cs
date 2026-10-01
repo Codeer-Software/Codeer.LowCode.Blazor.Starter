@@ -25,7 +25,7 @@ namespace LowCodeApp.Server
 
         public async Task<ExternalLoginUser?> ResolveAsync(ExternalLoginIdentity identity)
         {
-            var accounts = LoginAccountStore.Create(DesignerService.GetDesignData(), _dataService.DbAccess);
+            var accounts = LoginAccountStore.Create(_dataService.Design.DesignData, _dataService.DbAccess);
             var account = accounts == null ? null : await accounts.FindByExternalLoginNameAsync(identity.LoginName);
             return account == null ? null : new ExternalLoginUser(account.UserId, account.DisplayName);
         }

@@ -21,6 +21,7 @@ using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Microsoft.AspNetCore.SignalR;
 
 //load dll.
@@ -68,6 +69,10 @@ SystemConfig.Instance.OidcLogins = builder.Configuration.GetSection("OidcLogins"
 SystemConfig.Instance.MobileLoginCallbackUrl = builder.Configuration["MobileLoginCallbackUrl"] ?? string.Empty;
 SystemConfig.Instance.TotpLogin = builder.Configuration.GetSection("TotpLogin").Get<TotpLoginSettings>() ?? new();
 SystemConfig.Instance.EmailOtpLogin = builder.Configuration.GetSection("EmailOtpLogin").Get<EmailOtpLoginSettings>() ?? new();
+//監査ログ: 有効化と方針は AuditLog、出力先は種類ごとのセクション (使うものだけ書けばよい)
+SystemConfig.Instance.AuditLog = builder.Configuration.GetSection("AuditLog").Get<AuditLogSettings>() ?? new();
+SystemConfig.Instance.AuditLogDatabase = builder.Configuration.GetSection("AuditLogDatabase").Get<AuditLogDatabaseSettings>() ?? new();
+SystemConfig.Instance.AuditLogFile = builder.Configuration.GetSection("AuditLogFile").Get<AuditLogFileSettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
@@ -128,7 +133,13 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 });
 
 builder.Services.AddHttpContextAccessor();
+//リクエストが使うデザインは最初に参照した時点の版に固定する (途中で App.zip が差し替わっても最後まで同じ版で動く)
+builder.Services.AddScoped<RequestDesign>();
 builder.Services.AddScoped<DataService>();
+//監査ログ: WebAPI ごとに誰が・どこから・何を・結果を記録する (appsettings の AuditLog で有効化)。出力先は Services/AuditSinkTable。
+//デザインの版 (App.zip の SHA-256) は、リクエストの中ではそのリクエストの版、外では今読み込んでいる版
+builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create(),
+    http => http?.RequestServices.GetRequiredService<RequestDesign>().Version ?? DesignerService.GetCurrent().Version);
 
 var app = builder.Build();
 
@@ -195,6 +206,8 @@ app.Use(async (context, next) =>
 });
 
 app.UseRouting();
+//監査ログの記録は認証・認可の前に置く (401/403 の拒否も記録する)
+app.UseAuditLog();
 
 if (SystemConfig.Instance.UseHotReload)
 {

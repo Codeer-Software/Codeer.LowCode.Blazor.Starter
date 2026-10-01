@@ -1,3 +1,4 @@
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Excel.Report.PDF;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,7 @@ namespace LowCodeApp.Server.Controllers
     [Route("api/excel")]
     public class ExcelController : ControllerBase
     {
-        [HttpPost("pdf")]
+        [HttpPost("pdf"), Audit(AuditCategory.Export)]
         public async Task<IActionResult> ConvertToPdfAsync()
         {
             using (var memoryStream = new MemoryStream())
