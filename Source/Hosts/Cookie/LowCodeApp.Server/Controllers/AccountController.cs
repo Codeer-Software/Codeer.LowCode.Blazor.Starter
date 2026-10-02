@@ -34,7 +34,8 @@ namespace LowCodeApp.Server.Controllers
             _audit = audit;
         }
 
-        [Authorize]
+        //ログイン状態の確認。未ログインは「拒否」ではなく空を返す (index.html / login.js / LowCodePage は空を未ログインとして扱う)。
+        //[Authorize] で 401 にすると、ログアウト直後やログイン画面を開くたびの確認が監査ログに Denied として残ってしまう
         [HttpGet("current_user")]
         public StringWrapper GetCurrentUser()
             => new(DataService.GetCurrentUserId(HttpContext));
