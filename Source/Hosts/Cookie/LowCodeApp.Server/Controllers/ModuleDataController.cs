@@ -45,6 +45,8 @@ namespace LowCodeApp.Server.Controllers
             return this.FileWithETag(_dataService.Design.ForFront(await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
         }
 
+        //監査ログ: 参照は「誰が・どのモジュールを・何件読んだか」を常に残す (DataRead)。
+        //行ごとの Id まで残す (閲覧の証跡。行数ぶん大きくなる) なら AddRead の recordIds を true にする
         [HttpPost("list"), Audit(AuditCategory.DataRead)]
         public async Task<IActionResult> GetListAsync(List<GetListRequest> request)
         {
@@ -52,7 +54,7 @@ namespace LowCodeApp.Server.Controllers
             foreach (var e in request)
             {
                 var page = await _dataService.ModuleDataIO.GetListAsync(e.Condition, e.PageIndex);
-                _audit.AddRead(e.Condition.ModuleName, page);
+                _audit.AddRead(e.Condition.ModuleName, page, recordIds: false);
                 ret.Add(page);
             }
             return File(new MemoryStream(MessagePackSerializer.Typeless.Serialize(ret)), "application/octet-stream");

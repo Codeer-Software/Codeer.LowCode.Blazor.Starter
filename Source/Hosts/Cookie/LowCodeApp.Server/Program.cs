@@ -69,10 +69,8 @@ SystemConfig.Instance.OidcLogins = builder.Configuration.GetSection("OidcLogins"
 SystemConfig.Instance.MobileLoginCallbackUrl = builder.Configuration["MobileLoginCallbackUrl"] ?? string.Empty;
 SystemConfig.Instance.TotpLogin = builder.Configuration.GetSection("TotpLogin").Get<TotpLoginSettings>() ?? new();
 SystemConfig.Instance.EmailOtpLogin = builder.Configuration.GetSection("EmailOtpLogin").Get<EmailOtpLoginSettings>() ?? new();
-//監査ログ: 有効化と方針は AuditLog、出力先は種類ごとのセクション (使うものだけ書けばよい)
+//監査ログ: AuditLog セクション 1 つ (有効化・失敗時の扱い・出力先 Database / File。使う出力先だけ書けばよい)
 SystemConfig.Instance.AuditLog = builder.Configuration.GetSection("AuditLog").Get<AuditLogSettings>() ?? new();
-SystemConfig.Instance.AuditLogDatabase = builder.Configuration.GetSection("AuditLogDatabase").Get<AuditLogDatabaseSettings>() ?? new();
-SystemConfig.Instance.AuditLogFile = builder.Configuration.GetSection("AuditLogFile").Get<AuditLogFileSettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
