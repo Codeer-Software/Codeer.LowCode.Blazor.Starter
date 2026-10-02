@@ -14,7 +14,7 @@ namespace LowCodeApp.Server.Services
         public bool CanScriptDebug { get; set; }
         public bool UseHotReload { get; set; }
         public DataSource[] DataSources { get; set; } = [];
-        //ファイル保存先 = 種類ごとの設定 (使うものだけ書けばよい)。実体 (IFileStorage) は Services/FileStorageTable が組み立てる (メールの MailSenderTable と同じ考え方)
+        //ファイル保存先 (使うものだけ書けばよい)。実体は Services/FileStorageTable が組み立てる
         public FileSystemStorageSettings[] FileSystemStorages { get; set; } = [];
         public AzureBlobStorageSettings[] AzureBlobStorages { get; set; } = [];
         public S3StorageSettings[] S3Storages { get; set; } = [];

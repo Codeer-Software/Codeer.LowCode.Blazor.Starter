@@ -7,7 +7,7 @@ using LowCodeApp.Server.Services;
 
 namespace LowCodeApp.Server.Controllers
 {
-    //メール送信 (MailField / BulkMailField) の受け口。ロジックは Extras.Server にあり、ここは結線だけを持つ
+    //メール送信 (MailField / BulkMailField) の受け口
     [Authorize, AutoValidateAntiforgeryToken]
     [ApiController]
     [Route("api/mail")]
@@ -42,7 +42,6 @@ namespace LowCodeApp.Server.Controllers
         public async Task<IActionResult> PreviewAsync(MailPreviewRequest request)
             => PreviewFile(await CreatePreviewBuilder().BuildSingleHtmlAsync(request));
 
-        //一斉送信のプレビューは宛先の行を読んで描くので参照として記録する (読んだ行ごとの Read は Extras の MailPreviewBuilder が足す)
         [HttpPost("bulk_preview"), Audit(AuditCategory.DataRead)]
         public async Task<IActionResult> PreviewBulkSearchAsync(MailBulkSearchRequest request)
             => PreviewFile(await CreatePreviewBuilder().BuildBulkHtmlAsync(request));

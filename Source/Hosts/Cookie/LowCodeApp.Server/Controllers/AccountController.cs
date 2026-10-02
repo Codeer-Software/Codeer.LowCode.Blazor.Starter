@@ -23,7 +23,6 @@ namespace LowCodeApp.Server.Controllers
         readonly DataService _dataService;
         readonly ExternalLoginService _externalLogins;
         readonly IDistributedCache _cache;
-        //監査ログ: ログインは認証前なのでユーザーが Cookie から取れない。試行したログイン名と、成功したユーザー Id をここから足す。記録自体はミドルウェア
         readonly AuditContext _audit;
 
         public AccountController(DataService dataService, ExternalLoginService externalLogins, IDistributedCache cache, AuditContext audit)
@@ -34,8 +33,6 @@ namespace LowCodeApp.Server.Controllers
             _audit = audit;
         }
 
-        //ログイン状態の確認。未ログインは「拒否」ではなく空を返す (index.html / login.js / LowCodePage は空を未ログインとして扱う)。
-        //[Authorize] で 401 にすると、ログアウト直後やログイン画面を開くたびの確認が監査ログに Denied として残ってしまう
         [HttpGet("current_user")]
         public StringWrapper GetCurrentUser()
             => new(DataService.GetCurrentUserId(HttpContext));
@@ -49,8 +46,7 @@ namespace LowCodeApp.Server.Controllers
             return NoContent();
         }
 
-        //ログイン画面が描くもの: ID/パスワードのフォームの有無、外部 IdP ごとのボタン (appsettings の EntraLogin / GoogleLogin / CognitoLogin / OidcLogins)。
-        //見た目は login.html (Web) と Login.razor (MAUI) を直接書き換える
+        //ログイン画面に出すもの (ID/パスワードのフォームの有無・外部 IdP のボタン)。見た目は login.html (Web) と Login.razor (MAUI) で変える
         [HttpGet("login_options")]
         public object LoginOptions()
             => new
@@ -66,7 +62,6 @@ namespace LowCodeApp.Server.Controllers
             if (!SystemConfig.Instance.AllowPasswordLogin) return NotFound();
             _audit.Event.Detail = $"LoginName={loginInfo.Id}";
 
-            //ID/パスワードの照合。表・列はユーザーモジュールのデザイン (IdField / LoginAccountContractField の役割 / PasswordHashField のハッシュ・ソルト) から引く
             var designData = _dataService.Design.DesignData;
             var accounts = LoginAccountStore.Create(designData, _dataService.DbAccess);
             if (accounts == null || !accounts.HasPassword) return NotFound();
@@ -74,9 +69,7 @@ namespace LowCodeApp.Server.Controllers
             var account = await accounts.VerifyPasswordAsync(loginInfo.Id, loginInfo.Password);
             if (account == null) return Unauthorized();
 
-            //二要素認証。コード未指定なら状態を返すだけでサインインしない。コード検証が通ったとき (status: ok) だけ下のサインインへ進む。
-            // - 認証アプリ (TOTP): LoginAccountContractField に TOTP の 3 列があるとき (setup = 登録用 QR / totp = コード要求)
-            // - メールのワンタイムコード: LoginAccountContractField の TwoFactorEmail があるとき (email = 送信済み)。TOTP の列があればそちらが優先
+            //二要素認証。コード検証が通ったとき (status: ok) だけ下のサインインへ進む
             var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
             if (totp != null)
             {
@@ -87,7 +80,6 @@ namespace LowCodeApp.Server.Controllers
             }
             else if (accounts.HasTwoFactorEmail)
             {
-                //メールは MailDispatcher 経由 (送信インフラの解決・開発環境の宛先リダイレクト)。履歴モジュールには残さない (コードを記録しない)
                 var dispatcher = new MailDispatcher(SystemConfig.Instance.Mail, MailSenderTable.Create);
                 var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin,
                     message => dispatcher.SendAsync(SystemConfig.Instance.EmailOtpLogin.MailInfraName, message), _cache);
@@ -97,8 +89,7 @@ namespace LowCodeApp.Server.Controllers
                 if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);
             }
 
-            //監査ログ: ユーザー Id は Cookie を発行する (ログインが成立する) ときだけ入れる。パスワードが合っただけの二要素待ちの行は
-            //Success でも user_id が空 (アカウントは Detail の LoginName)。「成立 = Success で user_id がある行」で引ける
+            //監査ログのユーザー Id は Cookie を発行するときだけ入れる (二要素認証待ちの行には入れない)
             _audit.Event.UserId = account.UserId;
 
             var claims = new List<Claim>
@@ -143,9 +134,7 @@ namespace LowCodeApp.Server.Controllers
             return Ok();
         }
 
-        //外部 IdP (Entra ID 等) でサインインしたセッションは IdP 側のセッションも終わらせる必要があり、それはブラウザ遷移でしかできない
-        //(fetch からは不可)。その場合は Cookie を残したまま ExternalLogout の URL を返し、クライアントがそこへ遷移する (二段構え)。
-        //mobile=true (ネイティブアプリ) は Cookie を破棄するだけ
+        //外部 IdP でサインインしたセッションは IdP 側のログアウトにブラウザ遷移が要るので、Cookie を残したまま遷移先 URL を返す
         [Authorize]
         [HttpPost("logout"), Audit(AuditCategory.Authentication)]
         public async Task<IActionResult> Logout(bool mobile = false)

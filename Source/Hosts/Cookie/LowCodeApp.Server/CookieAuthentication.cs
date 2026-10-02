@@ -31,8 +31,7 @@ namespace LowCodeApp.Server
                         return Task.CompletedTask;
                     };
                 })
-                //外部 IdP (Entra ID / Google / AWS Cognito / OIDC)。並べるプロバイダは Services/ExternalLoginTable が SystemConfig の設定から組み立てる。
-                //IdP は本人確認をするだけで、セッションはこの Cookie のまま。確認できた本人をユーザー行に解決するのは ExternalLoginUserResolver
+                //外部 IdP (Entra ID / Google / AWS Cognito / OIDC)。並べるプロバイダは Services/ExternalLoginTable が組み立てる
                 .AddExternalLogins(ExternalLoginTable.Create(), o => o.MobileCallbackUrl = SystemConfig.Instance.MobileLoginCallbackUrl);
             builder.Services.AddScoped<IExternalLoginUserResolver, ExternalLoginUserResolver>();
 
@@ -67,7 +66,6 @@ namespace LowCodeApp.Server
         }
 
         //ユーザーが 0 件なら admin / admin を作る (表・列はユーザーモジュールのデザインから。パスワードログインがある構成だけ)。
-        //監査ログ: リクエストの外で作る唯一のアカウントなので System の行として残す (ログの中で「この管理者はどこから来たか」が追える)
         static async Task CreateInitialUserAsync(WebApplication app)
         {
             await using var dbAccessor = new DbAccessor(SystemConfig.Instance.DataSources);
@@ -87,7 +85,6 @@ namespace LowCodeApp.Server
             }
             catch (AuditLogException)
             {
-                //起動時の非同期処理で失敗にする相手がいない (Critical には残っている)
             }
         }
     }

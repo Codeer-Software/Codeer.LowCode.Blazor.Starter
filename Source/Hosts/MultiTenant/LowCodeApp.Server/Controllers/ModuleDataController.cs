@@ -96,8 +96,7 @@ namespace LowCodeApp.Server.Controllers
             return Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
         }
 
-        //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)。
-        //ModuleData はポリモーフィックなので JsonConverterEx で直列化して返す
+        //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)
         [HttpPost("parse_file")]
         public async Task<IActionResult> ParseFileAsync(string? moduleName)
         {

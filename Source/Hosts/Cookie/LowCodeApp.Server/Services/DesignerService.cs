@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 
 namespace LowCodeApp.Server.Services
 {
-    //読み込んだデザイン 1 版分。Version は App.zip の SHA-256 (監査ログに残す版。デザイナの送信履歴のファイル名にも同じ値が入る)
+    //読み込んだデザイン 1 版分。Version は App.zip の SHA-256 (監査ログに残る版)
     record LoadedDesign(DesignData DesignData, TransferDesignData TransferData, string Version)
     {
         internal byte[] ForFront(ModuleData? currentUser)
@@ -29,7 +29,7 @@ namespace LowCodeApp.Server.Services
             {
                 var designData = Load(_current.DesignData);
                 if (ReferenceEquals(_current.DesignData, designData)) return _current;
-                //版は App.zip の SHA-256。ハッシュを取る間に差し替わっていたら読み直す (読み込んだ中身と版を食い違わせない)
+                //版は App.zip の SHA-256
                 var version = ComputeVersion();
                 for (var retry = 0; retry < 3 && ZipFileDateTime() != designData.SourceFileDateTime; retry++)
                 {

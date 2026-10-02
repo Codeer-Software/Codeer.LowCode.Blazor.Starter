@@ -5,7 +5,6 @@ namespace LowCodeApp.Server
 {
     /// <summary>
     /// 外部 IdP (Entra ID / Google / AWS Cognito / OIDC) が本人確認したユーザーを、ユーザーテーブルの 1 行に解決する。
-    /// これはアプリのプロビジョニング方針なので、パッケージではなくここに置く:
     ///
     /// - 事前登録制 (この実装): IdP のユーザー名 (Entra = UPN、Google / Cognito = メール) がユーザーモジュールの
     ///   LoginAccountContractField の ExternalLoginName (空なら LoginName) の列と一致し、IsActive が偽でない行だけ許可する。行は作らない

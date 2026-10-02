@@ -22,7 +22,7 @@ namespace LowCodeApp.Server.Services
             : base(designData, authenticationContext, dbAccess, temporaryFileManager)
         {
             _designData = designData;
-            //編集履歴: EditHistoryField を置いたモジュールの保存ごとに履歴モジュールへスナップショットを書き、履歴モジュールを読むときは Snapshot を読む人の権限に落とす (結線はこの 1 行)
+            //編集履歴 (EditHistoryField)
             AddInterceptor(new EditHistoryRecorder(designData));
         }
 
@@ -60,7 +60,7 @@ namespace LowCodeApp.Server.Services
         internal async Task<string> AddSystemRecordAsync(ModuleData data)
             => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
 
-        //承認フローなど、既存レコードへのシステムの記録の書き戻し用内部経路。data に含まれるフィールドだけが更新される
+        //承認フローなどが使う内部経路 (操作ユーザーの書き込み権限を通さない)。data に含まれるフィールドだけが更新される
         internal async Task UpdateSystemRecordAsync(ModuleData data)
             => await UpdateAsync(Guid.NewGuid(), Guid.NewGuid(), data);
     }

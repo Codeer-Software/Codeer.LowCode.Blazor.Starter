@@ -17,7 +17,7 @@ namespace LowCodeApp.Server.Services
         public bool CanScriptDebug { get; set; }
         public bool UseHotReload { get; set; }
         public DataSource[] DataSources { get; set; } = [];
-        //ファイル保存先 = 種類ごとの設定 (使うものだけ書けばよい)。実体 (IFileStorage) は Services/FileStorageTable が組み立てる (メールの MailSenderTable と同じ考え方)
+        //ファイル保存先 (使うものだけ書けばよい)。実体は Services/FileStorageTable が組み立てる
         public FileSystemStorageSettings[] FileSystemStorages { get; set; } = [];
         public AzureBlobStorageSettings[] AzureBlobStorages { get; set; } = [];
         public S3StorageSettings[] S3Storages { get; set; } = [];
@@ -33,25 +33,25 @@ namespace LowCodeApp.Server.Services
         public SendGridSettings SendGrid { get; set; } = new();
         public GmailSettings Gmail { get; set; } = new();
         public AISettings AISettings { get; set; } = new();
-        //AIChatField のサーバー側 (AI/AIChatAgentTable)。AI が読むデータソース等
+        //AIChatField のサーバー側設定
         public AIChatSettings AIChat { get; set; } = new();
-        //SemanticSearchField (意味検索) の埋め込みプロバイダの呼び名 (AI/EmbeddingProviderTable の鍵)。プロバイダごとの設定は個別のセクションとして持つ
+        //SemanticSearchField (意味検索) の埋め込みプロバイダの呼び名 (AI/EmbeddingProviderTable の鍵)
         public SemanticSearchSettings SemanticSearch { get; set; } = new();
         public AzureOpenAIEmbeddingSettings AzureOpenAIEmbedding { get; set; } = new();
-        //ID/パスワードのログイン (表・列はユーザーモジュールのデザインから: IdField / LoginAccountContractField / PasswordHashField)。外部 IdP 専用にするなら false (ログイン画面はプロバイダのボタンだけになる)
+        //ID/パスワードのログイン。外部 IdP 専用にするなら false
         public bool AllowPasswordLogin { get; set; } = true;
-        //外部 IdP (Entra ID / Google / AWS Cognito / OIDC) = 種類ごとの設定 (使うものだけ書けばよい)。実体 (IExternalLoginProvider) は Services/ExternalLoginTable が組み立てる
+        //外部 IdP (使うものだけ書けばよい)。実体は Services/ExternalLoginTable が組み立てる
         public EntraLoginSettings EntraLogin { get; set; } = new();
         public GoogleLoginSettings GoogleLogin { get; set; } = new();
         public CognitoLoginSettings CognitoLogin { get; set; } = new();
         public OidcLoginSettings[] OidcLogins { get; set; } = [];
         //MAUI アプリがシステムブラウザで外部 IdP にログインした後に戻る URL。MAUI 側の appsettings (Server:LoginCallbackUrl) と一致させる
         public string MobileLoginCallbackUrl { get; set; } = string.Empty;
-        //ID/パスワードのログインに足す二要素認証 (TOTP)。有効・無効はデザイン (LoginAccountContractField の TOTP 列) で決まり、ここは表示用の Issuer だけ (docs: Codeer.LowCode.Blazor.Extras の TwoFactorLogin.md)
+        //認証アプリ (TOTP) の二要素認証の表示用 Issuer
         public TotpLoginSettings TotpLogin { get; set; } = new();
-        //メールのワンタイムコードによる二要素認証。有効・無効はデザイン (LoginAccountContractField の TwoFactorEmail) で決まり、ここはメールの体裁と有効期限だけ
+        //メールのワンタイムコードによる二要素認証 (メールの体裁と有効期限)
         public EmailOtpLoginSettings EmailOtpLogin { get; set; } = new();
-        //監査ログ (Extras.Server の AuditLog)。有効・失敗時の扱いと出力先 (Database / File) が 1 セクション。実体 (IAuditSink) は Services/AuditSinkTable が組み立てる
+        //監査ログ (Extras.Server の AuditLog)。出力先の実体は Services/AuditSinkTable
         public AuditLogSettings AuditLog { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }

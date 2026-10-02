@@ -4,8 +4,7 @@ using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 namespace LowCodeApp.Server.Services
 {
     /// <summary>
-    /// SystemConfig の監査ログの出力先設定 (AuditLog.Database / AuditLog.File) → IAuditSink の対応表
-    /// (ファイル保存先の FileStorageTable と同じ考え方)。独自の出力先 (SIEM 直送など) を足すときは IAuditSink を実装してここに追加する。
+    /// 監査ログの出力先 (appsettings の AuditLog.Database / AuditLog.File)。独自の出力先 (SIEM 直送など) は IAuditSink を実装してここに足す。
     /// </summary>
     public static class AuditSinkTable
     {
@@ -13,7 +12,6 @@ namespace LowCodeApp.Server.Services
         {
             var config = SystemConfig.Instance;
             var list = new List<IAuditSink>();
-            //DB: 書き込みごとに専用の接続を開く (操作のトランザクションとは別。操作が失敗しても記録は残る)
             if (!string.IsNullOrEmpty(config.AuditLog.Database.DataSourceName))
                 list.Add(new DatabaseAuditSink(config.AuditLog.Database, () => new DbAccessor(config.DataSources)));
             if (!string.IsNullOrEmpty(config.AuditLog.File.Directory))

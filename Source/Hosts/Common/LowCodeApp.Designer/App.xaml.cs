@@ -52,11 +52,7 @@ public partial class App : DesignerApp
 
         MainWindow.Title = "LowCodeApp";
 
-        //標準実装一式 (アイコン候補 / プロジェクトテンプレート / ツールメニュー / AIチャット) を登録。
-        //一部だけ使いたい場合は DesignerStandard.Setup の中身と同じコードを個別に書ける
-        //(StandardTemplates / StandardMenus / StandardIcons / DesignerChatRegistration)。
-        //AIチャットのモデルはライブラリが IChatClient 抽象しか知らないため、
-        //プロバイダ選択(Azure OpenAI)と認証情報はアプリ側のここで持ち、ファクトリとして渡す。
+        //標準実装一式 (アイコン候補 / プロジェクトテンプレート / ツールメニュー / AIチャット) を登録
         DesignerStandard.Setup(DesignerEnvironment, new DesignerStandardOptions
         {
             CreateAiChatClient = CreateAzureOpenAIChatClientFactory(),

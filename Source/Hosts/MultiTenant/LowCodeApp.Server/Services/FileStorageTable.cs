@@ -3,9 +3,8 @@ using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 namespace LowCodeApp.Server.Services
 {
     /// <summary>
-    /// SystemConfig の保存先設定 (種類ごと: FileSystemStorages / AzureBlobStorages / S3Storages と簡易形式 FileStorages) → IFileStorage の対応表
-    /// (メールの MailSenderTable と同じ考え方)。独自の保存先を足すときは IFileStorage を実装してここに追加する。
-    /// Azure / S3 のクライアントは毎回作らず、初回に組み立てた並びを使い回す。
+    /// ファイル保存先の設定 (FileSystemStorages / AzureBlobStorages / S3Storages と簡易形式 FileStorages) → IFileStorage の対応表。
+    /// 独自の保存先を足すときは IFileStorage を実装してここに追加する。
     /// </summary>
     public static class FileStorageTable
     {

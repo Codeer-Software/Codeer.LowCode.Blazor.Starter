@@ -4,8 +4,7 @@ using Codeer.LowCode.Blazor.Repository.Data;
 namespace LowCodeApp.Server.Services
 {
     /// <summary>
-    /// このリクエストが使うデザイン (スコープ)。最初に参照した時点の版に固定する。
-    /// リクエストの途中で App.zip が差し替わっても最後まで同じ版で動き、監査ログにもその版 (Version = App.zip の SHA-256) が残る。
+    /// このリクエストが使うデザイン (スコープ)。最初に参照した時点の版に固定し、途中で App.zip が差し替わっても最後まで同じ版で動く。
     /// リクエストの中では DesignerService から直接取らず、これ (DataService.Design) を使う。
     /// </summary>
     public class RequestDesign

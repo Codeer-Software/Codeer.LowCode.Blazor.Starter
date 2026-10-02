@@ -24,7 +24,7 @@ namespace LowCodeApp.WinForms.Services
             : base(designData, authenticationContext, dbAccess, temporaryFileManager)
         {
             _designData = designData;
-            //編集履歴: EditHistoryField を置いたモジュールの保存ごとに履歴モジュールへスナップショットを書き、履歴モジュールを読むときは Snapshot を読む人の権限に落とす (結線はこの 1 行)
+            //編集履歴 (EditHistoryField)
             AddInterceptor(new EditHistoryRecorder(designData));
             DbAccess = dbAccess;
             TemporaryFileManager = temporaryFileManager;
@@ -59,7 +59,7 @@ namespace LowCodeApp.WinForms.Services
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
 
-        //メール送信履歴などシステムの記録を、操作ユーザーの書き込み権限に依存せず追加する内部経路。戻り値は採番された Id
+        //メール送信履歴などを操作ユーザーの書き込み権限を通さず追加する内部経路。戻り値は採番された Id
         internal async Task<string> AddSystemRecordAsync(ModuleData data)
             => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
     }

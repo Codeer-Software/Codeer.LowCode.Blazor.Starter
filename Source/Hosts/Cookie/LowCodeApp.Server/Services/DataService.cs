@@ -10,7 +10,7 @@ namespace LowCodeApp.Server.Services
         public DbAccessor DbAccess { get; }
         public TemporaryFileManager TemporaryFileManager { get; }
         public CustomizedModuleDataIO ModuleDataIO { get; }
-        //このリクエストが使うデザイン (最初に参照した時点の版に固定)。リクエストの外 (バックグラウンドのジョブ) では作った時点の版
+        //このリクエストが使うデザイン (最初に参照した時点の版に固定)
         public RequestDesign Design { get; }
         readonly IHttpContextAccessor? _httpContextAccessor;
         readonly string? _fixedUserId;

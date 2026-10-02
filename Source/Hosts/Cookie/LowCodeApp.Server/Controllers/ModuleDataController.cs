@@ -21,7 +21,6 @@ namespace LowCodeApp.Server.Controllers
     public class ModuleDataController : ControllerBase, IAsyncDisposable
     {
         readonly DataService _dataService;
-        //監査ログ: 分類は各アクションの [Audit]、対象 (モジュール・Id) と保存結果のエラーはここから足す。記録自体はミドルウェア
         readonly AuditContext _audit;
 
         public ModuleDataController(DataService dataService, AuditContext audit)
@@ -45,8 +44,7 @@ namespace LowCodeApp.Server.Controllers
             return this.FileWithETag(_dataService.Design.ForFront(await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
         }
 
-        //監査ログ: 参照は「誰が・どのモジュールを・何件読んだか」を常に残す (DataRead)。
-        //行ごとの Id まで残す (閲覧の証跡。行数ぶん大きくなる) なら AddRead の recordIds を true にする
+        //監査ログに読んだ行の Id まで残すなら AddRead の recordIds を true にする
         [HttpPost("list"), Audit(AuditCategory.DataRead)]
         public async Task<IActionResult> GetListAsync(List<GetListRequest> request)
         {
@@ -68,7 +66,6 @@ namespace LowCodeApp.Server.Controllers
             await Request.Body.CopyToAsync(memory);
             memory.Position = 0;
             var data = MessagePackSerializer.Typeless.Deserialize(memory) as List<ModuleSubmitData>;
-            //監査ログ: 行ごとの対象 (Add / Update / Delete) と採番 Id、結果のエラーは保存の合流点 (CustomizedModuleDataIO の AuditIOInterceptor) が記録する
             return await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data!);
         }
 
@@ -104,8 +101,7 @@ namespace LowCodeApp.Server.Controllers
         public async Task<IActionResult> BulkSubmitAsync(string? moduleName)
             => Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
 
-        //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)。
-        //ModuleData はポリモーフィックなので JsonConverterEx で直列化して返す
+        //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)
         [HttpPost("parse_file")]
         public async Task<IActionResult> ParseFileAsync(string? moduleName)
             => Content(Codeer.LowCode.Blazor.Json.JsonConverterEx.SerializeObject(

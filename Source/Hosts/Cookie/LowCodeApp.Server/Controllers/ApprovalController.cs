@@ -9,8 +9,7 @@ using LowCodeApp.Server.Services;
 
 namespace LowCodeApp.Server.Controllers
 {
-    //承認フローの command API。状態遷移の唯一の口 (クライアントは承認モジュールを直接書けない)。
-    //ロジックは ApprovalEngine (Extras.Server) にあり、Controller は結線だけを持つ
+    //承認フローの API
     [Authorize, AutoValidateAntiforgeryToken]
     [ApiController]
     [Route("api/approval")]
@@ -38,11 +37,9 @@ namespace LowCodeApp.Server.Controllers
             return result;
         }
 
-        //承認データの書き込みはシステムの記録なので、操作ユーザーの書き込み権限に依存しない内部経路で行う
         ApprovalEngine CreateEngine()
         {
             var mail = SystemConfig.Instance.Mail;
-            //送信履歴はシステムの記録なので内部経路で書く (MailController と同じ)
             var historyWriter = string.IsNullOrEmpty(mail.HistoryModuleName)
                 ? null
                 : new MailHistoryWriter(mail.HistoryModuleName, _dataService.Design.DesignData,

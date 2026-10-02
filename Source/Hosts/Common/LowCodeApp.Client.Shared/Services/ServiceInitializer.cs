@@ -15,7 +15,7 @@ namespace LowCodeApp.Client.Shared.Services
     {
         public static void AddSharedServices(this IServiceCollection services)
         {
-            //Extras の組み込みサービスが使うエンドポイント。URL はアプリ(Controller を持つ側)の持ち物なのでここで一元定義する
+            //Extras の組み込みサービスが使うエンドポイント
             MailTransport.SendMailEndPoint = "/api/mail";
             MailTransport.BulkSearchMailEndPoint = "/api/mail/bulk_search";
             MailTransport.PreviewMailEndPoint = "/api/mail/preview";
@@ -23,7 +23,7 @@ namespace LowCodeApp.Client.Shared.Services
             ApprovalTransport.EndPointBase = "/api/approval";
             Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
             AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
-            //自分の認証アプリ (TOTP) 解除ボタン (MyTotpResetButtonField。Cookie 認証テンプレートの AccountController)
+            //認証アプリ (TOTP) 解除ボタン (MyTotpResetButtonField)
             TotpResetClient.StatusEndPoint = "/api/account/totp/status";
             TotpResetClient.ResetEndPoint = "/api/account/totp/reset";
             AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";
