@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor;
+using Codeer.LowCode.Blazor.Aggregation;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Match;
@@ -19,6 +20,14 @@ namespace LowCodeApp.WinForms.Services
 
         public async Task<Paging<ModuleData>> GetListAsync(SearchCondition condition, int pageIndex, bool withLock)
             => await CheckoutException(async dataIO => await dataIO.GetListAsync(condition!, pageIndex), new());
+
+        public async Task<List<AggregateResult>> AggregateAsync(List<AggregateCondition> conditions)
+        {
+            await using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
+            var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
+            var dataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
+            return await dataIO.AggregateAsync(conditions);
+        }
 
         public async Task<List<ModuleSubmitResult>?> SubmitAsync(List<ModuleSubmitData> data)
             => await CheckoutException(async dataIO => await dataIO.SubmitWithTransactionAsync(data), null);
