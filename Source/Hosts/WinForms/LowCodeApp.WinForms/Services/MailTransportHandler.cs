@@ -6,8 +6,7 @@ using Codeer.LowCode.Blazor.Extras.Server.Mail;
 namespace LowCodeApp.WinForms.Services
 {
     /// <summary>
-    /// デスクトップ用のメール経路。HTTP (MailController) の代わりに MailDispatcher / MailBulkSearch / MailPreviewBuilder を直接呼ぶ
-    /// (MailTransport.Handler に設定する)。処理ごとに DB 接続を開いて閉じる (ModuleDataService と同じ流儀)。
+    /// デスクトップ用のメール経路 (HTTP の代わりにメール処理を直接呼ぶ)。
     /// </summary>
     public class MailTransportHandler : IMailTransportHandler
     {
@@ -33,7 +32,6 @@ namespace LowCodeApp.WinForms.Services
             var io = new CustomizedModuleDataIO(DesignerService.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
 
             var mail = SystemConfig.Instance.Mail;
-            //履歴はシステムの記録なので、操作ユーザーの書き込み権限に依存しない内部経路で書く
             var historyWriter = string.IsNullOrEmpty(mail.HistoryModuleName)
                 ? null
                 : new MailHistoryWriter(mail.HistoryModuleName, DesignerService.GetDesignData(), data => io.AddSystemRecordAsync(data), LogError);

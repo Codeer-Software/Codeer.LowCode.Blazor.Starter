@@ -27,7 +27,6 @@ namespace LowCodeApp.WinForms
 
         private void Application_ThreadException(object sender, ThreadExceptionEventArgs e)
         {
-            //�J�����̗�O����
             MessageBox.Show(
                 $"An unhandled exception occurred:  {e.Exception.Message}{Environment.NewLine}{e.Exception.StackTrace}",
                 "Error");

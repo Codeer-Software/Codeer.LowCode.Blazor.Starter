@@ -65,13 +65,11 @@ namespace LowCodeApp.Client.Shared.Services
 
             if (_design != null) return;
 
-            //設定取得(+開発時のホットリロード接続)はデザインデータと独立なので並列に走らせる
             var hotReloadTask = InitializeHotReloadAsync();
 
             using var designDataStream = await _http.GetFromStreamAsync($"/api/module_data/design");
             _design = DesignDataTransferLogic.ToDesignData(designDataStream);
 
-            //ローカライズリソースとカレントユーザーは互いに独立なので並列に取得する
             var localizeTask = this.CreateLocalizeService();
 
             var currentUserModule = _design.Modules.Find(_design.AppSettings.CurrentUserModuleDesignName);

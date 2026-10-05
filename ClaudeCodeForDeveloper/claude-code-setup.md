@@ -192,9 +192,11 @@ Get-ChildItem $design -Recurse -Filter *.json | ForEach-Object {
   if ($u -ne $t) { [IO.File]::WriteAllText($_.FullName, $u, $utf8) }
 }
 # テンプレート DB に入っているサンプル表（Empty のデザインは使わない）を消して、このアプリの表だけにする
+# (SQL は --file で渡す。Start-Process の -ArgumentList は空白を含む要素を引用しないので、--query に文を直接渡すと最初の語で切れる)
+[IO.File]::WriteAllText("<ROOT>\Local\drop_samples.sql", "DROP TABLE IF EXISTS Recipes; DROP TABLE IF EXISTS Ingredients; DROP TABLE IF EXISTS CookingSteps; DROP TABLE IF EXISTS Authors; DROP TABLE IF EXISTS Colors;", $utf8)
 Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
   "sql", $design, "--datasource", "Main",
-  "--query", "DROP TABLE IF EXISTS Recipes; DROP TABLE IF EXISTS Ingredients; DROP TABLE IF EXISTS CookingSteps; DROP TABLE IF EXISTS Authors; DROP TABLE IF EXISTS Colors;",
+  "--file", "<ROOT>\Local\drop_samples.sql",
   "--out", "<ROOT>\Local\sql.json")
 # データソース名を変えたので App.zip を作り直す
 Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(

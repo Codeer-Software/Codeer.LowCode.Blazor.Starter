@@ -25,23 +25,15 @@ namespace LowCodeApp.WinForms.Services
                   var memoryStream = new MemoryStream();
                   await content.CopyToAsync(memoryStream);
                   memoryStream.Position = 0;
-                  return await new AITextAnalyzeService(SystemConfig.Instance.AISettings).FileToDataAsync(
+                  return await new AITextAnalyzeService(SystemConfig.Instance.AISettings).AnalyzeFileAsync(
                       dataIO, DesignerService.GetDesignData().Modules,
-                      moduleName, GetRemarks(moduleName, fieldName), fileName, memoryStream);
+                      moduleName, fieldName, fileName, memoryStream);
               }, null);
 
         public async Task<ModuleData?> TextToModuleDataAsync(string moduleName, string fieldName, string text)
-            => await CheckoutException(async dataIO => await new AITextAnalyzeService(SystemConfig.Instance.AISettings).TextToDataAsync(
+            => await CheckoutException(async dataIO => await new AITextAnalyzeService(SystemConfig.Instance.AISettings).AnalyzeTextAsync(
                 dataIO, DesignerService.GetDesignData().Modules,
-                moduleName, GetRemarks(moduleName, fieldName), text ?? string.Empty), null);
-
-        static string GetRemarks(string? moduleName, string? fieldName)
-        {
-            var mod = DesignerService.GetDesignData().Modules.Find(moduleName ?? string.Empty);
-            var field = mod?.Fields.FirstOrDefault(e => e.Name == fieldName) as AITextAnalyzerFieldDesign;
-            if (field == null) throw LowCodeException.Create($"Invalid Field {moduleName}.{fieldName}");
-            return field.Remarks;
-        }
+                moduleName, fieldName, text ?? string.Empty), null);
 
         async Task<T> CheckoutException<T>(Func<CustomizedModuleDataIO, Task<T>> f, T errResult)
         {

@@ -245,9 +245,7 @@
     }
   }
 
-  //外部 IdP: システムブラウザ (埋め込み WebView は Google が拒否する) でサーバーのチャレンジ URL を開く。
-  //サーバーは Web と同じ OIDC フローを完了し、使い捨てチケット付きで ServerSettings.LoginCallbackUrl へ戻す。
-  //チケットを ServerConnection が持つ認証 Cookie に交換する
+  //外部 IdP: システムブラウザでサーバーのログイン URL を開き、戻ってきたチケットを認証 Cookie に交換する
   async Task ExternalLoginAsync(string provider)
   {
     _busy = true;

@@ -170,8 +170,6 @@ app.UseStaticFiles(htmlNoCache);
 
 // API responses are never served from the browser cache unless the action set its own
 // Cache-Control (FileWithETag uses no-cache + ETag so downloads can still be revalidated).
-// Without this, a browser restoring its tabs (cache-first load) can replay yesterday's
-// api/account/current_user 200 and start the app as "signed in" after the cookie is gone.
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/api"))

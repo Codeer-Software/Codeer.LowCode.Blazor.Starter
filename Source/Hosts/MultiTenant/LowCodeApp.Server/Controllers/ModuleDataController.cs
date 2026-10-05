@@ -64,6 +64,14 @@ namespace LowCodeApp.Server.Controllers
             return await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data!);
         }
 
+        [HttpPost("aggregate")]
+        public async Task<IActionResult> AggregateAsync(List<AggregateCondition> conditions)
+        {
+            await _dataService.InitializeAsync();
+            var results = await _dataService.ModuleDataIO.AggregateAsync(conditions);
+            return File(new MemoryStream(MessagePackSerializer.Typeless.Serialize(results)), "application/octet-stream");
+        }
+
         [HttpPost("list_file")]
         public async Task<IActionResult> GetListFileAsync(SearchCondition? condition)
         {
@@ -96,8 +104,7 @@ namespace LowCodeApp.Server.Controllers
             return Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
         }
 
-        //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)。
-        //ModuleData はポリモーフィックなので JsonConverterEx で直列化して返す
+        //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)
         [HttpPost("parse_file")]
         public async Task<IActionResult> ParseFileAsync(string? moduleName)
         {

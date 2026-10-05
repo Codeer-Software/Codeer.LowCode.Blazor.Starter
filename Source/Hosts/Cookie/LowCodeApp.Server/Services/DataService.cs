@@ -10,15 +10,18 @@ namespace LowCodeApp.Server.Services
         public DbAccessor DbAccess { get; }
         public TemporaryFileManager TemporaryFileManager { get; }
         public CustomizedModuleDataIO ModuleDataIO { get; }
+        //このリクエストが使うデザイン (最初に参照した時点の版に固定)
+        public RequestDesign Design { get; }
         readonly IHttpContextAccessor? _httpContextAccessor;
         readonly string? _fixedUserId;
 
-        public DataService(IHttpContextAccessor? httpContextAccessor = null)
+        public DataService(IHttpContextAccessor? httpContextAccessor = null, RequestDesign? design = null)
         {
             _httpContextAccessor = httpContextAccessor;
+            Design = design ?? new RequestDesign();
             DbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
             TemporaryFileManager = new TemporaryFileManager(DbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
-            ModuleDataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), this, DbAccess, TemporaryFileManager);
+            ModuleDataIO = new CustomizedModuleDataIO(Design.DesignData, this, DbAccess, TemporaryFileManager);
         }
 
         //リクエストの外 (意味検索の再索引などバックグラウンドのジョブ) で、そのユーザーの権限のまま使うための DataService

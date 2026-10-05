@@ -2,10 +2,10 @@
   "ConnectionStrings": {
     "Main": "",
     "SampleSQLite": "Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\sqlite_sample.db;",
-    "PatternsSQLite": "Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\sqlite_patterns_v4.db;",
-    "Inventory": "Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\inventory_v1.db;",
-    "Sfa": "Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\sfa_v1.db;",
-    "ProjectManagement": "Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\project_management_v1.db;"
+    "PatternsSQLite": "Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\sqlite_patterns_v7.db;",
+    "Inventory": "Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\inventory_v3.db;",
+    "Sfa": "Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\sfa_v3.db;",
+    "ProjectManagement": "Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\project_management_v3.db;"
   },
   "FileSystemStorages": [
     {

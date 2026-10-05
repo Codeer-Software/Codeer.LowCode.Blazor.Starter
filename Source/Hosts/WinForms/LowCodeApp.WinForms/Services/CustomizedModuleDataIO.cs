@@ -4,6 +4,7 @@ using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.DbAccess;
+using Codeer.LowCode.Blazor.Extras.Server.EditHistory;
 using Codeer.LowCode.Blazor.Extras.Services;
 
 namespace LowCodeApp.WinForms.Services
@@ -23,9 +24,12 @@ namespace LowCodeApp.WinForms.Services
             : base(designData, authenticationContext, dbAccess, temporaryFileManager)
         {
             _designData = designData;
+            //編集履歴 (EditHistoryField)
+            AddInterceptor(new EditHistoryRecorder(designData));
             DbAccess = dbAccess;
             TemporaryFileManager = temporaryFileManager;
         }
+
 
         protected override async Task<string> AddAsync(Guid transactionId, Guid moduleSubmitId, ModuleData data)
         {
@@ -55,7 +59,7 @@ namespace LowCodeApp.WinForms.Services
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
 
-        //メール送信履歴などシステムの記録を、操作ユーザーの書き込み権限に依存せず追加する内部経路。戻り値は採番された Id
+        //メール送信履歴などを操作ユーザーの書き込み権限を通さず追加する内部経路。戻り値は採番された Id
         internal async Task<string> AddSystemRecordAsync(ModuleData data)
             => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
     }

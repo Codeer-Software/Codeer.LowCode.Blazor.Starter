@@ -6,7 +6,7 @@ using LowCodeApp.Server.Services;
 
 namespace LowCodeApp.Server.Controllers
 {
-    //メール送信 (MailField / BulkMailField) の受け口。ロジックは Extras.Server にあり、ここは結線だけを持つ
+    //メール送信 (MailField / BulkMailField) の受け口
     [Authorize, AutoValidateAntiforgeryToken]
     [ApiController]
     [Route("api/mail")]

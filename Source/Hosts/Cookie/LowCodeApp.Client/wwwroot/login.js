@@ -1,7 +1,4 @@
-//ログイン画面のエンジン。login.html は枠と見た目だけを持ち、流れ (ID/パスワード → 二要素認証、外部 IdP のボタン、
-//失敗理由の表示、antiforgery トークン) はここが担う。何を出すかはサーバーの api/account/login_options が返す
-//(パスワードログインの有無・外部 IdP の一覧・デザインの LoginPage 設定 (タイトル / ロゴ / 案内文))。
-//ブランディングは login.html (と AppSettings の LoginPage) で行い、このファイルは通常触らない。
+//ログイン画面の処理。見た目は login.html で変える (このファイルは通常触らない)
 (function () {
   "use strict";
 

@@ -21,6 +21,7 @@ using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Microsoft.AspNetCore.SignalR;
 
 //load dll.
@@ -56,7 +57,7 @@ SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Ge
 SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
 SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
 SystemConfig.Instance.AIChat = builder.Configuration.GetSection("AIChat").Get<AIChatSettings>() ?? new();
-//意味検索 (SemanticSearchField) の埋め込みプロバイダ: 呼び名は SemanticSearch.EmbeddingProvider、プロバイダ設定はそれぞれ独立したセクション (使うものだけ書けばよい)
+//意味検索 (SemanticSearchField) の埋め込みプロバイダの設定 (使うものだけ書けばよい)
 SystemConfig.Instance.SemanticSearch = builder.Configuration.GetSection("SemanticSearch").Get<SemanticSearchSettings>() ?? new();
 SystemConfig.Instance.AzureOpenAIEmbedding = builder.Configuration.GetSection("AzureOpenAIEmbedding").Get<AzureOpenAIEmbeddingSettings>() ?? new();
 SystemConfig.Instance.AllowPasswordLogin = builder.Configuration.GetValue<bool?>("AllowPasswordLogin") ?? true;
@@ -68,6 +69,7 @@ SystemConfig.Instance.OidcLogins = builder.Configuration.GetSection("OidcLogins"
 SystemConfig.Instance.MobileLoginCallbackUrl = builder.Configuration["MobileLoginCallbackUrl"] ?? string.Empty;
 SystemConfig.Instance.TotpLogin = builder.Configuration.GetSection("TotpLogin").Get<TotpLoginSettings>() ?? new();
 SystemConfig.Instance.EmailOtpLogin = builder.Configuration.GetSection("EmailOtpLogin").Get<EmailOtpLoginSettings>() ?? new();
+SystemConfig.Instance.AuditLog = builder.Configuration.GetSection("AuditLog").Get<AuditLogSettings>() ?? new();
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
@@ -128,7 +130,12 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 });
 
 builder.Services.AddHttpContextAccessor();
+//リクエストが使うデザインは最初に参照した時点の版に固定する
+builder.Services.AddScoped<RequestDesign>();
 builder.Services.AddScoped<DataService>();
+//監査ログ (appsettings の AuditLog で有効化)。出力先は Services/AuditSinkTable
+builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create(),
+    http => http?.RequestServices.GetRequiredService<RequestDesign>().Version ?? DesignerService.GetCurrent().Version);
 
 var app = builder.Build();
 
@@ -176,8 +183,6 @@ app.UseStaticFiles(htmlNoCache);
 
 // API responses are never served from the browser cache unless the action set its own
 // Cache-Control (FileWithETag uses no-cache + ETag so downloads can still be revalidated).
-// Without this, a browser restoring its tabs (cache-first load) can replay yesterday's
-// api/account/current_user 200 and start the app as "signed in" after the cookie is gone.
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/api"))
@@ -195,6 +200,8 @@ app.Use(async (context, next) =>
 });
 
 app.UseRouting();
+//監査ログは認証・認可の前に置く (401/403 も記録するため)
+app.UseAuditLog();
 
 if (SystemConfig.Instance.UseHotReload)
 {

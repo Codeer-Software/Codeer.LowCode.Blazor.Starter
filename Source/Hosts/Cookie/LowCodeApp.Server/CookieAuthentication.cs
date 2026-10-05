@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using LowCodeApp.Server.Services;
 using Codeer.LowCode.Blazor.DbAccess;
+using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
 
 namespace LowCodeApp.Server
@@ -30,8 +31,7 @@ namespace LowCodeApp.Server
                         return Task.CompletedTask;
                     };
                 })
-                //外部 IdP (Entra ID / Google / AWS Cognito / OIDC)。並べるプロバイダは Services/ExternalLoginTable が SystemConfig の設定から組み立てる。
-                //IdP は本人確認をするだけで、セッションはこの Cookie のまま。確認できた本人をユーザー行に解決するのは ExternalLoginUserResolver
+                //外部 IdP (Entra ID / Google / AWS Cognito / OIDC)。並べるプロバイダは Services/ExternalLoginTable が組み立てる
                 .AddExternalLogins(ExternalLoginTable.Create(), o => o.MobileCallbackUrl = SystemConfig.Instance.MobileLoginCallbackUrl);
             builder.Services.AddScoped<IExternalLoginUserResolver, ExternalLoginUserResolver>();
 
@@ -68,13 +68,27 @@ namespace LowCodeApp.Server
                 });
         }
 
-        //ユーザーが 0 件なら admin / admin を作る (表・列はユーザーモジュールのデザインから。パスワードログインがある構成だけ)
+        //ユーザーが 0 件なら admin / admin を作る (表・列はユーザーモジュールのデザインから。パスワードログインがある構成だけ)。
         static async Task CreateInitialUserAsync(WebApplication app)
         {
             await using var dbAccessor = new DbAccessor(SystemConfig.Instance.DataSources);
-            var accounts = LoginAccountStore.Create(DesignerService.GetDesignData(), dbAccessor);
+            var designData = DesignerService.GetDesignData();
+            var accounts = LoginAccountStore.Create(designData, dbAccessor);
             if (accounts == null || !accounts.HasPassword || await accounts.AnyAsync()) return;
-            await accounts.AddAsync("admin", "admin");
+            var userId = await accounts.AddAsync("admin", "admin");
+            try
+            {
+                await app.Services.GetRequiredService<AuditLogger>().WriteAsync(new AuditEvent
+                {
+                    Category = AuditCategory.System,
+                    Action = "Account.InitialUserCreated",
+                    Targets = { new AuditTarget { Module = designData.AppSettings.CurrentUserModuleDesignName, Id = userId, Operation = "Add" } },
+                    Detail = "LoginName=admin",
+                });
+            }
+            catch (AuditLogException)
+            {
+            }
         }
     }
 }

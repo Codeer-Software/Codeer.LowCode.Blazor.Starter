@@ -7,8 +7,7 @@ using LowCodeApp.Server.Services;
 
 namespace LowCodeApp.Server.Controllers
 {
-    //AITextAnalyzerField の受け口。ロジックは Extras.Server (AITextAnalyzeService) にあり、ここは結線だけを持つ
-    //moduleName / fieldName の AITextAnalyzerField が今のユーザーに見えるときだけ解析する (アプリアクセス条件・モジュールの UserRead・フィールド読取権限)。補足指示 (Remarks) はデザインから
+    //AITextAnalyzerField の受け口
     [Authorize, AutoValidateAntiforgeryToken]
     [ApiController]
     [Route("api/ai_text_analyze")]
@@ -31,7 +30,7 @@ namespace LowCodeApp.Server.Controllers
             try
             {
                 return await new AITextAnalyzeService(SystemConfig.Instance.AISettings).AnalyzeFileAsync(
-                    _dataService.ModuleDataIO, DesignerService.GetDesignData().Modules, moduleName, fieldName, fileName, memoryStream);
+                    _dataService.ModuleDataIO, _dataService.Design.DesignData.Modules, moduleName, fieldName, fileName, memoryStream);
             }
             catch (LowCodeException)
             {
@@ -50,7 +49,7 @@ namespace LowCodeApp.Server.Controllers
             try
             {
                 return await new AITextAnalyzeService(SystemConfig.Instance.AISettings).AnalyzeTextAsync(
-                    _dataService.ModuleDataIO, DesignerService.GetDesignData().Modules, moduleName, fieldName, text);
+                    _dataService.ModuleDataIO, _dataService.Design.DesignData.Modules, moduleName, fieldName, text);
             }
             catch (LowCodeException)
             {
