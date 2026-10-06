@@ -2,6 +2,7 @@ using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
+using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
 using LowCodeApp.Server.Services;
 using System.Collections.Concurrent;
@@ -11,6 +12,7 @@ namespace LowCodeApp.Server.AI
     /// <summary>
     /// AIChatField の Agent 名 → Agent の対応表。独自の Agent (<see cref="IAIChatAgent"/> 実装) を足すときは switch に 1 行足す。
     /// "" / "RawDataAccess" = RawDataAccessAgent (アプリの DB を読んで答える。AISettings が設定されているときだけ使える)
+    /// "ModuleDataAccess" = ModuleDataAccessAgent (ログインユーザーの権限でレコードを読んで答える。行の条件・項目の読み取り権限が画面と同じに効く)
     /// </summary>
     public static class AIChatAgentTable
     {
@@ -27,6 +29,7 @@ namespace LowCodeApp.Server.AI
         {
             "" => CreateRawDataAccess(),
             "RawDataAccess" => CreateRawDataAccess(),
+            "ModuleDataAccess" => CreateModuleDataAccess(),
             _ => null,
         };
 
@@ -37,7 +40,8 @@ namespace LowCodeApp.Server.AI
             //別のプロバイダ (OpenAI / Ollama 等) を使うなら IChatClient をここで作って渡す
             var chatClientFactory = AzureOpenAIClients.ChatClientFactory(config.AISettings);
             if (chatClientFactory == null) return null;
-            var dataSourceNames = config.AIChat.RawDataAccessDataSources.Length == 0
+            var options = config.AIChat.RawDataAccess;
+            options.DataSourceNames = config.AIChat.RawDataAccessDataSources.Length == 0
                 ? config.DataSources.Select(e => e.Name).ToList()
                 : config.AIChat.RawDataAccessDataSources.ToList();
             return new RawDataAccessAgent(
@@ -45,7 +49,27 @@ namespace LowCodeApp.Server.AI
                 () => new DbAccessor(config.DataSources),
                 () => DesignerService.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
-                new RawDataAccessOptions { DataSourceNames = dataSourceNames },
+                options,
+                semanticSearch: SemanticSearchIndex.Service);
+        }
+
+        //レコードは依頼したユーザーの権限で読む (ツール呼び出しごとにそのユーザーの DataService を開く)。上限は appsettings の AIChat:ModuleDataAccess
+        static IAIChatAgent? CreateModuleDataAccess()
+        {
+            var config = SystemConfig.Instance;
+            var chatClientFactory = AzureOpenAIClients.ChatClientFactory(config.AISettings);
+            if (chatClientFactory == null) return null;
+            return new ModuleDataAccessAgent(
+                chatClientFactory,
+                userId =>
+                {
+                    var dataService = new DataService(userId);
+                    return Task.FromResult(new ModuleDataAccessScope(dataService.ModuleDataIO, dataService, dataService.DbAccess));
+                },
+                () => DesignerService.GetDesignData(),
+                folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
+                config.AIChat.ModuleDataAccess,
+                //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする。権限は一覧検索と同じに効く
                 semanticSearch: SemanticSearchIndex.Service);
         }
     }

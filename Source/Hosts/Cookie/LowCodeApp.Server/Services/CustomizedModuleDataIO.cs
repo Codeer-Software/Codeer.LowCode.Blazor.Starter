@@ -26,6 +26,8 @@ namespace LowCodeApp.Server.Services
             AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLog.Database));
             //編集履歴 (EditHistoryField)
             AddInterceptor(new EditHistoryRecorder(designData));
+            //意味検索 (SemanticSearchField): 検索欄の文章を埋め込みにしてから検索する
+            AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor);
         }
 
 
