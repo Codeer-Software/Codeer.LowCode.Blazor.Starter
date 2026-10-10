@@ -450,3 +450,14 @@ DesignProjects/*/design/.ide/
 /Design/.ide/
 # Selenium test project: machine specific connection strings
 testsettings.local.json
+
+# Publishing identity for one machine / organisation (bundle id, signing certificates, keystore passwords).
+# See Source/Hosts/Maui/LowCodeApp.Maui/LowCodeApp.Maui.local.props.sample
+*.local.props
+
+# Machine specific MAUI client settings (server URL). Bundled into the app but never committed.
+appsettings.local.json
+
+# Per-developer server settings (connection strings, storage paths, AI/Gmail credentials).
+# Each host ships appsettings.Development.json.sample instead; copy it and edit the copy.
+appsettings.Development.json

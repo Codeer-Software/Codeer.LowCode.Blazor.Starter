@@ -90,7 +90,11 @@ button.image-button.focus-visual:focus {
         .loading-progress circle:last-child {
             stroke: #1b6ec2;
             stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            transition: stroke-dasharray 0.05s ease-in-out;
+            /* Each startup step moves the ring to its own target. Decelerating reads as the ring travelling
+               there; the 0.05s of the Blazor WebAssembly template reads as a jump. Kept under the 0.3s that
+               the loading screen waits before it starts fading (.app-loading), so the last step actually
+               arrives at 100% instead of being cut off part way - which is what the eye notices. */
+            transition: stroke-dasharray 0.25s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
 .loading-progress-text {
@@ -114,10 +118,30 @@ button.image-button.focus-visual:focus {
   text-align: center;
   font-size: .9rem;
   line-height: 1.2;
-  animation: fadePulse 1.6s ease-in-out infinite;
+  /* Each step renders a new element (@key), so noteIn runs again and the steps cross-fade instead of
+     the text being swapped in place. fadePulse then takes over for the wait itself. */
+  animation: noteIn .3s ease-out, fadePulse 1.6s ease-in-out .3s infinite;
 }
 @keyframes fadePulse {
   0%   { opacity: .45; }
   50%  { opacity: 1; }
   100% { opacity: .45; }
+}
+@keyframes noteIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: .45; transform: none; }
+}
+
+/* The loading screen sits above the page rather than being replaced by it: the low-code page needs a moment
+   to paint after it is rendered, and swapping straight to it leaves the screen blank in the meantime. */
+.app-loading {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 1000;
+  transition: opacity .4s ease-out .3s;
+}
+.app-loading-done {
+  opacity: 0;
+  pointer-events: none;
 }

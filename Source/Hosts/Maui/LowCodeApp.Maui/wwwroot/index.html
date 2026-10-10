@@ -20,16 +20,37 @@
       align-items: center;
       justify-content: center;
     }
+
+    /* Startup failure detail. Long stack traces have to stay readable and scrollable on a phone, which is the
+       only place a published build can be diagnosed. */
+    .init-error {
+      padding: 16px;
+    }
+
+    .init-error pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+      max-height: 60vh;
+      overflow: auto;
+      background: #f5f5f5;
+      padding: 8px;
+      user-select: text;
+      -webkit-user-select: text;
+    }
   </style>
 </head>
 
 <body>
-  <div id="app">
+  <div id="app" style="--blazor-load-percentage: 12%; --blazor-load-percentage-text: '12%'">
     <svg class="loading-progress">
       <circle r="40%" cx="50%" cy="50%" />
       <circle r="40%" cx="50%" cy="50%" />
     </svg>
     <div class="loading-progress-text"></div>
+    <!-- Plain HTML: the .NET runtime is not attached to this WebView yet, so this is the only thing that
+         can report progress during the Blazor startup. LowCodePage replaces it once Blazor takes over. -->
+    <div class="app-init-note" aria-live="polite">Starting the app</div>
   </div>
 
   <div id="blazor-error-ui">

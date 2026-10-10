@@ -101,10 +101,20 @@ namespace LowCodeApp.Server.Controllers
             var claimsIdentity = new ClaimsIdentity(
                 claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
+            var principal = new ClaimsPrincipal(claimsIdentity);
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(claimsIdentity),
+                principal,
                 new AuthenticationProperties { IsPersistent = loginInfo.IsPersistent });
+
+            //サインイン・サインアウトで antiforgery トークンを発行し直す。
+            //トークンは発行時のユーザーに紐づくので、匿名のときに取ったトークンは認証後の書き込みで
+            //「The provided antiforgery token was meant for a different claims-based user」で拒否される。
+            //ブラウザはログイン後にページを読み直して取り直すので表面化しないが、ネイティブアプリの
+            //接続はサインインをまたいで生き続けるため、サーバー側から新しいトークンを返してやる必要がある。
+            //SignInAsync は同じリクエストの HttpContext.User を更新しないので、先に差し替えてから発行する。
+            HttpContext.User = principal;
+            CookieAuthentication.AppendAntiforgeryTokenCookie(HttpContext);
 
             return Ok(new TotpLoginResult { Status = TotpLoginStatus.Ok });
         }
@@ -126,10 +136,15 @@ namespace LowCodeApp.Server.Controllers
             _audit.Event.UserId = redeemed.Value.User.UserId;
             _audit.Event.Detail = $"Provider={redeemed.Value.Provider}";
 
+            var principal = _externalLogins.CreatePrincipal(redeemed.Value.User, redeemed.Value.Provider);
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
-                _externalLogins.CreatePrincipal(redeemed.Value.User, redeemed.Value.Provider),
+                principal,
                 new AuthenticationProperties { IsPersistent = true });
+
+            //ログインと同じ理由でトークンを発行し直す (上のコメント参照)
+            HttpContext.User = principal;
+            CookieAuthentication.AppendAntiforgeryTokenCookie(HttpContext);
 
             return Ok();
         }
@@ -146,6 +161,11 @@ namespace LowCodeApp.Server.Controllers
             }
 
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+            //サインアウトでも同じ。匿名向けのトークンを返しておかないと、次のログインが弾かれて詰む
+            HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+            CookieAuthentication.AppendAntiforgeryTokenCookie(HttpContext);
+
             return Ok(new LogoutResult());
         }
 

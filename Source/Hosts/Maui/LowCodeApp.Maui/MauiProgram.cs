@@ -10,6 +10,10 @@ namespace LowCodeApp.Maui
     {
         public static MauiApp CreateMauiApp()
         {
+            //Must run before anything else can throw - the whole point is to catch crashes that would
+            //otherwise only show up as an opaque TestFlight crash count with no C# call site.
+            AppLog.Initialize();
+
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
@@ -38,15 +42,24 @@ namespace LowCodeApp.Maui
             builder.Logging.AddDebug();
 #endif
 
-            return builder.Build();
+            var app = builder.Build();
+
+            //Ask the server who is signed in now, so that round trip overlaps the WebView and Blazor startup
+            //instead of being added to it. LowCodePage picks up the result.
+            app.Services.GetRequiredService<ServerConnection>().PrewarmCurrentUser();
+
+            return app;
         }
 
-        //appsettings.json is bundled as a MauiAsset. appsettings.Development.json (optional) overrides it.
+        //appsettings.json is bundled as a MauiAsset. appsettings.Development.json (Debug only) overrides it,
+        //and appsettings.local.json (gitignored, bundled in every configuration) overrides both - that is the
+        //one place a machine specific server URL can reach a Release/TestFlight build.
         static IConfiguration LoadAppSettings()
         {
             var config = new ConfigurationBuilder();
             AddJsonAsset(config, "appsettings.json", optional: false);
             AddJsonAsset(config, "appsettings.Development.json", optional: true);
+            AddJsonAsset(config, "appsettings.local.json", optional: true);
             return config.Build();
         }
 

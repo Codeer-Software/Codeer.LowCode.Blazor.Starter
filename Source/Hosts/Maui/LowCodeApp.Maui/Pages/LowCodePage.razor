@@ -11,6 +11,7 @@
 @inject HttpClient HttpClient
 @inject NavigationManager NavigationManager
 @inject INavigationService NavigationService
+@inject ServerConnection Server
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
 
 @if (_isValid)
@@ -29,15 +30,28 @@ else if (_connectionError != null)
     </div>
   </div>
 }
-else
+else if (_initError != null)
 {
-  <svg class="loading-progress">
-    <circle r="40%" cx="50%" cy="50%" />
-    <circle r="40%" cx="50%" cy="50%" />
-  </svg>
-  <div class="loading-progress-text"></div>
-  <div class="app-init-note" aria-live="polite">
-    App Initializing
+  <div class="init-error">
+    <h1>Startup failed</h1>
+    <p>The application design could not be loaded.</p>
+    <pre>@_initError</pre>
+    <button class="btn btn-primary" @onclick="() => NavigationManager.Refresh(true)">Retry</button>
+  </div>
+}
+
+@if (_connectionError == null && _initError == null && _loaderVisible)
+{
+  <div class="app-loading @(_isValid ? "app-loading-done" : null)"
+       style="--blazor-load-percentage: @(_progress)%; --blazor-load-percentage-text: '@(_progress)%'">
+    <svg class="loading-progress">
+      <circle r="40%" cx="50%" cy="50%" />
+      <circle r="40%" cx="50%" cy="50%" />
+    </svg>
+    <div class="loading-progress-text"></div>
+    <div class="app-init-note" aria-live="polite" @key="_stage">
+      @_stage
+    </div>
   </div>
 }
 
@@ -55,17 +69,65 @@ else
   bool _toLoginPage = false;
   string? _connectionError;
 
+  //Startup runs library code that is only exercised for real in a published build (trimming and, on iOS, full
+  //AOT). Without this the exception disappears into Blazor's generic "An unhandled error has occurred" banner,
+  //which is unusable on a device: no developer tools in Release, and iOS does not log managed exceptions.
+  string? _initError;
+
+  //What the loading screen says and how far the ring has travelled. Startup is several seconds on a cold
+  //start (the .NET runtime and the WebView have to come up first), so it reports which step is running
+  //instead of showing one static message and a ring that never moves. index.html starts it off at 12%.
+  string _stage = "Starting the app";
+  int _progress = 12;
+  bool _loaderVisible = true;
+  bool _fadingOutLoader;
+
+  //Renders the new text before the next step blocks: without yielding, the whole method runs to completion
+  //and only the last stage is ever painted.
+  //Once the loading screen is gone these stages have no audience, and paying for them is not free: each call
+  //renders a page nobody is looking at and yields back to the renderer, on a navigation whose real work is
+  //only a few tens of milliseconds.
+  async Task SetStage(string stage, int progress)
+  {
+    if (!_loaderVisible) return;
+    _stage = stage;
+    _progress = progress;
+    StateHasChanged();
+    await Task.Yield();
+  }
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    await base.OnAfterRenderAsync(firstRender);
+
+    //The page is rendered underneath while the loading screen fades out over it, so the hand-over does not
+    //flash an empty screen. Drop the loading screen once the fade (0.3s delay + 0.4s) has finished.
+    if (!_isValid || _fadingOutLoader) return;
+    _fadingOutLoader = true;
+    await Task.Delay(750);
+    _loaderVisible = false;
+    StateHasChanged();
+  }
+#if DEBUG
+  bool _noAuthServer = false;
+#endif
+
+  static bool IsJson(HttpResponseMessage response)
+    => response.Content.Headers.ContentType?.MediaType == "application/json";
+
   protected override async Task OnInitializedAsync()
   {
     _isValid = false;
     await base.OnInitializedAsync();
+    await SetStage("Connecting to the server", 30);
 
     //401 means "not signed in" and goes to the login page. Anything else (server down, wrong BaseUrl,
     //cleartext blocked, ...) is a connection problem and is shown as such instead of a silent wait.
     try
     {
-      using var response = await HttpClient.GetAsync("api/account/current_user");
-      if (response.IsSuccessStatusCode)
+      //Started during app startup (MauiProgram), so by now it is usually already finished.
+      using var response = await (Server.TakeCurrentUserPrewarm() ?? HttpClient.GetAsync("api/account/current_user"));
+      if (response.IsSuccessStatusCode && IsJson(response))
       {
         var id = await response.Content.ReadFromJsonAsync<StringWrapper>();
         AppInfoService.AsImplement().SetCurrentUserId(id?.Value ?? string.Empty);
@@ -74,9 +136,22 @@ else
       {
         AppInfoService.AsImplement().SetCurrentUserId(string.Empty);
       }
+#if DEBUG
+      else if (response.IsSuccessStatusCode)
+      {
+        //A host variant without authentication (Hosts/Normal) has no AccountController, so this request
+        //falls through to MapFallbackToFile and index.html comes back: 200, but text/html instead of JSON.
+        //Take that as "this server has no authentication" and skip the login page. Development only -
+        //a release build is expected to talk to the Cookie variant.
+        _noAuthServer = true;
+        AppInfoService.AsImplement().SetCurrentUserId(string.Empty);
+      }
+#endif
       else
       {
-        _connectionError = $"{(int)response.StatusCode} {response.ReasonPhrase}";
+        _connectionError = response.IsSuccessStatusCode
+          ? $"Unexpected content type: {response.Content.Headers.ContentType?.MediaType}"
+          : $"{(int)response.StatusCode} {response.ReasonPhrase}";
         _toLoginPage = true;
         return;
       }
@@ -84,11 +159,17 @@ else
     catch (Exception e)
     {
       _connectionError = e.Message;
+      //Same reasoning as _initError below: on a device Release build this is often the only trace of why
+      //the app never got past the loading screen.
+      LowCodeApp.Maui.Services.AppLog.Write("LowCodePage.OnInitializedAsync", e);
       _toLoginPage = true;
       return;
     }
 
     if (!string.IsNullOrEmpty(Services.AppInfoService.CurrentUserId)) return;
+#if DEBUG
+    if (_noAuthServer) return;
+#endif
     _toLoginPage = true;
     var returnUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
     NavigationManager.NavigateTo("/login" + (string.IsNullOrEmpty(returnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(returnUrl)));
@@ -104,8 +185,36 @@ else
   private async Task InitPage()
   {
     _isValid = false;
-    await AppInfoService.AsImplement().InitializeAppAsync();
-    await NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName, JSRuntime);
+    try
+    {
+      await SetStage("Loading the application design", 55);
+      await AppInfoService.AsImplement().InitializeAppAsync();
+      await SetStage("Preparing the page", 85);
+      await NavigationService.CompleteUrl(AppInfoService, PageFrameName, ModuleDesignName, JSRuntime);
+    }
+    catch (Exception e)
+    {
+      _initError = e.ToString();
+      LowCodeApp.Maui.Services.AppLog.Write("LowCodePage.InitPage", e);
+      _loaderVisible = false;
+      StateHasChanged();
+      return;
+    }
+
+    //Show the ring arriving at 100% before handing over: fading it out while it is still moving reads as the
+    //app having given up half way. This costs nothing, because the fade already waits 0.3s before it starts
+    //(app-loading in app.css) and the ring's own transition is shorter than that - so the arrival happens
+    //inside a pause that exists anyway. There used to be a Task.Delay here to buy that time; it ran on every
+    //navigation, where measurement showed it was 90-95% of a page switch that is otherwise a few tens of
+    //milliseconds of real work. Run this on every navigation that still has the loading screen up: startup
+    //calls InitPage twice (the entry route redirects to the real first page) and it is the second call that
+    //hands over, so letting only the first one set 100% left the ring stuck at the 85% of the step before.
+    if (_loaderVisible)
+    {
+      _progress = 100;
+      StateHasChanged();
+    }
+
     _isValid = true;
   }
 }

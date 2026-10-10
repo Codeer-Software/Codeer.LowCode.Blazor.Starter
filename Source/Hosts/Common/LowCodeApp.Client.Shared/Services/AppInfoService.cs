@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Codeer.LowCode.Bindings.ApexCharts;
 using Codeer.LowCode.Blazor.Components.AppParts.Loading;
 using Codeer.LowCode.Blazor.DesignLogic;
@@ -29,6 +30,7 @@ namespace LowCodeApp.Client.Shared.Services
         readonly ScriptRuntimeTypeManager _scriptRuntimeTypeManager = new();
         readonly LoadingService _loadingService;
         HubConnection? _hubConnection;
+        readonly ConcurrentDictionary<string, Task<byte[]?>> _resources = new();
         DesignData? _design;
         SystemConfigForFront? _config;
         LocalizeService? _localizeService;
@@ -91,11 +93,30 @@ namespace LowCodeApp.Client.Shared.Services
         public ScriptRuntimeTypeManager GetScriptRuntimeTypeManager()
         => _scriptRuntimeTypeManager;
 
+        //Resources belong to the design, and the design is fetched once per app run (see InitializeAppAsync),
+        //so a resource cannot change underneath us while the app is running. Components do ask for the same
+        //one more than once though - measured on iOS, the same file went out twice about 100ms apart from the
+        //same call site - and on a device every one of those is a real round trip. Cache the bytes, hand out
+        //a fresh stream each time so the caller still owns what it reads, and share one in-flight request
+        //between callers that ask at the same moment.
         public async Task<MemoryStream?> GetResourceAsync(string resourcePath)
+        {
+            var bytes = await _resources.GetOrAdd(resourcePath, FetchResourceAsync);
+            if (bytes != null) return new MemoryStream(bytes);
+
+            //Do not let one failure poison the cache for the rest of the run.
+            _resources.TryRemove(resourcePath, out _);
+            return null;
+        }
+
+        async Task<byte[]?> FetchResourceAsync(string resourcePath)
         {
             var result = await _http.GetAsync($"/api/module_data/resource?resource={resourcePath}", false);
             if (result == null) return null;
-            return (MemoryStream)await result.Content.ReadAsStreamAsync();
+            using var stream = await result.Content.ReadAsStreamAsync();
+            var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+            return memory.ToArray();
         }
 
         async Task InitializeHotReloadAsync()

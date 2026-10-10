@@ -104,8 +104,9 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 
 ## Step 4. ローカルの置き場を作り、appsettings を書き換える
 
-サーバーの設定 `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.Server\appsettings.Development.json` は、パスが
-`C:\Codeer.LowCode.Blazor.Local\...` という固定パスになっている。データソースは 2 種類に分けて考える:
+サーバーの設定は `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.Server\appsettings.Development.json`。**このファイルはリポジトリに入っていない**
+（接続文字列や API キーが入る場所なので gitignore 対象）。同じフォルダの `appsettings.Development.json.sample` をコピーして作る。
+sample のパスは `C:\Codeer.LowCode.Blazor.Local\...` という固定パスになっている。データソースは 2 種類に分けて考える:
 
 - **`Main`** = このアプリ（Step 6 で作るデザインプロジェクト）の DB。**ROOT 配下**（`<ROOT>\Local\Data\main.db`）に置く。別のアプリと DB を取り合わない
 - **それ以外**（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）= デザイナのテンプレート用。**`C:\Codeer.LowCode.Blazor.Local\Data` のまま触らない。**
@@ -114,14 +115,16 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 デザインの配信先・ファイル保存先・フォントもこのアプリ固有なので ROOT 配下に向ける（別のアプリと `App.zip` を取り合わないため）。
 
 1. フォルダを作る: `<ROOT>\Local\Data`、`<ROOT>\Local\Designs`、`<ROOT>\Local\Storages`、`C:\Codeer.LowCode.Blazor.Local\Data`（`<ROOT>\Local\Font` は Step 2 の export-app が作り、PDF 出力用の Noto Sans JP（`NotoSansJP.ttf` / `NotoSansJP#b.ttf`、SIL Open Font License）が入っている）
-2. `appsettings.Development.json` を編集する（JSON として読んで書き戻す。`\` は JSON 内で `\\`）:
+2. `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.Server\appsettings.Development.json.sample` を同じフォルダの
+   `appsettings.Development.json` にコピーする（既にあれば上書きしない）
+3. コピーした `appsettings.Development.json` を編集する（JSON として読んで書き戻す。`\` は JSON 内で `\\`）:
    - `ConnectionStrings` に **`Main` を追加**: `"Main": "Data Source=<ROOT>\\Local\\Data\\main.db;"`
    - `ConnectionStrings` の他の値は **変えない**（`Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\<ファイル名>` のまま）
    - `FileSystemStorages[*].Directory` → `<ROOT>\\Local\\Storages`
    - `DesignFileDirectory` → `<ROOT>\\Local\\Designs`
    - `FontFileDirectory` → `<ROOT>\\Local\\Font`
    - 他の項目は触らない
-3. 同じフォルダの `appsettings.json` の `DataSources` 配列に **`{ "Name": "Main", "DataSourceType": "SQLite" }` を追加**する（既存の要素は触らない。`Main` はこのアプリを CCFDev で作るときだけ足すもので、リポジトリや Visual Studio のテンプレートには入っていない）
+4. 同じフォルダの `appsettings.json` の `DataSources` 配列に **`{ "Name": "Main", "DataSourceType": "SQLite" }` を追加**する（既存の要素は触らない。`Main` はこのアプリを CCFDev で作るときだけ足すもので、リポジトリや Visual Studio のテンプレートには入っていない）
 
 テンプレート用のデータソース名と DB ファイル名は、デザイナの GUI も `template-create --data-dir` も同じものを使うので、どのテンプレートでデザインプロジェクトを
 作ってもサーバー側の追加設定は要らない。DB は SQLite（ファイル）なので DB サーバーのインストールは不要。PostgreSQL 等に変えたいという話が出たら、
@@ -307,6 +310,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 
 - Codeer.LowCode.Blazor.Designer **1.3.24 以降**（`template-create` / `deploy` / `api` サブコマンド、起動引数でのプロジェクトオープン）
 - Codeer.LowCode.Blazor.Designer.Standard **0.8.6 以降**（全テンプレートが Cookie 認証ホスト向け = AppUser + admin/admin 同梱、`template-create --data-dir` によるサンプル DB 配置、`developer-workspace`、デザインプロジェクトのフォルダ名の既定 `design`）
-- 各バリアントの `appsettings.Development.json` の既定パスが `C:\Codeer.LowCode.Blazor.Local\...`（Step 4 の前提。`Main` と配信先・保存先・フォントだけ ROOT 配下に置換し、テンプレート用の DB はそのまま使う）
+- 各バリアントの `appsettings.Development.json.sample` の既定パスが `C:\Codeer.LowCode.Blazor.Local\...`（Step 4 の前提。実ファイルは
+  gitignore 対象で、Step 4 が sample からコピーして作る。`Main` と配信先・保存先・フォントだけ ROOT 配下に置換し、テンプレート用の DB はそのまま使う）
 - ポート: `Properties/launchSettings.json` の `https` プロファイル（Cookie 7137）
 <!-- /maintainer-only -->

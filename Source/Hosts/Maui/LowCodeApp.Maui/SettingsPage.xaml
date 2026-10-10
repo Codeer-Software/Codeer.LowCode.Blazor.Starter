@@ -13,6 +13,21 @@
       <Button Text="Save" Clicked="OnSaveClicked" />
       <Button Text="Reset to default" Clicked="OnResetClicked" />
     </HorizontalStackLayout>
+
+    <BoxView HeightRequest="1" Color="LightGray" />
+
+    <!-- Release builds have no WebView developer tools and iOS crash logs are unusable for a .NET app
+         (mono_ frames only), so app.log (LowCodeApp.Maui.Services.AppLog) is the only way to see why a
+         tester's device failed. This lets them read and share it without a debugger. -->
+    <Label Text="Diagnostics" FontAttributes="Bold" />
+    <ScrollView HeightRequest="200" BackgroundColor="#F2F2F2">
+      <Label x:Name="LogLabel" FontFamily="Courier" FontSize="11" Padding="8" LineBreakMode="WordWrap" />
+    </ScrollView>
+    <HorizontalStackLayout Spacing="12">
+      <Button x:Name="ShareLogButton" Text="Share log" Clicked="OnShareLogClicked" />
+      <Button x:Name="RefreshLogButton" Text="Refresh" Clicked="OnRefreshLogClicked" />
+      <Button x:Name="ClearLogButton" Text="Clear" Clicked="OnClearLogClicked" />
+    </HorizontalStackLayout>
   </VerticalStackLayout>
 
 </ContentPage>

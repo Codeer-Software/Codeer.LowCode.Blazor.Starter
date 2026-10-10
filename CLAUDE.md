@@ -196,7 +196,8 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 ## 初回セットアップの手順（手動で行う場合の要約。Claude Code は ClaudeCodeForDeveloper/claude-code-setup.md）
 
 1. サーバープロジェクトの `appsettings.Development.json`: 接続文字列、`DesignFileDirectory`、`FileSystemStorages`。
-   既定は `C:\Codeer.LowCode.Blazor.Local\...` を指す。テンプレート用の接続文字列はデザイナのテンプレートが DB を置く場所と同じなのでそのまま使い、
+   このファイルは gitignore 対象なので、同じフォルダの `appsettings.Development.json.sample` をコピーして作る。
+   sample の既定は `C:\Codeer.LowCode.Blazor.Local\...` を指す。テンプレート用の接続文字列はデザイナのテンプレートが DB を置く場所と同じなのでそのまま使い、
    `DesignFileDirectory` / `FileSystemStorages` / `FontFileDirectory` はアプリ固有の場所（`<ROOT>\Local\...`）に向ける
 2. `LowCodeApp.Designer` を起動してデザインプロジェクトを作る（テンプレートから選べる。デプロイ先を `DesignFileDirectory` に合わせる）か、
    `LowCodeApp.Designer.exe template-create --name <テンプレ> --out-dir DesignProjects\<デザイン名>\design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir <DesignFileDirectory>`

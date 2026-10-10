@@ -1,0 +1,83 @@
+<Project>
+  <!--
+    Publishing identity for one machine / one organisation.
+
+    Copy this file to "LowCodeApp.Maui.local.props" next to the csproj and fill in your own values.
+    The csproj imports it last when it exists, so everything set here overrides the neutral template
+    defaults (ApplicationId com.companyname.lowcodeapp, unsigned local builds).
+
+    "*.local.props" is gitignored: keystore passwords and Apple identities must not reach the repository.
+    On a build machine or CI, set the same values as environment variables / secrets instead of shipping
+    this file - MSBuild properties can be passed with -p:Name=Value.
+  -->
+
+  <PropertyGroup>
+    <!-- Store identity. Must match the App Store Connect / Google Play Console app record.
+         Cannot be changed once the app record exists. -->
+    <ApplicationId>com.example.myapp</ApplicationId>
+    <ApplicationTitle>My App</ApplicationTitle>
+
+    <!-- User visible version, and the build number. The build number has to increase on every upload:
+         App Store Connect and Play both reject a build number that has already been used. -->
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+  </PropertyGroup>
+
+  <!-- ===== iOS: signing for a TestFlight / App Store build =====
+       Only applies to Release. Debug builds on the simulator need no signing at all.
+
+       CodesignKey   - the certificate's common name exactly as it appears in the Mac keychain
+                       (Keychain Access > My Certificates). "Apple Distribution: <name> (<TeamId>)"
+                       for App Store / TestFlight, "Apple Development: ..." for a device debug build.
+       CodesignProvision - the provisioning profile's *name* (not its file name or UUID), as shown in
+                       the Apple Developer portal. Must be an "App Store" profile for TestFlight, and
+                       must be installed on the paired Mac.
+       ArchiveOnBuild - produces the .xcarchive and the .ipa in bin/Release/net10.0-ios/ios-arm64/publish/.
+  -->
+  <!-- Left alone when the IDE has picked a target: this file is imported last, so without the two empty
+       checks it overrides the iossimulator-* runtime identifier Visual Studio sets when a simulator is
+       selected (the IDE passes its choice in _iOSRuntimeIdentifier), and "run on the simulator" turns into a
+       device build with full AOT and an archive - tens of minutes instead of a few. Both being empty means
+       nothing has picked a target, i.e. a plain command line Release build, which is when the archive is
+       wanted. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' And '$(RuntimeIdentifier)' == '' And '$(_iOSRuntimeIdentifier)' == ''">
+    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+    <CodesignKey>Apple Distribution: Example Inc. (ABCDE12345)</CodesignKey>
+    <CodesignProvision>My App AppStore</CodesignProvision>
+    <ArchiveOnBuild>true</ArchiveOnBuild>
+  </PropertyGroup>
+
+  <!-- The .csproj enables the Mono interpreter for iOS Release builds (MtouchInterpreter=all), because an iOS
+       device cannot generate machine code at runtime and the low code script engine needs to. Override it here
+       if an old device needs the performance back: name only the assemblies that need dynamic code, since
+       enabling the interpreter at all is what turns dynamic code support on. Note that dropping it entirely
+       brings back both the startup crash and the tens of minutes of AOT compilation.
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+    <MtouchInterpreter>SomeAssembly,AnotherAssembly</MtouchInterpreter>
+  </PropertyGroup>
+  -->
+
+  <!-- Building the iOS target from Windows goes through the paired Mac. Visual Studio's "Pair to Mac"
+       stores these itself, so they are only needed for command line builds. The password is the Mac
+       account password or an SSH key passphrase - prefer passing it with -p: from a secret store over
+       writing it down here, even in a gitignored file. -->
+  <!--
+  <PropertyGroup>
+    <ServerAddress>192.168.1.20</ServerAddress>
+    <ServerUser>builduser</ServerUser>
+  </PropertyGroup>
+  -->
+
+  <!-- ===== Android: upload key for Google Play =====
+       A local Release build is otherwise signed with the auto generated "CN=Android Debug" certificate,
+       which Play rejects. Create the keystore once with keytool and keep it outside the repository. -->
+  <!--
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+    <AndroidKeyStore>true</AndroidKeyStore>
+    <AndroidSigningKeyStore>D:\keys\myapp-upload.keystore</AndroidSigningKeyStore>
+    <AndroidSigningKeyAlias>upload</AndroidSigningKeyAlias>
+    <AndroidSigningKeyPass>$(MYAPP_KEYSTORE_PASSWORD)</AndroidSigningKeyPass>
+    <AndroidSigningStorePass>$(MYAPP_KEYSTORE_PASSWORD)</AndroidSigningStorePass>
+  </PropertyGroup>
+  -->
+</Project>
