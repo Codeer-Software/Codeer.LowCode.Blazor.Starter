@@ -15,7 +15,9 @@ builder.Services.AddScoped<INavigationService, NavigationService>();
 builder.Services.AddScoped(sp => {
     var httpClient = new HttpClient
     {
-        BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+        BaseAddress = new Uri(builder.HostEnvironment.BaseAddress),
+        //大きな添付 (動画など) のアップロードが既定の 100 秒で切れないようにする
+        Timeout = TimeSpan.FromMinutes(30)
     };
     var jsRuntime = (IJSInProcessRuntime)sp.GetService<IJSRuntime>()!;
     var cookie = jsRuntime.Invoke<string>("window.jsFunctions.getCookie");

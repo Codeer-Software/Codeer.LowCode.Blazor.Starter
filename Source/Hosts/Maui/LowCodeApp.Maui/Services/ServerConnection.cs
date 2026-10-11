@@ -33,8 +33,9 @@ namespace LowCodeApp.Maui.Services
             inner.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
 #endif
             var handler = new AntiforgeryHandler(this) { InnerHandler = inner };
-            //The default 100 second timeout makes a wrong BaseUrl look like a hang.
-            return new HttpClient(handler) { BaseAddress = BaseAddress, Timeout = TimeSpan.FromSeconds(30) };
+            //A request in flight may take long (uploading a large attachment such as a video).
+            //A wrong BaseUrl still fails fast: the antiforgery token request that precedes the first POST has its own short timeout.
+            return new HttpClient(handler) { BaseAddress = BaseAddress, Timeout = TimeSpan.FromMinutes(30) };
         }
 
         /// <summary>
@@ -88,8 +89,11 @@ namespace LowCodeApp.Maui.Services
             async Task<string?> GetAntiforgeryTokenAsync(CancellationToken cancellationToken)
             {
                 if (_connection._antiforgeryToken != null) return _connection._antiforgeryToken;
+                //This is the first request to the server (before login). Give up quickly so a wrong BaseUrl does not look like a hang.
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(TimeSpan.FromSeconds(15));
                 using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(_connection.BaseAddress, "api/account/antiforgery"));
-                using var response = await base.SendAsync(request, cancellationToken);
+                using var response = await base.SendAsync(request, timeout.Token);
                 _connection.CaptureAntiforgeryToken(response);
                 return _connection._antiforgeryToken;
             }

@@ -5,6 +5,7 @@ using Codeer.LowCode.Blazor.RequestInterfaces;
 using Codeer.LowCode.Blazor.Utils;
 using MessagePack;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using LowCodeApp.Client.Shared.Services;
 using LowCodeApp.Server.Services;
@@ -122,20 +123,24 @@ namespace LowCodeApp.Server.Controllers
             return mem == null ? Ok() : this.FileWithETag(mem.ToArray(), "application/octet-stream");
         }
 
+        //FileField の動画再生 (<video>) もここを読む。ストレージから読みながら Range 要求に応じて返す (全部をメモリに置かない)
         [HttpGet("download")]
         public async Task<IActionResult> DownloadFileAsync(string? moduleName, string? id, string? fieldName)
         {
             await _dataService.InitializeAsync();
             var location = await _dataService.ModuleDataIO.FileFieldDataIO.GetFileLocation(moduleName!, id!, fieldName!);
             await _dataService.DbAccess.ClearAsync();
-            return this.FileWithETag((await StorageAccess.ReadFileAsync(FileStorageTable.Storages, location)).ToArray(), "application/octet-stream");
+            return this.FileWithETag(await StorageAccess.OpenReadAsync(FileStorageTable.Storages, location), location);
         }
 
         [HttpPost("upload")]
         public async Task<Codeer.LowCode.Blazor.DataIO.FileInfo> UploadFileAsync(string? moduleName, string? fieldName, string? fileName)
         {
             await _dataService.InitializeAsync();
-            var info = _dataService.ModuleDataIO.FileFieldDataIO.GetFileSaveInfo(moduleName ?? string.Empty, fieldName ?? string.Empty);
+            var info = await _dataService.ModuleDataIO.FileFieldDataIO.GetFileSaveInfoAsync(moduleName ?? string.Empty, fieldName ?? string.Empty);
+            //本文の上限はフィールドの設定 (MaxAllowedSize、無ければ既定) で決まる。本文を読む前に入れる
+            var bodySize = HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
+            if (bodySize != null && !bodySize.IsReadOnly) bodySize.MaxRequestBodySize = info.MaxAllowedSize;
             return await _dataService.TemporaryFileManager.AddFileAsync(info, fileName, Request.Body);
         }
     }

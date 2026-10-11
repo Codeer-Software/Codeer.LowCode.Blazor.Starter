@@ -36,7 +36,7 @@ namespace LowCodeApp.WinForms.Services
             => await CheckoutException(async dataIO => {
 
                 var moduleDataIO = dataIO;
-                var info = moduleDataIO.FileFieldDataIO.GetFileSaveInfo(moduleName ?? string.Empty, fieldName ?? string.Empty);
+                var info = await moduleDataIO.FileFieldDataIO.GetFileSaveInfoAsync(moduleName ?? string.Empty, fieldName ?? string.Empty);
                 using (var stream = content.ReadAsStream())
                 {
                     return await moduleDataIO.TemporaryFileManager.AddFileAsync(info, fileName, stream);

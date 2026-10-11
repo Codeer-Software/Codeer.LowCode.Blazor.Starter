@@ -39,7 +39,8 @@ namespace LowCodeApp.WinForms.Services
                     .TextToModuleDataAsync(field.Module.Design.Name, field.Design.Name, text);
 
             services.AddScoped<INavigationService, NavigationService>();
-            services.AddScoped(sp => new HttpClient());
+            //大きな添付 (動画など) のアップロードが既定の 100 秒で切れないようにする
+            services.AddScoped(sp => new HttpClient { Timeout = TimeSpan.FromMinutes(30) });
 
             var cultureName = CultureInfo.CurrentCulture.Name;
             if (cultureName == "ja") cultureName = "ja-JP";
