@@ -53,8 +53,8 @@ Entra ID / Google / AWS Cognito / 汎用 OIDC でのログインは `appsettings
 ## 手動で始める
 
 1. リポジトリをクローンします（バリアントのフォルダ単体では不足です。ソリューションが `Source/Hosts/Common/` を参照しています）。
-   自分のアプリ用に自己完結したフォルダが欲しいときは `dotnet run --project Source/Tools/StarterTool -- export-app <出力先> [--maui] [--no-upgrade]`（Claude Code のセットアップが使うのもこれ。書き出したアプリは .NET 10 と最新の NuGet パッケージに上げる。`--no-upgrade` でリポジトリのまま）か、Visual Studio 拡張機能のテンプレートを使います。
-2. `LowCodeApp.sln` を開きます。必要なもの: .NET 8 SDK（リポジトリのホストは .NET 8。`export-app` で書き出したアプリは .NET 10 と最新パッケージに上がるので .NET 10 SDK）、`Source/Hosts/Maui/` は .NET 10 SDK と `maui-android` / `maui-ios` ワークロード。
+   自分のアプリ用に自己完結したフォルダが欲しいときは `dotnet run --project Source/Tools/StarterTool -- export-app <出力先> [--maui]`（Claude Code のセットアップが使うのもこれ）か、Visual Studio 拡張機能のテンプレートを使います。
+2. `LowCodeApp.sln` を開きます。必要なもの: .NET 10 SDK（Visual Studio 2026 に同梱）、`Source/Hosts/Maui/` はさらに `maui-android` / `maui-ios` ワークロード。
    Visual Studio が無い場合は `dotnet build Source/Hosts/Cookie/LowCodeApp.sln`。`.vscode/` に VS Code（C# Dev Kit）用の起動設定があります。
 3. サーバープロジェクト（`LowCodeApp.Server`）の `appsettings.Development.json` を確認します:
    接続文字列、`DesignFileDirectory`、ファイル保存先。既定は `C:\Codeer.LowCode.Blazor.Local\...` を指しているので、そのフォルダを作るかパスを変えます

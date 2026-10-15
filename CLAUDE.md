@@ -94,7 +94,7 @@
   （Server / Client / Designer の 3 プロセスすべてから参照されているため）。`Samples/` に ProCode とコードビハインドの実例
 - `LowCodeApp.Designer`: ビジュアルデザイナ（WPF）。デザインファイル（JSON/SQL/C# スクリプト）を編集する。
   `App.xaml.cs` が拡張の登録場所（テンプレート・ツールメニュー・スクリプト型・AI チャット）。
-  exe は `Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe`。
+  exe は `Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net10.0-windows/LowCodeApp.Designer.exe`。
   GUI を出さない CLI（`designcheck` / `sql` / `rename-*` / `template-create` / `deploy` / `api` / `claude-workspace` …）を持つ。
   **GUI サブシステムの exe なので PowerShell からは `Start-Process -Wait` で呼び、結果は `--out` の JSON で受ける**
 - `LowCodeApp.Maui`（Maui のみ）: MAUI クライアント。`README.md` に接続先・証明書・起動手順
@@ -104,10 +104,10 @@
 ```powershell
 dotnet build Source/Hosts/Cookie/LowCodeApp.sln                                   # 初回は NuGet 復元で数分
 dotnet run --project Source/Hosts/Cookie/LowCodeApp.Server --launch-profile https  # https://localhost:7137
-Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe DesignProjects/<デザイン名>/design   # 引数のフォルダのプロジェクトを開いて起動
+Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net10.0-windows/LowCodeApp.Designer.exe DesignProjects/<デザイン名>/design   # 引数のフォルダのプロジェクトを開いて起動
 ```
 
-- 前提: .NET 10 SDK（Visual Studio 2026 に同梱）。<!-- maintainer-only -->リポジトリのホストは .NET 8（フレームワークの対象）。`export-app` が書き出すアプリは net10.0 と最新パッケージに上げる。<!-- /maintainer-only -->
+- 前提: .NET 10 SDK（Visual Studio 2026 に同梱）
 - Visual Studio 2026: `LowCodeApp.sln` を開き `LowCodeApp.Server` を F5。デザイナは `LowCodeApp.Designer` を「新しいインスタンスを開始」
 - VS Code: ルートの `.vscode/launch.json` に **Server** / **Designer** 構成がある（Cookie と `DesignProjects/Project/design`。デザインプロジェクトをリネームしたら `Project` を置換する）。拡張は C# Dev Kit
 - **サーバーの扱い**: ユーザーが VS / VS Code で起動していればそれを使う（勝手に止めない・再起動しない。再起動が必要なときはその旨を伝える）。起動していなければ Claude Code が上の `dotnet run` をバックグラウンドで起動してよい（動作確認用。自分で起動したものは自分で止めてよい）。ユーザーに「起動しないで」「止めて」と言われたらやめる
@@ -157,7 +157,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 - **サンプル集を追加する**（ユーザーが「サンプルを見たい」と言ったとき）: `template-create --name PatternShowcase --out-dir DesignProjects/PatternShowcase/design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir Local/Designs --out Local/tc.json` → `claude-workspace DesignProjects/PatternShowcase --project design`。これで表示はサンプルに切り替わるので、ユーザーのアプリに戻すときは上の deploy
 - **サンプル集を消す**: デザイナを終了 → `DesignProjects/PatternShowcase/` を削除 → `C:\Codeer.LowCode.Blazor.Local\Data\sqlite_patterns_v*.db` を削除 → ユーザーのアプリを deploy し直す
 
-新しいデザインプロジェクトを作って切り替える手順（DESIGNER_EXE = `Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net8.0-windows/LowCodeApp.Designer.exe`。GUI 系 exe なので `Start-Process -Wait` + `--out`）:
+新しいデザインプロジェクトを作って切り替える手順（DESIGNER_EXE = `Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net10.0-windows/LowCodeApp.Designer.exe`。GUI 系 exe なので `Start-Process -Wait` + `--out`）:
 
 1. 作る: `template-create --name Empty --out-dir DesignProjects/<アプリ名>/design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir Local/Designs --out Local/tc.json`
    （テンプレートはすべて Cookie 認証向けで AppUser と admin/admin を含む。`template-list` で一覧。テンプレート付属の SQLite が `C:\Codeer.LowCode.Blazor.Local\Data` に置かれ（デザイナの GUI がテンプレートから作るときと同じ場所。サーバーの `ConnectionStrings` もここを指したままにしてある）、`design/designer.settings.Development.json` の接続文字列がそこを指し、`Local/Designs/App.zip` が**この新しいデザインで上書き**される）

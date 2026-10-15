@@ -135,7 +135,7 @@ dotnet build "<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.sln"
 
 - 初回は NuGet の復元で数分かかる。`Build succeeded` と `0 Error(s)` を確認する
 - 警告（`warning`）は無視してよい
-- 成功すると、デザイナの exe が `<ROOT>\Source\Hosts\Common\LowCodeApp.Designer\bin\Debug\net8.0-windows\LowCodeApp.Designer.exe` にできる。以降 **DESIGNER_EXE** と呼ぶ
+- 成功すると、デザイナの exe が `<ROOT>\Source\Hosts\Common\LowCodeApp.Designer\bin\Debug\net10.0-windows\LowCodeApp.Designer.exe` にできる。以降 **DESIGNER_EXE** と呼ぶ
 
 続けて、ホスト（C#）を触るときに Claude Code が読むリファレンスを生成する。デザイナ exe には GUI を出さない CLI（headless）があり、
 **GUI サブシステムの exe なので PowerShell の `&` では待たない。必ず `Start-Process -Wait` で呼び、結果は `--out` の JSON ファイルで受け取る**（以降の Step も同じ）:
@@ -289,7 +289,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 |---|---|
 | `dotnet build` で `NU1101` / `Unable to find package Codeer.LowCode.Blazor...` | nuget.org に到達できていない。プロキシ環境なら `$env:HTTPS_PROXY` を確認。社内 NuGet フィードしか使えない環境はユーザーに nuget.org のミラーがあるか聞く |
 | `dotnet build` で `NETSDK1045`（必要な SDK が無い） | .NET SDK 10 が入っていない。Step 1 をやり直す |
-| ビルドは通るが `LowCodeApp.Designer.exe` が無い | `Source\Hosts\Common\LowCodeApp.Designer\bin\Debug\net8.0-windows\` を再確認。無ければ `dotnet build "<ROOT>\Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj"` |
+| ビルドは通るが `LowCodeApp.Designer.exe` が無い | `Source\Hosts\Common\LowCodeApp.Designer\bin\Debug\net10.0-windows\` を再確認。無ければ `dotnet build "<ROOT>\Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj"` |
 | `template-create` の JSON に `template not found` | `Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("template-list","--out","<ROOT>\Local\tl.json")` で一覧を出し `folderName` を確認する |
 | `template-create` の JSON に `--out-dir must be empty` | `<ROOT>\DesignProjects\Project\design` に既にファイルがある。中身を確認し、ユーザーの物でなければ削除して再実行 |
 | 頼まれていないサンプル（PatternShowcase 等）を作ってしまった | デザイナを終了 → `DesignProjects\PatternShowcase` を削除 → `C:\Codeer.LowCode.Blazor.Local\Data\sqlite_patterns_v*.db` を削除 → ユーザーのアプリを `deploy "<ROOT>\DesignProjects\Project\design"` でデプロイし直す（App.zip が上書きされる）。ユーザーに何を消したか報告する |
