@@ -26,8 +26,8 @@ namespace LowCodeApp.Server.Services
             AddInterceptor(new AuditIOInterceptor(designData, SystemConfig.Instance.AuditLog.Database));
             //編集履歴 (EditHistoryField)
             AddInterceptor(new EditHistoryRecorder(designData));
-            //意味検索 (SemanticSearchField): 検索欄の文章を埋め込みにしてから検索する
-            AddInterceptor(SemanticSearchIndex.Service.ConditionInterceptor);
+            //意味検索 (SemanticSearchField): 保存した行から索引 (文章と埋め込み) を作る・検索欄の文章を埋め込みにしてから検索する。他のインターセプタより後 (最後) に登録する
+            AddInterceptor(SemanticSearchIndex.Service.Interceptor);
         }
 
 
@@ -37,8 +37,6 @@ namespace LowCodeApp.Server.Services
             if (moduleDesign == null) throw LowCodeException.Create("invalid design");
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
-            //SemanticSearchField の文章に埋め込みベクトルを付ける (新規で文章が無ければここで組み立てる = 一括取込)
-            await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: true);
             return await base.AddAsync(transactionId, moduleSubmitId, data);
         }
 
@@ -48,11 +46,7 @@ namespace LowCodeApp.Server.Services
             var moduleDesign = _designData.Modules.Find(datas.FirstOrDefault()?.Name ?? string.Empty);
             if (moduleDesign == null) throw LowCodeException.Create("invalid design");
 
-            foreach (var data in datas)
-            {
-                PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
-                await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: true);
-            }
+            foreach (var data in datas) PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
             await base.BulkAddAsync(transactionId, datas);
         }
 
@@ -62,8 +56,6 @@ namespace LowCodeApp.Server.Services
             if (moduleDesign == null) throw LowCodeException.Create("invalid design");
 
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
-            //文章が送られてきたとき (対象フィールドが変わったとき・再索引) だけ埋め込みを付け直す
-            await SemanticSearchIndex.Service.ApplyAsync(data, isNewData: false);
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
 

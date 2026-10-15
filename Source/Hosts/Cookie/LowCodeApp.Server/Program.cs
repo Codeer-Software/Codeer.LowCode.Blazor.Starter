@@ -138,6 +138,8 @@ builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Crea
     http => http?.RequestServices.GetRequiredService<RequestDesign>().Version ?? DesignerService.GetCurrent().Version);
 
 var app = builder.Build();
+//意味検索の警告ログ (埋め込みの失敗など) をアプリのログに出す
+LowCodeApp.Server.AI.SemanticSearchIndex.Service.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
 //SQL debug log: dump executed SQL and parameters (enable via appsettings.Development.json or the SqlLog app setting).
 //ILogger output reaches the local console, Azure App Service Log Stream and Application Insights

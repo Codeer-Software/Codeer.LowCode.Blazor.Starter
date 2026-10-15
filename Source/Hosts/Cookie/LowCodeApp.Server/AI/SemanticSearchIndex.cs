@@ -11,6 +11,10 @@ namespace LowCodeApp.Server.AI
     {
         static readonly Lazy<IEmbeddingProvider?> _provider = new(() => EmbeddingProviderTable.Create(SystemConfig.Instance.SemanticSearch.EmbeddingProvider));
 
-        public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => DesignerService.GetDesignData());
+        public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => DesignerService.GetDesignData())
+        {
+            //SourceFields に書いた FileField の添付の中身を索引に入れるときに読む置き場所 (外すとファイル名だけ)
+            FileStorages = () => FileStorageTable.Storages,
+        };
     }
 }

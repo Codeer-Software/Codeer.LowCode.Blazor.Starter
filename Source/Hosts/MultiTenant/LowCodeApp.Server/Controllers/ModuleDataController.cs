@@ -37,8 +37,8 @@ namespace LowCodeApp.Server.Controllers
         {
             await _dataService.InitializeAsync();
             await LicenseService.UpdateAsync(Request, _dataService.UserInfo);
-            await _dataService.ModuleDataIO.CheckAppAuthorization();
-            return this.FileWithETag(DesignerService.GetDesignDataForFront(_dataService.TenantKey, await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
+            await _dataService.ModuleDataIO.AuthorizationChecker.CheckAppAccessAsync();
+            return this.FileWithETag(DesignerService.GetDesignDataForFront(_dataService.TenantKey, await _dataService.ModuleDataIO.AuthorizationChecker.GetCurrentUserAsync()), "application/octet-stream");
         }
 
         [HttpPost("list")]
