@@ -95,20 +95,19 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 
 | 名前 | 値 |
 |---|---|
-| `<VARIANT>` | `Cookie`（ログイン画面のある Web アプリ。公開しているホストはこれと、その Android/iOS クライアントの `Maui` だけ） |
 | `Project` | `Project`（デザインプロジェクトのフォルダ名。`DesignProjects\Project\`。後からリネームしてよい） |
 | `<TEMPLATE>` | `Empty`（空のプロジェクト。AppUser モジュールとログインだけ。初期ユーザー `admin` / `admin`） |
 | `<URL>` | `https://localhost:7137` |
 
-ソリューションは `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.sln`。<!-- maintainer-only -->リポジトリの `Source\Hosts\` には他のホスト（`Wpf` / `WinForms` / `MultiTenant`）も入っているが、export-app は Cookie だけを書き出す。<!-- /maintainer-only -->
+ソリューションは `<ROOT>\Source\Hosts\Cookie\LowCodeApp.sln`。<!-- maintainer-only -->リポジトリの `Source\Hosts\` には他のホスト（`Wpf` / `WinForms` / `MultiTenant`）も入っているが、export-app は Cookie だけを書き出す。<!-- /maintainer-only -->
 
 ## Step 4. ローカルの置き場を作り、appsettings を書き換える
 
-サーバーの設定 `<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.Server\appsettings.Development.json` は、パスが
+サーバーの設定 `<ROOT>\Source\Hosts\Cookie\LowCodeApp.Server\appsettings.Development.json` は、パスが
 `C:\Codeer.LowCode.Blazor.Local\...` という固定パスになっている。データソースは 2 種類に分けて考える:
 
 - **`Main`** = このアプリ（Step 6 で作るデザインプロジェクト）の DB。**ROOT 配下**（`<ROOT>\Local\Data\main.db`）に置く。別のアプリと DB を取り合わない
-- **それ以外**（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）= デザイナのテンプレート用。**`C:\Codeer.LowCode.Blazor.Local\Data` のまま触らない。**
+- **それ以外**（`appsettings.json` の `DataSources` に最初から並んでいるもの。名前はテンプレートの版で変わる）= デザイナのテンプレート用。**`C:\Codeer.LowCode.Blazor.Local\Data` のまま触らない。**
   デザイナの GUI でテンプレートから作ったデザインプロジェクトはこの場所に DB を置き `designer.settings.Development.json` もここを指すので、そのままこのサーバーで動く
 
 デザインの配信先・ファイル保存先・フォントもこのアプリ固有なので ROOT 配下に向ける（別のアプリと `App.zip` を取り合わないため）。
@@ -122,6 +121,9 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
    - `FontFileDirectory` → `<ROOT>\\Local\\Font`
    - 他の項目は触らない
 3. 同じフォルダの `appsettings.json` の `DataSources` 配列に **`{ "Name": "Main", "DataSourceType": "SQLite" }` を追加**する（既存の要素は触らない。`Main` はこのアプリを CCFDev で作るときだけ足すもので、リポジトリや Visual Studio のテンプレートには入っていない）
+4. `appsettings.json` を読み、**`DataSourceName` でデータソースを指す配列**（例: アップロードの一時ファイル表 `TemporaryFileTableInfo`）を探す。既存のデータソースの項目が
+   あれば、**同じ形で `Main` の項目を足す**（表名・列名は既存の項目と同じにする。テンプレートの DB には同じ表が入っている）。どの設定がデータソースごとに要るかは
+   そのときの `appsettings.json` で決まるので、ここに無い名前の配列でも同じ扱いにする。既存の項目が 1 つも無い設定は足さない
 
 テンプレート用のデータソース名と DB ファイル名は、デザイナの GUI も `template-create --data-dir` も同じものを使うので、どのテンプレートでデザインプロジェクトを
 作ってもサーバー側の追加設定は要らない。DB は SQLite（ファイル）なので DB サーバーのインストールは不要。PostgreSQL 等に変えたいという話が出たら、
@@ -130,10 +132,10 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 ## Step 5. ビルド
 
 ```powershell
-dotnet build "<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.sln"
+dotnet build "<ROOT>\Source\Hosts\Cookie\LowCodeApp.sln"
 ```
 
-- 初回は NuGet の復元で数分かかる。`Build succeeded` と `0 Error(s)` を確認する
+- 初回は NuGet の復元で数分かかる。成功の判定は**終了コードが 0**（`$LASTEXITCODE`）であること。出力の文言（英語の `Build succeeded` / 日本語の「ビルドに成功しました」など）は表示言語と SDK の版で変わるので、文言では判定しない
 - 警告（`warning`）は無視してよい
 - 成功すると、デザイナの exe が `<ROOT>\Source\Hosts\Common\LowCodeApp.Designer\bin\Debug\net10.0-windows\LowCodeApp.Designer.exe` にできる。以降 **DESIGNER_EXE** と呼ぶ
 
@@ -173,36 +175,60 @@ Get-Content "<ROOT>\Local\template-create.json"
 ```
 
 これで `<ROOT>\DesignProjects\Project\design` にデザインプロジェクト（`app.clprj` / `Modules` / `PageFrames` …）が展開され、テンプレート付属の DB
-（SQLite。`app_users` テーブルと admin が入っている）が `<ROOT>\Local\Data\sqlite_sample_v2.db` に置かれ、デプロイ先が `<ROOT>\Local\Designs` に設定される。
-判定: JSON に `"error"` が無く、`deploy.success` が `true`。
+（SQLite。`app_users` テーブルと admin が入っている）が `<ROOT>\Local\Data` に置かれ、デプロイ先が `<ROOT>\Local\Designs` に設定される。
+判定: JSON に `"error"` が無く、`deploy.success` が `true`。置いた DB ファイルは `dataFiles`、デザインの中で付け替えたデータソース名は `rewrittenConnections` に出る。
 
-テンプレートのデータソース名は `SampleSQLite` なので、このアプリ用の **`Main`** に付け替える（DB ファイルも `main.db` に。テンプレート用の `SampleSQLite` は
-デザイナの GUI で作るプロジェクトのために `C:\Codeer.LowCode.Blazor.Local\Data` 側に残す）:
+テンプレートのデータソース名と DB ファイル名はテンプレートの版で変わるので、**`template-create.json` から読む**（名前を決め打ちしない）。
+それをこのアプリ用の **`Main`**（DB ファイル `main.db`）に付け替える。テンプレート用の元の DB は、デザイナの GUI で作るプロジェクトのために
+`C:\Codeer.LowCode.Blazor.Local\Data` 側に残っているので、ここでは触らない。
+データソースが 1 つでないテンプレートのときは付け替えずに止め、`rewrittenConnections` と `dataFiles` をユーザーに伝える（`Empty` は 1 つ）:
 
 ```powershell
 $design = "<ROOT>\DesignProjects\Project\design"
-Rename-Item "<ROOT>\Local\Data\sqlite_sample_v2.db" "main.db"
 $utf8 = New-Object System.Text.UTF8Encoding $false
+$tc = Get-Content "<ROOT>\Local\template-create.json" -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($tc.error) { throw $tc.error }
+$from = @($tc.rewrittenConnections | Where-Object { $_ }); $files = @($tc.dataFiles | Where-Object { $_ })
+if ($from.Count -ne 1 -or $files.Count -ne 1) { throw "データソースが 1 つではない: $($from -join ', ') / $($files -join ', ')" }
+Rename-Item (Join-Path "<ROOT>\Local\Data" $files[0]) "main.db"
 Get-ChildItem $design -Recurse -Filter *.json | ForEach-Object {
   $t = [IO.File]::ReadAllText($_.FullName)
-  $u = $t.Replace('"SampleSQLite"', '"Main"').Replace('sqlite_sample_v2.db', 'main.db')
+  $u = $t.Replace("""$($from[0])""", '"Main"').Replace($files[0], 'main.db')
   if ($u -ne $t) { [IO.File]::WriteAllText($_.FullName, $u, $utf8) }
 }
-# テンプレート DB に入っているサンプル表（Empty のデザインは使わない）を消して、このアプリの表だけにする
-# (SQL は --file で渡す。Start-Process の -ArgumentList は空白を含む要素を引用しないので、--query に文を直接渡すと最初の語で切れる)
-[IO.File]::WriteAllText("<ROOT>\Local\drop_samples.sql", "DROP TABLE IF EXISTS Recipes; DROP TABLE IF EXISTS Ingredients; DROP TABLE IF EXISTS CookingSteps; DROP TABLE IF EXISTS Authors; DROP TABLE IF EXISTS Colors;", $utf8)
+```
+
+テンプレートの DB には、このデザインが使わないサンプル表が入っていることがある。**使っている表だけを残す**。使っている表 = モジュールの `DbTable` と、
+サーバーの `appsettings.json` でデータソースごとに書く設定（`DataSourceName` と `Table` を持つ項目。Step 4 の一時ファイル表など）の `Table`。
+DB にある表はデザイナの `sql` で一覧を取る（SQL は `--file` で渡す。`Start-Process` の `-ArgumentList` は空白を含む要素を引用しないので、`--query` に文を直接渡すと最初の語で切れる）:
+
+```powershell
+# モジュールの JSON は名前が空のキー (既定のレイアウト) を持ち ConvertFrom-Json で読めないので、DbTable の値だけ拾う
+$used = @(Get-ChildItem "$design\Modules" -Recurse -Filter *.mod.json | Select-String -Pattern '"DbTable":\s*"([^"]+)"' | ForEach-Object { $_.Matches[0].Groups[1].Value })
+$server = Get-Content "<ROOT>\Source\Hosts\Cookie\LowCodeApp.Server\appsettings.json" -Raw -Encoding UTF8 | ConvertFrom-Json
+$used += @($server.PSObject.Properties.Value | ForEach-Object { $_ } | Where-Object { $_.DataSourceName -and $_.Table } | ForEach-Object { $_.Table })
+$used = @($used | Where-Object { $_ } | Sort-Object -Unique)
+if ($used.Count -eq 0) { throw "使っている表を読めていない (モジュールの DbTable が 0 件)。表は消さずに止める" }
+[IO.File]::WriteAllText("<ROOT>\Local\tables.sql", "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';", $utf8)
 Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
-  "sql", $design, "--datasource", "Main",
-  "--file", "<ROOT>\Local\drop_samples.sql",
-  "--out", "<ROOT>\Local\sql.json")
+  "sql", $design, "--datasource", "Main", "--file", "<ROOT>\Local\tables.sql", "--out", "<ROOT>\Local\tables.json")
+$tables = @((Get-Content "<ROOT>\Local\tables.json" -Raw -Encoding UTF8 | ConvertFrom-Json).results[0].rows | ForEach-Object { $_.name })
+$drop = @($tables | Where-Object { $used -notcontains $_ })
+"使っている表: $($used -join ', ') / 消す表: $($drop -join ', ')"
+if ($drop.Count -gt 0) {
+  [IO.File]::WriteAllText("<ROOT>\Local\drop_samples.sql", (($drop | ForEach-Object { "DROP TABLE IF EXISTS ""$_"";" }) -join " "), $utf8)
+  Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
+    "sql", $design, "--datasource", "Main", "--file", "<ROOT>\Local\drop_samples.sql", "--out", "<ROOT>\Local\sql.json")
+}
 # データソース名を変えたので App.zip を作り直す
 Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
   "deploy", $design, "--out", "<ROOT>\Local\deploy.json")
 Get-Content "<ROOT>\Local\deploy.json"
 ```
 
-書き換わるのは `design\designer.settings.json`（`DataSources[0].Name`）、`design\designer.settings.Development.json`（接続文字列のキーと `main.db`）、
-`design\Modules\AppUser.mod.json`（`DataSourceName`）。判定: `sql.json` と `deploy.json` に `"error"` が無く、`deploy.json` の `success` が `true`、`<ROOT>\Local\Designs\App.zip` が存在する。
+書き換わるのは、デザインの中で元のデータソース名と DB ファイル名を書いているファイル（`Empty` なら `design\designer.settings.json`・
+`design\designer.settings.Development.json`・`design\Modules\AppUser.mod.json` の 3 つ）。判定: `tables.json`・`sql.json`（消した表があるとき）・`deploy.json` に
+`"error"` が無く、`deploy.json` の `success` が `true`、`<ROOT>\Local\Designs\App.zip` が存在する。
 以後このアプリのモジュールはデータソース `Main`（`<ROOT>\Local\Data\main.db`）に作る。
 
 ## Step 7. Claude Code 用ワークスペースを展開する（デザインを AI で編集できるようにする）
@@ -230,7 +256,7 @@ ROOT の `CLAUDE.md`（このリポジトリのもの）には触らない。
 dotnet dev-certs https --check --trust
 ```
 
-`A valid certificate was found` と `trusted` が出れば OK。信頼されていなければ `dotnet dev-certs https --trust` を実行する。
+**終了コードが 0** なら、信頼済みの証明書がある（OK）。出力の文言は SDK の版で変わる（例: `A valid certificate was found` / `2 trusted certificates were found`）ので、文言では判定しない。0 以外なら `dotnet dev-certs https --trust` を実行する。
 **Windows がセキュリティ警告のダイアログを出す**ので、ユーザーに「証明書のダイアログが出たら『はい』を押してください」と伝える。
 押されなくても http（`<URL>` の代わりに `http://localhost:5085`）で動くので、そこで詰まらない。
 
@@ -239,8 +265,8 @@ dotnet dev-certs https --check --trust
 サーバー（別プロセス・バックグラウンド。ブラウザは `launchSettings.json` の設定で自動で開く）:
 
 ```powershell
-Start-Process -FilePath "dotnet" -WorkingDirectory "<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.Server" -ArgumentList @(
-  "run", "--project", "<ROOT>\Source\Hosts\<VARIANT>\LowCodeApp.Server", "--launch-profile", "https", "--no-build")
+Start-Process -FilePath "dotnet" -WorkingDirectory "<ROOT>\Source\Hosts\Cookie\LowCodeApp.Server" -ArgumentList @(
+  "run", "--project", "<ROOT>\Source\Hosts\Cookie\LowCodeApp.Server", "--launch-profile", "https", "--no-build")
 ```
 
 デザイナ（デザインプロジェクトのフォルダを引数に渡すと、そのプロジェクトを開いた状態で起動する）:
@@ -256,7 +282,7 @@ Start-Process -FilePath "<DESIGNER_EXE>" -ArgumentList @("<ROOT>\DesignProjects\
 - ログイン画面が出る。`admin` / `admin`。ログイン後はホームと「AppUser」（ユーザー管理）だけの空のアプリ
 - デザイナ右上に「トライアル」と表示されるのは正常（ライセンス登録は不要。試用できる）
 
-**起動がうまくいかないときはユーザーにやってもらってよい**: 「Visual Studio で `Source\Hosts\<VARIANT>\LowCodeApp.sln` を開き、
+**起動がうまくいかないときはユーザーにやってもらってよい**: 「Visual Studio で `Source\Hosts\Cookie\LowCodeApp.sln` を開き、
 `LowCodeApp.Server` を F5 で起動してください（デザイナは `LowCodeApp.Designer` を右クリック > デバッグ > 新しいインスタンスを開始）」。
 VS が無いときは VS Code（次項）。
 
@@ -275,7 +301,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 以下を短く伝える（この文書の URL や内部手順は説明しない）:
 
 - アプリの URL（`<URL>`）とログイン情報（`admin` / `admin`）
-- デザインプロジェクトの場所（`<ROOT>\DesignProjects\Project\design`）と、今はログインとユーザー管理だけの空の状態であること。デザイナで編集 → 「送信」でサーバーに反映されること（サーバーの再起動は不要。スクリプトを変えたときだけ再起動）
+- デザインプロジェクトの場所（`<ROOT>\DesignProjects\Project\design`）と、今はログインとユーザー管理だけの空の状態であること。デザイナで編集 → メニューの「ファイル > デプロイ」（Ctrl+F5）でサーバーに反映されること（サーバーの再起動は不要。スクリプトを変えたときだけ再起動）
 - **次にできること**: 「Claude Code を再起動して、作りたいアプリの内容を教えてください。例:『商品マスタと受注入力の画面を作って』。デザインだけを扱うなら `DesignProjects\Project` フォルダで起動するとホストのソースが視界に入らず身軽です」
 - デザインプロジェクトのフォルダ名は `Project`。変えたければフォルダをリネームすればよい（`launch.json` の Designer 構成のパスも合わせる）こと
 - 参考実装は Claude Code が `ClaudeCodeForDesigner\_samples\` から読めるので、サンプル集を画面で見たくなったら「サンプル集を展開して」と言えばよいこと
@@ -300,7 +326,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 | ログインできない（Cookie） | サンプル DB に `admin` がいるはず。`appsettings.Development.json` の `ConnectionStrings.Main` が `<ROOT>\Local\Data\main.db` を指しているか、そのファイルが存在するか、デザインの `designer.settings.Development.json` も同じパスかを確認 |
 | `winget` が見つからない | Step 1 の dotnet-install.ps1 経路 |
 | PowerShell で `&` でデザイナ exe を呼ぶと即戻って何も起きない | 正常（GUI サブシステム）。必ず `Start-Process -Wait` + `--out` |
-| Excel / PDF 出力でフォントのエラー | `<ROOT>\Local\Font` に `NotoSansJP.ttf` と `NotoSansJP#b.ttf` があるか確認する（export-app が置く。無ければ Starter の `Source\Hosts\Common\Font` からコピー） |
+| Excel / PDF 出力でフォントのエラー | サーバーの `appsettings.Development.json` の `FontFileDirectory` が指すフォルダ（Step 4 で `<ROOT>\Local\Font` にしている）に、PDF 出力で使うフォント（export-app が置く Noto Sans JP の `.ttf`）があるか確認する。無ければ Step 2 の zip をもう一度展開し、その中の Common ホストの `Font` フォルダからコピーする（ROOT にはテンプレートの元のフォルダは無い） |
 
 <!-- maintainer-only -->
 ## この手順が前提にしているもの（保守メモ）
