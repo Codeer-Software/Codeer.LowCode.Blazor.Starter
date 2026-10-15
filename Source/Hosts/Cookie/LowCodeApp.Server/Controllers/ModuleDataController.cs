@@ -40,7 +40,6 @@ namespace LowCodeApp.Server.Controllers
         [HttpGet("design")]
         public async Task<IActionResult> GetDesignData()
         {
-            await LicenseService.UpdateAsync(Request);
             await _dataService.ModuleDataIO.AuthorizationChecker.CheckAppAccessAsync();
             return this.FileWithETag(_dataService.Design.ForFront(await _dataService.ModuleDataIO.AuthorizationChecker.GetCurrentUserAsync()), "application/octet-stream");
         }

@@ -201,6 +201,13 @@ app.Use(async (context, next) =>
     await next();
 });
 
+//サーバーライセンスの状態はデザインを返す前に更新する (このリクエストがデザインを読むより前に)
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/module_data/design")) await LicenseService.UpdateAsync(context.Request);
+    await next();
+});
+
 app.UseRouting();
 //監査ログは認証・認可の前に置く (401/403 も記録するため)
 app.UseAuditLog();
