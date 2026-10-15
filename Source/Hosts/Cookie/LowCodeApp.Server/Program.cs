@@ -138,6 +138,8 @@ builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Crea
     http => http?.RequestServices.GetRequiredService<RequestDesign>().Version ?? DesignerService.GetCurrent().Version);
 
 var app = builder.Build();
+//意味検索の警告ログ (埋め込みの失敗など) をアプリのログに出す
+LowCodeApp.Server.AI.SemanticSearchIndex.Service.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
 //SQL debug log: dump executed SQL and parameters (enable via appsettings.Development.json or the SqlLog app setting).
 //ILogger output reaches the local console, Azure App Service Log Stream and Application Insights
@@ -196,6 +198,13 @@ app.Use(async (context, next) =>
             return Task.CompletedTask;
         });
     }
+    await next();
+});
+
+//サーバーライセンスの状態はデザインを返す前に更新する (このリクエストがデザインを読むより前に)
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/module_data/design")) await LicenseService.UpdateAsync(context.Request);
     await next();
 });
 

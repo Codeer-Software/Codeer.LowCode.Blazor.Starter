@@ -61,7 +61,7 @@
 
         //The VSIX project is a legacy VSSDK project: "dotnet sln add" cannot evaluate it and "dotnet build" of the solution
         //cannot build it, so it is written by hand with ActiveCfg only (no Build.0). It shows up in VS and is built there
-        //explicitly (or with msbuild -t:BuildSplitVsix).
+        //explicitly (or with msbuild -t:Rebuild).
         static void AddVsixProject(string slnPath, string csproj, string folder)
         {
             var text = File.ReadAllText(csproj);

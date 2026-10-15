@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
@@ -14,16 +14,18 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Codeer.LowCode.Bindings.Blazor-ApexCharts" Version="0.28.1" />
-    <PackageReference Include="Codeer.LowCode.Blazor.Extras" Version="0.20.1" />
-    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.8" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Codeer.LowCode.Blazor.Extras" Version="0.22.0" />
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.13" />
     <PackageReference Include="Sotsera.Blazor.Toaster" Version="3.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.8" />
-    <PackageReference Include="MessagePack" Version="3.1.7" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
+    <PackageReference Include="MessagePack" Version="3.1.12" />
+    <!-- Overrides vulnerable versions that the referenced packages pull in transitively. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.48" />
+    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.50" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\colorpicker.png" />

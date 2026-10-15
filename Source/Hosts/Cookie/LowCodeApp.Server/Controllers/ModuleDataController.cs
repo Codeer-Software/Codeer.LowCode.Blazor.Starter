@@ -40,9 +40,8 @@ namespace LowCodeApp.Server.Controllers
         [HttpGet("design")]
         public async Task<IActionResult> GetDesignData()
         {
-            await LicenseService.UpdateAsync(Request);
-            await _dataService.ModuleDataIO.CheckAppAuthorization();
-            return this.FileWithETag(_dataService.Design.ForFront(await _dataService.ModuleDataIO.GetCurrentUser()), "application/octet-stream");
+            await _dataService.ModuleDataIO.AuthorizationChecker.CheckAppAccessAsync();
+            return this.FileWithETag(_dataService.Design.ForFront(await _dataService.ModuleDataIO.AuthorizationChecker.GetCurrentUserAsync()), "application/octet-stream");
         }
 
         //監査ログに読んだ行の Id まで残すなら AddRead の recordIds を true にする
