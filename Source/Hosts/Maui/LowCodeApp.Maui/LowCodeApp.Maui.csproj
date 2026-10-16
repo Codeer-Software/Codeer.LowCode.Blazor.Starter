@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
-    <!-- Mobile clients plus an unpackaged Windows desktop build. Add net10.0-maccatalyst here if you also want macOS. -->
-    <TargetFrameworks>net10.0-android;net10.0-ios;net10.0-windows10.0.19041.0</TargetFrameworks>
+    <!-- Mobile clients plus an unpackaged Windows build (Windows only). Add net10.0-maccatalyst for macOS. -->
+    <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <!-- No RootNamespace: it must follow the project name so the Razor components (default namespace) and the
          C# files (namespace substituted by the VS template) end up in the same namespace. -->
