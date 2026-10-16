@@ -54,16 +54,17 @@ namespace LowCodeApp.Server
         {
             var anti = ctx.RequestServices.GetRequiredService<IAntiforgery>();
             var tokens = anti.GetAndStoreTokens(ctx);
+            var env = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
             ctx.Response.Cookies.Append(
                 "X-ANTIFORGERY-TOKEN",
                 tokens.RequestToken ?? string.Empty,
                 new CookieOptions
                 {
                     HttpOnly = false,
-                    //https のときだけ Secure を付ける (認証 cookie の既定 CookieSecurePolicy.SameAsRequest と同じ考え方)。
-                    //決め打ちで true にすると、平文 http で配信したときにクライアントが送り返さず全 API が CSRF で失敗する。
-                    //LAN 上の実機から http で繋いで確認したいときにこれが要る (MAUI 版の README を参照)
-                    Secure = ctx.Request.IsHttps,
+                    //本番では必ず Secure を付ける。開発時だけ http を許すのは、LAN 上の実機から http で繋いで
+                    //確認するため (MAUI 版の README を参照)。IsHttps だけで判断すると、転送ヘッダーを読む設定の
+                    //ないリバースプロキシの後ろで本番でも Secure が外れる。
+                    Secure = !env.IsDevelopment() || ctx.Request.IsHttps,
                     SameSite = SameSiteMode.Lax
                 });
         }
