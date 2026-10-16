@@ -58,9 +58,9 @@ namespace LowCodeApp.Maui.Services
             return _handler;
         }
 
-        //The default 100 second timeout makes a wrong BaseUrl look like a hang.
+        //Long timeout for large uploads (e.g. video). A wrong BaseUrl does not hang: the antiforgery fetch before the first POST has its own 15 s limit.
         HttpClient CreateClient()
-            => new(GetHandler(), disposeHandler: false) { BaseAddress = BaseAddress, Timeout = TimeSpan.FromSeconds(30) };
+            => new(GetHandler(), disposeHandler: false) { BaseAddress = BaseAddress, Timeout = TimeSpan.FromMinutes(30) };
 
         /// <summary>
         /// Starts the "who is signed in" request at app startup so it runs while the WebView and the Blazor
@@ -229,8 +229,10 @@ namespace LowCodeApp.Maui.Services
                 //A host variant without authentication issues no token (and needs none). Ask once, then stop,
                 //so every write does not pay for an extra round trip.
                 if (_connection._antiforgeryUnavailable) return null;
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(TimeSpan.FromSeconds(15));
                 using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(_connection.BaseAddress, "api/account/antiforgery"));
-                using var response = await base.SendAsync(request, cancellationToken);
+                using var response = await base.SendAsync(request, timeout.Token);
                 _connection.CaptureAntiforgeryToken(response);
                 if (_connection._antiforgeryToken == null) _connection._antiforgeryUnavailable = true;
                 return _connection._antiforgeryToken;
