@@ -4,8 +4,7 @@
     <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
-    <!-- No RootNamespace: it must follow the project name so the Razor components (default namespace) and the
-         C# files (namespace substituted by the VS template) end up in the same namespace. -->
+    <!-- No RootNamespace: it must follow the project name so Razor components and C# files share a namespace. -->
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -26,32 +25,16 @@
     <!-- Unpackaged (non-MSIX) Windows run/deploy, matching the plain "dotnet build/run" workflow used for Android/iOS. -->
     <WindowsPackageType Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">None</WindowsPackageType>
   </PropertyGroup>
-  <!-- Codeer.LowCode.Blazor resolves field/design types by reflection (TypeFinder, FieldDesignManager), so the
-       app and library assemblies must not be trimmed. "partial" trims only the framework, the same setting the
-       Blazor WebAssembly client publishes with. AOT is a separate matter from trimming and does not affect
-       reflection: iOS always AOT-compiles, and on Android the MAUI default (profiled AOT of the startup path,
-       JIT for the rest) is kept because it is what makes startup fast on low-end devices. -->
+  <!-- Codeer.LowCode.Blazor resolves types by reflection, so app and library assemblies must not be trimmed ("partial" trims only the framework). -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <TrimMode>partial</TrimMode>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
   </PropertyGroup>
-  <!-- An iOS device can only run fully AOT compiled code: Apple does not allow generating machine code at
-       runtime, so there is no JIT. Anything that compiles or emits IL while the app runs therefore cannot work
-       there, and the low code script engine does exactly that - the app died with an unhandled exception while
-       it loaded the design. Android is unaffected because it keeps a JIT (the profiled AOT above only covers
-       the startup path), which is why the same build works there. The Mono interpreter executes IL without
-       producing machine code, so it stays within Apple's rules and dynamic code works again; enabling it at
-       all is what turns dynamic code support back on. "all" interprets every assembly, which costs runtime
-       performance - no difference worth noticing on current hardware, but if an old device needs the headroom,
-       narrow this to the assemblies that actually need dynamic code. A side effect is that the device build no
-       longer AOT compiles, taking it from tens of minutes down to a few. -->
+  <!-- iOS devices have no JIT, but the script engine emits IL at runtime. The interpreter allows that. Narrow "all" if performance matters. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release' And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
     <MtouchInterpreter>all</MtouchInterpreter>
   </PropertyGroup>
-  <!-- Root components are created by reflection (BlazorWebView RootComponents), so the trimmer does not see
-       their constructors and removes them: startup then dies with "CtorNotLocated,
-       Microsoft.AspNetCore.Components.Web.HeadOutlet" inside AttachToPageAsync, before any component of this
-       app runs - which is why neither a try/catch nor an ErrorBoundary can catch it. Keep the assembly whole. -->
+  <!-- Root components are created by reflection, so the trimmer removes their constructors (CtorNotLocated, HeadOutlet) before any app code runs. Keep the assembly whole. -->
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.Web" RootMode="All" />
   </ItemGroup>
@@ -64,22 +47,12 @@
     <MauiFont Include="Resources\Fonts\*" />
     <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
     <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
-    <!-- The SDK's default globs also pick these up as Content, which bundles them a second time - without a
-         logical name, so their full path is used and the .app ends up with a "D:" directory holding a copy of
-         the whole source tree path. That breaks unpacking the archive on Windows (Path.GetFullPath rejects the
-         embedded drive letter) and it ignores the Release condition below, shipping the Development file to
-         testers. The MauiAsset items right after are the only ones that should bundle these. -->
+    <!-- Remove the default Content globs: they bundle these a second time under their full path. MauiAsset below is the only bundling. -->
     <Content Remove="appsettings*.json" />
-    <!-- Server connection settings, read at startup by MauiProgram with
-         FileSystem.OpenAppPackageFileAsync("appsettings.json"), so the logical name has to be the bare file
-         name. Without LogicalName the item's full path is used instead, which on iOS creates a "D:" directory
-         inside the .app: the file is then unreachable at runtime, and unpacking the archive on Windows fails
-         outright with "The given path's format is not supported" (Path.GetFullPath rejects the embedded
-         drive letter). Android tolerates it, so this only shows up when building for iOS. -->
+    <!-- Read at startup via FileSystem.OpenAppPackageFileAsync, so LogicalName must be the bare file name (otherwise iOS bundles a "D:" directory). -->
     <MauiAsset Include="appsettings.json" LogicalName="appsettings.json" />
     <MauiAsset Include="appsettings.Development.json" LogicalName="appsettings.Development.json" Condition="Exists('appsettings.Development.json') And '$(Configuration)' != 'Release'" />
-    <!-- Machine specific overrides, gitignored. Bundled in every configuration, unlike the Development file:
-         a Release/TestFlight build needs some way to carry a real server URL without editing tracked files. -->
+    <!-- Machine specific overrides, gitignored. Bundled in every configuration so a Release build can carry a real server URL. -->
     <MauiAsset Include="appsettings.local.json" LogicalName="appsettings.local.json" Condition="Exists('appsettings.local.json')" />
   </ItemGroup>
   <ItemGroup>
@@ -93,9 +66,6 @@
     <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.40" />
     <ProjectReference Include="..\..\Common\LowCodeApp.Client.Shared\LowCodeApp.Client.Shared.csproj" />
   </ItemGroup>
-  <!-- Machine/organisation specific publishing identity: bundle id, Apple team and signing, Android upload
-       keystore. Gitignored (*.local.props), so the tracked project keeps the neutral template defaults above
-       and nothing secret reaches the repository. Imported last, so its properties win.
-       See LowCodeApp.Maui.local.props.sample for the shape. -->
+  <!-- Publishing identity (bundle id, signing, keystore). Gitignored and imported last so it wins. See LowCodeApp.Maui.local.props.sample. -->
   <Import Project="LowCodeApp.Maui.local.props" Condition="Exists('LowCodeApp.Maui.local.props')" />
 </Project>

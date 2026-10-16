@@ -29,8 +29,7 @@ namespace LowCodeApp.Maui.Services
             return CreateClient();
         }
 
-        //All clients share one handler so they also share its connection pool: the TLS handshake is paid once,
-        //not again per BlazorWebView. The handler outlives the clients, so they must not dispose it.
+        //All clients share one handler (and its connection pool, so TLS is not redone per BlazorWebView). Do not dispose it from a client.
         HttpMessageHandler GetHandler()
         {
             var baseAddress = BaseAddress;
@@ -41,9 +40,7 @@ namespace LowCodeApp.Maui.Services
             {
                 UseCookies = true,
                 CookieContainer = _cookies,
-                //The server compresses its responses (UseResponseCompression), but HttpClientHandler does not
-                //ask for that by default, unlike a browser. Without this the design data arrives uncompressed:
-                //364KB instead of 31KB on every start.
+                //HttpClientHandler does not request compression by default, unlike a browser.
                 AutomaticDecompression = DecompressionMethods.All
             };
 #if DEBUG
@@ -106,13 +103,8 @@ namespace LowCodeApp.Maui.Services
             _antiforgeryToken = null;
         }
 
-        //The server issues the token as a readable cookie from GET api/account/antiforgery (and marks it Secure,
-        //so the cookie container would not send it back over http). We read it from the Set-Cookie header instead.
         /// <summary>
-        /// Drops every cookie held for the current server. Called after signing out: the server does send a
-        /// deletion for the authentication cookie, but not every platform's cookie store honours it (on iOS the
-        /// session survived the sign-out), which leaves the connection authenticated against a token issued for
-        /// the anonymous user - a state the app cannot recover from on its own.
+        /// Drops every cookie for the current server after sign-out (iOS keeps the session otherwise).
         /// </summary>
         void ClearCookies()
         {
@@ -120,6 +112,7 @@ namespace LowCodeApp.Maui.Services
             _antiforgeryToken = null;
         }
 
+        //The server issues the token as a readable Secure cookie, which the cookie container will not send back over http, so read it from Set-Cookie.
         void CaptureAntiforgeryToken(HttpResponseMessage response)
         {
             if (!response.Headers.TryGetValues("Set-Cookie", out var setCookies)) return;
@@ -162,13 +155,9 @@ namespace LowCodeApp.Maui.Services
                 var response = await base.SendAsync(request, cancellationToken);
                 _connection.CaptureAntiforgeryToken(response);
 
-                //An antiforgery token is bound to the user it was issued for, so one obtained while anonymous is
-                //refused after signing in ("The provided antiforgery token was meant for a different claims-based
-                //user than the current user") and vice versa. The browser never runs into this because it reloads
-                //the page and asks for a new token, but this connection outlives the sign-in. Rather than trying
-                //to predict every moment the identity changes, treat the rejection itself as the signal: throw the
-                //cached token away, ask for a fresh one and send the request again. The action never ran (the
-                //filter rejects before it), so replaying it is safe.
+                //An antiforgery token is bound to the user it was issued for, so it is refused after sign-in/out.
+                //The browser reloads and gets a new one; this connection outlives the sign-in, so on rejection fetch a fresh
+                //token and replay the request (safe: the filter rejects before the action runs).
                 if (validated && sentToken != null && response.StatusCode == HttpStatusCode.BadRequest)
                 {
                     _connection._antiforgeryToken = null;
@@ -182,10 +171,8 @@ namespace LowCodeApp.Maui.Services
                     }
                 }
 
-                //Signing in or out invalidates the token we hold, so fetch a new one on the next write. After a
-                //sign-out also drop the cookies: the server asks for the authentication cookie to be deleted, but
-                //not every platform's cookie store obeys, and a leftover session with an anonymous token cannot
-                //be recovered from inside the app.
+                //Signing in or out invalidates the token we hold. After a sign-out also drop the cookies, because
+                //not every platform (iOS) deletes the authentication cookie when asked.
                 if (response.IsSuccessStatusCode && ChangesIdentity(request))
                 {
                     if (IsSignOut(request)) _connection.ClearCookies();

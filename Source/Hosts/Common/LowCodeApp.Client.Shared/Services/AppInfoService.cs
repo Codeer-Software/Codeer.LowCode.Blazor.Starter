@@ -93,12 +93,8 @@ namespace LowCodeApp.Client.Shared.Services
         public ScriptRuntimeTypeManager GetScriptRuntimeTypeManager()
         => _scriptRuntimeTypeManager;
 
-        //Resources belong to the design, and the design is fetched once per app run (see InitializeAppAsync),
-        //so a resource cannot change underneath us while the app is running. Components do ask for the same
-        //one more than once though - measured on iOS, the same file went out twice about 100ms apart from the
-        //same call site - and on a device every one of those is a real round trip. Cache the bytes, hand out
-        //a fresh stream each time so the caller still owns what it reads, and share one in-flight request
-        //between callers that ask at the same moment.
+        //Resources are fixed for the app run, but components request the same one repeatedly and each is a device round trip.
+        //Cache the bytes, give each caller a fresh stream, and share one in-flight request.
         public async Task<MemoryStream?> GetResourceAsync(string resourcePath)
         {
             var bytes = await _resources.GetOrAdd(resourcePath, FetchResourceAsync);
