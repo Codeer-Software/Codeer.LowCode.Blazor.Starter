@@ -108,10 +108,6 @@ else if (_initError != null)
     _loaderVisible = false;
     StateHasChanged();
   }
-#if DEBUG
-  bool _noAuthServer = false;
-#endif
-
   static bool IsJson(HttpResponseMessage response)
     => response.Content.Headers.ContentType?.MediaType == "application/json";
 
@@ -136,17 +132,6 @@ else if (_initError != null)
       {
         AppInfoService.AsImplement().SetCurrentUserId(string.Empty);
       }
-#if DEBUG
-      else if (response.IsSuccessStatusCode)
-      {
-        //A host variant without authentication (Hosts/Normal) has no AccountController, so this request
-        //falls through to MapFallbackToFile and index.html comes back: 200, but text/html instead of JSON.
-        //Take that as "this server has no authentication" and skip the login page. Development only -
-        //a release build is expected to talk to the Cookie variant.
-        _noAuthServer = true;
-        AppInfoService.AsImplement().SetCurrentUserId(string.Empty);
-      }
-#endif
       else
       {
         _connectionError = response.IsSuccessStatusCode
@@ -167,9 +152,6 @@ else if (_initError != null)
     }
 
     if (!string.IsNullOrEmpty(Services.AppInfoService.CurrentUserId)) return;
-#if DEBUG
-    if (_noAuthServer) return;
-#endif
     _toLoginPage = true;
     var returnUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
     NavigationManager.NavigateTo("/login" + (string.IsNullOrEmpty(returnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(returnUrl)));

@@ -14,7 +14,6 @@ namespace LowCodeApp.Maui.Services
 
         readonly CookieContainer _cookies = new();
         string? _antiforgeryToken;
-        bool _antiforgeryUnavailable;
         HttpMessageHandler? _handler;
         Uri? _handlerBaseAddress;
         Task<HttpResponseMessage>? _currentUserPrewarm;
@@ -27,7 +26,6 @@ namespace LowCodeApp.Maui.Services
         {
             //A new client is created per BlazorWebView, so a changed server URL is picked up after the page restarts.
             _antiforgeryToken = null;
-            _antiforgeryUnavailable = false;
             return CreateClient();
         }
 
@@ -106,7 +104,6 @@ namespace LowCodeApp.Maui.Services
         public void ResetAntiforgeryToken()
         {
             _antiforgeryToken = null;
-            _antiforgeryUnavailable = false;
         }
 
         //The server issues the token as a readable cookie from GET api/account/antiforgery (and marks it Secure,
@@ -226,15 +223,11 @@ namespace LowCodeApp.Maui.Services
             async Task<string?> GetAntiforgeryTokenAsync(CancellationToken cancellationToken)
             {
                 if (_connection._antiforgeryToken != null) return _connection._antiforgeryToken;
-                //A host variant without authentication issues no token (and needs none). Ask once, then stop,
-                //so every write does not pay for an extra round trip.
-                if (_connection._antiforgeryUnavailable) return null;
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(TimeSpan.FromSeconds(15));
                 using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(_connection.BaseAddress, "api/account/antiforgery"));
                 using var response = await base.SendAsync(request, timeout.Token);
                 _connection.CaptureAntiforgeryToken(response);
-                if (_connection._antiforgeryToken == null) _connection._antiforgeryUnavailable = true;
                 return _connection._antiforgeryToken;
             }
         }
