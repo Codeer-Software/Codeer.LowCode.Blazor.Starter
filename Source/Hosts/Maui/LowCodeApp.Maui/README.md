@@ -1,20 +1,20 @@
-# LowCodeApp (.NET MAUI client)
+# LowCodeApp (.NET MAUI クライアント)
 
-Android / iOS client for a Codeer.LowCode.Blazor server (Cookie authentication variant).
-The app is a thin client: it downloads the design files from the server at startup, so changing the
-application content only needs a new design deployment on the server, not a new store release.
+Codeer.LowCode.Blazor サーバー（Cookie 認証バリアント）向けの Android / iOS クライアントです。
+このアプリはシンクライアントで、起動時にサーバーからデザインファイルをダウンロードします。そのため、
+アプリの内容を変えるにはサーバーに新しいデザインをデプロイするだけで済み、ストアへの再リリースは不要です。
 
-## Requirements
+## 前提条件
 
-- .NET 10 SDK with the `maui-android` / `maui-ios` workloads (`dotnet workload install maui-android maui-ios`,
-  or the ".NET Multi-platform App UI development" workload in the Visual Studio installer)
-- Android: Android SDK + emulator or device (installed by the Visual Studio workload)
-- iOS: a paired Mac with Xcode. Without a Mac the iOS target still compiles, but cannot be packaged or run.
+- .NET 10 SDK と `maui-android` / `maui-ios` ワークロード（`dotnet workload install maui-android maui-ios`、
+  または Visual Studio インストーラーの「.NET Multi-platform App UI 開発」ワークロード）
+- Android: Android SDK とエミュレータまたは実機（Visual Studio のワークロードでインストールされます）
+- iOS: ペアリング済みの Mac と Xcode。Mac がなくても iOS ターゲットのコンパイルはできますが、パッケージ化や実行はできません。
 
-## Server address
+## サーバーのアドレス
 
-`appsettings.json` holds the server URL. It is bundled into the app as the default; the value can be changed at
-runtime from the app's *Settings* page (stored with MAUI `Preferences`).
+`appsettings.json` にサーバーの URL を記述します。これは既定値としてアプリに同梱され、実行時にアプリの *Settings* ページから
+変更できます（MAUI の `Preferences` に保存されます）。
 
 ```json
 {
@@ -24,342 +24,337 @@ runtime from the app's *Settings* page (stored with MAUI `Preferences`).
 }
 ```
 
-- `10.0.2.2` is how the Android emulator reaches `localhost` of the PC. The iOS simulator can use `localhost` directly.
-- The default points at the server's `https` launch profile. The ASP.NET Core development certificate is issued for
-  `localhost` and is not trusted by the device, so **Debug builds accept any server certificate**
-  (`ServerConnection.CreateHttpClient`). Release builds validate certificates normally, so a real certificate is
-  required there.
-- `http://...:5085/` also works, but only if the server runs with the `http` profile: with the `https` profile
-  `UseHttpsRedirection` answers with a 307 to `https://localhost:7137`, which the device cannot reach.
-- For a physical device use the PC's LAN address - see *A physical device over the LAN* below.
-- Plain `http` is allowed for development by `android:usesCleartextTraffic="true"` (AndroidManifest.xml) and
-  `NSAllowsArbitraryLoads` (Info.plist). Remove both when the server is `https` only.
-- Three layers, each overriding the one before: `appsettings.json` (tracked, the template default),
-  `appsettings.Development.json` (machine-specific, **`Debug` only**) and `appsettings.local.json`
-  (machine-specific, **bundled in every configuration**, gitignored). Use the `local` one when a Release or
-  TestFlight build has to reach a real server - it is the only layer that gets there without editing a tracked
-  file. Same shape as `appsettings.json`, all optional.
+- `10.0.2.2` は、Android エミュレータから PC の `localhost` に到達するためのアドレスです。iOS シミュレータでは `localhost` をそのまま使えます。
+- 既定値はサーバーの `https` 起動プロファイルを指しています。ASP.NET Core の開発用証明書は `localhost` 向けに発行されていて
+  デバイスからは信頼されないため、**Debug ビルドはどのサーバー証明書も受け入れます**
+  （`ServerConnection.CreateHttpClient`）。Release ビルドは証明書を通常どおり検証するので、そちらでは正規の証明書が
+  必要です。
+- `http://...:5085/` も使えますが、サーバーを `http` プロファイルで動かしている場合に限ります。`https` プロファイルでは
+  `UseHttpsRedirection` が `https://localhost:7137` への 307 を返し、デバイスからはそこに到達できません。
+- 実機では PC の LAN アドレスを使います。後述の *実機から LAN 経由で接続する* を参照してください。
+- 開発用に、平文の `http` は `android:usesCleartextTraffic="true"`（AndroidManifest.xml）と
+  `NSAllowsArbitraryLoads`（Info.plist）で許可されています。サーバーが `https` のみになったら、両方を削除してください。
+- 設定は 3 層で、後のものが前のものを上書きします。`appsettings.json`（Git 管理、テンプレートの既定値）、
+  `appsettings.Development.json`（マシン固有、**`Debug` のみ**）、`appsettings.local.json`
+  （マシン固有、**すべての構成で同梱**、gitignore 対象）です。Release や TestFlight のビルドから実際のサーバーに
+  接続する必要があるときは `local` を使ってください。Git 管理のファイルを編集せずにそこまで届くのはこの層だけです。
+  形式は `appsettings.json` と同じで、すべて省略可能です。
 
-### A physical device over the LAN
+### 実機から LAN 経由で接続する
 
-`adb reverse` only works while the device is attached to the PC and adb is alive, so a Debug build launched from
-the device's home screen has to reach the server by its LAN address, for example `https://192.168.5.150:7137/`.
-Three things have to line up.
+`adb reverse` はデバイスが PC に接続され、adb が動作している間しか使えません。そのため、デバイスのホーム画面から起動した
+Debug ビルドは、LAN アドレス（例: `https://192.168.5.150:7137/`）でサーバーに到達する必要があります。
+次の 3 点を揃えてください。
 
-1. **The server must listen on all interfaces.** The default launch profile binds `localhost`, which opens a
-   loopback-only socket: a connection from the device never arrives. The Cookie variant has an `https-lan`
-   profile that binds `0.0.0.0` instead - use that one:
+1. **サーバーをすべてのインターフェースで待ち受けさせる。** 既定の起動プロファイルは `localhost` にバインドするため、
+   ループバック専用のソケットが開かれ、デバイスからの接続は届きません。Cookie バリアントには `0.0.0.0` にバインドする
+   `https-lan` プロファイルがあるので、こちらを使います。
 
    ```powershell
    dotnet run --project Source/Hosts/Cookie/LowCodeApp.Server --launch-profile https-lan
    ```
 
-   There is also an `http-lan` profile (port 5085) that binds http only. Use it when you want to take TLS out
-   of the picture: with both schemes bound, `UseHttpsRedirection` can work out the https port and answers 307,
-   so plain http only stays plain when nothing else is listening.
+   http だけをバインドする `http-lan` プロファイル（ポート 5085）もあります。TLS を切り離したいときに使います。
+   両方のスキームをバインドしていると、`UseHttpsRedirection` が https のポートを割り出して 307 を返すため、
+   他に待ち受けがないときだけ平文の http のままになります。
 
-2. **The Windows firewall must allow the port inbound** (once, from an elevated PowerShell):
+2. **Windows ファイアウォールでそのポートの受信を許可する**（初回のみ、管理者権限の PowerShell で）:
 
    ```powershell
    New-NetFirewallRule -DisplayName "LowCodeApp Server (LAN)" -Direction Inbound -Protocol TCP -LocalPort 7137 -Profile Private -Action Allow
    ```
 
-   Add a rule for 5085 as well if you want to use the `http-lan` profile.
+   `http-lan` プロファイルを使う場合は、5085 のルールも追加してください。
 
-3. **Keep the URL on `https`.** Over `http` the server answers with a 307 (`UseHttpsRedirection`) and the
-   authentication cookie is `Secure`, so it is never sent back. `https` works even though the development
-   certificate is issued for `localhost`, because Debug builds skip certificate validation (see
-   `ServerConnection.CreateHttpClient`).
+3. **URL は `https` のままにする。** `http` ではサーバーが 307 を返し（`UseHttpsRedirection`）、認証 cookie は `Secure` なので
+   送り返されません。開発用証明書が `localhost` 向けに発行されていても、Debug ビルドは証明書の検証を省略するため
+   `https` で動作します（`ServerConnection.CreateHttpClient` を参照）。
 
-Then set the URL on the device: *Settings* in the title bar (⋮ menu on Android), or `appsettings.Development.json`
-to make it the bundled default.
+そのうえで、デバイス側で URL を設定します。タイトルバーの *Settings*（Android では ⋮ メニュー）か、
+`appsettings.Development.json` で同梱の既定値にします。
 
-This is a Debug-only arrangement. A Release build validates the certificate, so it cannot talk to a development
-server on a LAN address at all - a store or internal-test release needs a server with a real certificate.
+これは Debug 専用の構成です。Release ビルドは証明書を検証するので、LAN アドレス上の開発サーバーとは一切通信できません。
+ストア配布や内部テストのリリースには、正規の証明書を持つサーバーが必要です。
 
-## Running
+## 実行
 
-The server does not host this app (unlike the WebAssembly client), so both must run.
-Debugging a MAUI project together with other startup projects is unreliable, so start them separately:
+サーバーはこのアプリをホストしません（WebAssembly クライアントとは異なります）。そのため、両方を起動する必要があります。
+MAUI プロジェクトを他のスタートアッププロジェクトと一緒にデバッグするのは不安定なので、別々に起動してください。
 
-1. Start the `Server` project first (launch profile `https`, `https://localhost:7137`), e.g. *Debug → Start Without Debugging*.
-2. Start this project on an Android emulator / iOS simulator / device.
+1. 先に `Server` プロジェクトを起動します（起動プロファイル `https`、`https://localhost:7137`）。例: *デバッグ → デバッグなしで開始*。
+2. このプロジェクトを Android エミュレータ / iOS シミュレータ / 実機で起動します。
 
-The server URL can be changed at runtime from the app: open the *Settings* item in the title bar (⋮ menu on Android),
-enter the URL and press *Save*. The value is stored with MAUI `Preferences` and overrides `appsettings.json`;
-*Reset to default* goes back to the bundled value.
+サーバーの URL はアプリ内から実行時に変更できます。タイトルバーの *Settings* 項目（Android では ⋮ メニュー）を開き、
+URL を入力して *Save* を押します。値は MAUI の `Preferences` に保存され、`appsettings.json` を上書きします。
+*Reset to default* で同梱の値に戻ります。
 
-## How it works
+## 仕組み
 
-- `MauiProgram.cs` registers the same shared services as the browser client (`AddSharedServices`) and one
-  `HttpClient` pointing at `Server:BaseUrl`.
-- `Services/ServerConnection.cs` keeps the authentication cookie and the antiforgery token (`X-ANTIFORGERY-TOKEN`)
-  that the browser normally handles by itself.
-- `Pages/Login.razor` signs in through `api/account/login`; `Pages/LowCodePage.razor` hosts the low-code pages.
-- The design files are loaded once per WebView. After deploying a new design press *Reload* in the title bar
-  (it recreates the WebView). Server-side hot reload (`UseHotReload`) needs a SignalR connection the device can
-  trust; with the development certificate it silently stays off.
+- `MauiProgram.cs` は、ブラウザクライアントと同じ共有サービス（`AddSharedServices`）と、`Server:BaseUrl` を指す
+  `HttpClient` を 1 つ登録します。
+- `Services/ServerConnection.cs` は、ブラウザなら自動で処理してくれる認証 cookie とアンチフォージェリトークン
+  （`X-ANTIFORGERY-TOKEN`）を保持します。
+- `Pages/Login.razor` は `api/account/login` を通じてサインインします。`Pages/LowCodePage.razor` はローコードのページをホストします。
+- デザインファイルは WebView ごとに 1 回だけ読み込まれます。新しいデザインをデプロイしたら、タイトルバーの *Reload* を
+  押してください（WebView を作り直します）。サーバー側のホットリロード（`UseHotReload`）には、デバイスが信頼できる
+  SignalR 接続が必要です。開発用証明書では、何も表示されずにオフのままになります。
 
-## Startup time
+## 起動時間
 
-A cold start on Android is a few seconds, most of it before any of this project's code runs: the .NET runtime
-comes up, then MAUI, then the Android WebView, and only then does Blazor boot inside it. Measured on a
-low-end Android 12 tablet, process start to the page being drawn:
+Android のコールドスタートは数秒かかり、その大半はこのプロジェクトのコードが動く前に費やされます。.NET ランタイムが起動し、
+次に MAUI、続いて Android WebView が起動し、その後ようやくその中で Blazor が起動します。低スペックの Android 12 タブレットで、
+プロセス開始からページが描画されるまでを計測した結果です。
 
-| Build | First frame | Page drawn |
+| ビルド | 最初のフレーム | ページ描画 |
 |---|---|---|
 | Debug | 3.4s | 6.4s |
-| Release, AOT disabled | 2.8s | |
-| Release (Profiled AOT, the default) | **1.6s** | **4.1s** |
+| Release、AOT 無効 | 2.8s | |
+| Release（Profiled AOT、既定） | **1.6s** | **4.1s** |
 
-So judge startup on a Release build: Debug adds JNI checking, the debug helper library and fast deployment,
-which loads every assembly individually from the device instead of from the APK.
+そのため、起動時間は Release ビルドで判断してください。Debug は JNI チェック、デバッグ用ヘルパーライブラリ、高速デプロイが加わり、
+すべてのアセンブリを APK からではなくデバイス上から個別に読み込みます。
 
-A relaunch while the process is still alive (the app was only backgrounded) is ~90ms - the cost above is paid
-only when Android has killed the process.
+プロセスがまだ生きている状態での再起動（アプリをバックグラウンドにしただけの場合）は約 90ms です。上記のコストが発生するのは、
+Android がプロセスを終了させたときだけです。
 
-### Release builds fail in the AOT step when TEMP contains non-ASCII characters
+### TEMP に ASCII 以外の文字が含まれていると、Release ビルドが AOT の手順で失敗する
 
     Microsoft.Android.Sdk.Aot.targets(123,5): error : Precompiling failed for ...\linked\<assembly>.dll with exit code 1
     error : The specified response file can not be read
 
-The AOT compiler cannot read its response file when the path holds non-ASCII characters, which it does when the
-Windows user name is not ASCII (`C:\Users\<name>\AppData\Local\Temp`). Point `TEMP`/`TMP` at an ASCII path for
-the build:
+AOT コンパイラは、パスに ASCII 以外の文字が含まれているとレスポンスファイルを読めません。Windows のユーザー名が ASCII でない場合に
+該当します（`C:\Users\<name>\AppData\Local\Temp`）。ビルド中は `TEMP`/`TMP` を ASCII のパスに向けてください。
 
 ```powershell
 $env:TMP = "D:\aottmp"; $env:TEMP = "D:\aottmp"
 dotnet build Source/Hosts/Maui/LowCodeApp.Maui/LowCodeApp.Maui.csproj -f net10.0-android -c Release
 ```
 
-Disabling AOT (`-p:AndroidEnableProfiledAot=false -p:RunAOTCompilation=false`) also builds, but gives up most of
-the startup gain in the table above, so prefer fixing `TEMP`.
+AOT を無効にしても（`-p:AndroidEnableProfiledAot=false -p:RunAOTCompilation=false`）ビルドは通りますが、上の表の
+起動時間の改善の大半を手放すことになるため、`TEMP` を直す方を推奨します。
 
-## Publishing
+## 公開
 
-Change `ApplicationId`, `ApplicationTitle`, the icon (`Resources/AppIcon`) and the splash screen (`Resources/Splash`)
-in `LowCodeApp.csproj`, then follow the standard .NET MAUI publishing steps for Android / iOS.
+`LowCodeApp.csproj` の `ApplicationId`、`ApplicationTitle`、アイコン（`Resources/AppIcon`）、スプラッシュ画面（`Resources/Splash`）を
+変更し、そのうえで Android / iOS 向けの標準的な .NET MAUI の公開手順に従ってください。
 
-### Before you build something you hand to other people
+### 他の人に渡すものをビルドする前に
 
-The development conveniences described above are exactly what must not ship. Work through this list.
+ここまでに説明した開発用の便宜は、まさに出荷してはいけないものです。次のリストを順に確認してください。
 
-1. **Set the server URL for the build.** `appsettings.Development.json` is bundled in `Debug` only, so a
-   Release build no longer ships your machine's URL by accident - but it also means testers get whatever
-   `appsettings.json` says, and its default is the Android emulator loopback, useless on a real device. Put the
-   address in `appsettings.local.json` (gitignored, bundled in every configuration) or, for a real deployment,
-   in `appsettings.json` itself.
-2. **The server must authenticate.** The branch that treats a server without authentication as usable is
-   `#if DEBUG` only (see `LowCodePage.razor`), so a genuine Release build needs the Cookie variant (or another
-   host that issues the authentication cookie).
-3. **The server needs a certificate that the device trusts.** Release validates certificates - the bypass is
-   also `#if DEBUG`. A development certificate on a LAN address will not do; that combination only works for
-   local debugging (see *A physical device over the LAN* above).
-4. **Remove the cleartext permissions** once the server is https only: `android:usesCleartextTraffic="true"`
-   in `Platforms/Android/AndroidManifest.xml` and `NSAllowsArbitraryLoads` in `Platforms/iOS/Info.plist`.
-5. **Sign with your own key.** A local Release build is signed with the auto-generated `CN=Android Debug`
-   certificate, which Google Play rejects; iOS will not even link without a signing identity. Both are
-   configured in `LowCodeApp.Maui.local.props` - see *Publishing identity* below.
-6. **Bump `ApplicationVersion`** on every upload (`ApplicationDisplayVersion` is the user-visible string).
+1. **ビルドに使うサーバー URL を設定する。** `appsettings.Development.json` は `Debug` でのみ同梱されるので、Release ビルドに
+   自分のマシンの URL を誤って含めてしまうことはなくなりました。ただしその分、テスターには `appsettings.json` の内容が
+   渡り、その既定値は Android エミュレータのループバックで、実機では役に立ちません。アドレスは `appsettings.local.json`
+   （gitignore 対象、すべての構成で同梱）に書くか、本番デプロイなら `appsettings.json` 自体に書いてください。
+2. **サーバーが認証を行うこと。** 認証のないサーバーを使えるものとして扱う分岐は `#if DEBUG` のみです（`LowCodePage.razor` を参照）。
+   そのため、本物の Release ビルドには Cookie バリアント（または認証 cookie を発行する別のホスト）が必要です。
+3. **デバイスが信頼する証明書をサーバーが持つこと。** Release は証明書を検証します。回避処理も `#if DEBUG` です。LAN アドレス上の
+   開発用証明書では通りません。その組み合わせはローカルでのデバッグでのみ動作します（上の *実機から LAN 経由で接続する* を参照）。
+4. **サーバーが https のみになったら、平文通信の許可を削除する。** `Platforms/Android/AndroidManifest.xml` の
+   `android:usesCleartextTraffic="true"` と、`Platforms/iOS/Info.plist` の `NSAllowsArbitraryLoads` です。
+5. **自分の鍵で署名する。** ローカルの Release ビルドは自動生成された `CN=Android Debug` 証明書で署名されますが、これは
+   Google Play に拒否されます。iOS は署名 ID がないとリンクすらできません。どちらも `LowCodeApp.Maui.local.props` で設定します。
+   後述の *公開用の識別情報* を参照してください。
+6. **アップロードのたびに `ApplicationVersion` を上げる**（`ApplicationDisplayVersion` はユーザーに見えるバージョン文字列です）。
 
-Do not reach for `-p:DefineConstants=DEBUG%3BTRACE` to get around 2 or 3. It builds an app that skips
-certificate validation entirely, which is fine on your desk and unacceptable in anyone else's hands. It is
-useful for measuring startup on a Release build against a development server, and for nothing else.
+2 や 3 を回避するために `-p:DefineConstants=DEBUG%3BTRACE` に頼らないでください。これは証明書の検証を完全に省略するアプリを
+ビルドします。自分の机の上なら構いませんが、他人の手に渡すものとしては許されません。使ってよいのは、Release ビルドの起動時間を
+開発サーバーに対して計測するときだけです。
 
-### Publishing identity (`LowCodeApp.Maui.local.props`)
+### 公開用の識別情報 (`LowCodeApp.Maui.local.props`)
 
-The tracked project deliberately keeps the neutral template defaults - `com.companyname.lowcodeapp`, no signing.
-Anything specific to your organisation goes in `LowCodeApp.Maui.local.props`, which the csproj imports last when
-it exists, so its properties override the ones above. `*.local.props` is gitignored, so bundle identifiers,
-certificate names and keystore passwords stay out of the repository.
+Git 管理のプロジェクトでは、中立なテンプレートの既定値（`com.companyname.lowcodeapp`、署名なし）をあえてそのままにしています。
+組織に固有のものは `LowCodeApp.Maui.local.props` に書きます。csproj はこのファイルがあれば最後にインポートするので、
+上記のプロパティを上書きします。`*.local.props` は gitignore 対象なので、バンドル ID、証明書名、キーストアのパスワードが
+リポジトリに入ることはありません。
 
 ```powershell
 copy LowCodeApp.Maui.local.props.sample LowCodeApp.Maui.local.props
 ```
 
-Then edit it. `LowCodeApp.Maui.local.props.sample` documents every property; the short version is the bundle id,
-the version pair, and - per platform - the signing identity.
+そのうえで編集してください。`LowCodeApp.Maui.local.props.sample` にすべてのプロパティの説明があります。要点は、バンドル ID、
+バージョンの組、そしてプラットフォームごとの署名 ID です。
 
-### iOS: a TestFlight build
+### iOS: TestFlight ビルド
 
-Needs a paid Apple Developer Program membership and a Mac with Xcode. Visual Studio's *Pair to Mac* is enough to
-build from Windows, but the upload itself happens on the Mac.
+有料の Apple Developer Program のメンバーシップと、Xcode を入れた Mac が必要です。Visual Studio の *Pair to Mac* で
+Windows からビルドできますが、アップロード自体は Mac 上で行います。
 
-**Once, on the Apple side.** All of this is in the [Apple Developer](https://developer.apple.com/account) portal
-and [App Store Connect](https://appstoreconnect.apple.com):
+**Apple 側での準備（初回のみ）。** すべて [Apple Developer](https://developer.apple.com/account) ポータルと
+[App Store Connect](https://appstoreconnect.apple.com) で行います。
 
-1. *Certificates, Identifiers & Profiles > Identifiers*: register an explicit App ID with your bundle id. It has
-   to match `ApplicationId` exactly and cannot be changed afterwards.
-2. *Certificates*: create an **Apple Distribution** certificate and install it in the Mac's keychain (this is
-   easiest from the Mac - the request is generated by Keychain Access). *Keychain Access > My Certificates* then
-   shows its full name, e.g. `Apple Distribution: Example Inc. (ABCDE12345)`; that string is `CodesignKey`.
-3. *Profiles*: create an **App Store** provisioning profile for that App ID, download it and double-click it on
-   the Mac to install. Its *name* (not the file name, not the UUID) is `CodesignProvision`.
-4. App Store Connect: *My Apps > +* and create the app record with the same bundle id.
+1. *Certificates, Identifiers & Profiles > Identifiers*: バンドル ID で明示的な App ID を登録します。
+   `ApplicationId` と完全に一致している必要があり、後から変更できません。
+2. *Certificates*: **Apple Distribution** 証明書を作成し、Mac のキーチェーンにインストールします（Mac で行うのが
+   最も簡単です。リクエストは Keychain Access が生成します）。その後 *Keychain Access > My Certificates* に完全な名前
+   （例: `Apple Distribution: Example Inc. (ABCDE12345)`）が表示されます。この文字列が `CodesignKey` です。
+3. *Profiles*: その App ID 向けの **App Store** プロビジョニングプロファイルを作成し、ダウンロードして Mac で
+   ダブルクリックしてインストールします。その*名前*（ファイル名でも UUID でもありません）が `CodesignProvision` です。
+4. App Store Connect: *My Apps > +* で、同じバンドル ID のアプリレコードを作成します。
 
-**Every build.**
+**ビルドのたびに行うこと。**
 
-1. Bump `ApplicationVersion` in `LowCodeApp.Maui.local.props`. App Store Connect rejects a build number that has
-   already been uploaded, and it does so *after* the upload finishes.
-2. Archive. On the Mac (most reliable - Xcode's toolchain runs locally):
+1. `LowCodeApp.Maui.local.props` の `ApplicationVersion` を上げます。App Store Connect は、すでにアップロード済みの
+   ビルド番号を拒否します。しかも、アップロードが終わった*後*に拒否します。
+2. アーカイブします。Mac 上で行うのが最も確実です（Xcode のツールチェーンがローカルで動くため）。
 
    ```bash
    dotnet publish -f net10.0-ios -c Release
    ```
 
-   From Windows through the pairing, the same command works once *Pair to Mac* is connected; add
-   `-p:ServerAddress=<mac> -p:ServerUser=<user>` for a command line build outside Visual Studio. `ArchiveOnBuild`
-   is set in `local.props`, so the result is an `.xcarchive` plus an `.ipa` under
-   `bin/Release/net10.0-ios/ios-arm64/publish/`.
-3. Copy the `.ipa` to the Mac and upload it with **Transporter** (free, in the Mac App Store): sign in with the
-   Apple ID that has access to the app record, drag the `.ipa` in, *Deliver*.
-4. App Store Connect > *TestFlight*. The build shows as *Processing* for a few minutes.
-5. **Assign the build to the tester group** (the group's *Builds* tab). This is the step that sends the
-   invitation mails, so a tester added after the previous build was assigned hears nothing until it runs again.
-   The group setting *Automatically distribute builds* only covers builds uploaded from Xcode, so it does not
-   help when Transporter did the upload. Internal testers (up to 100 people on your team) get the build within
-   minutes and need no beta review; external testers need a beta review pass.
+   Windows からペアリング経由で行う場合も、*Pair to Mac* が接続されていれば同じコマンドで動作します。Visual Studio の
+   外でコマンドラインからビルドするには、`-p:ServerAddress=<mac> -p:ServerUser=<user>` を追加します。`local.props` で
+   `ArchiveOnBuild` が設定されているため、結果として `.xcarchive` と `.ipa` が
+   `bin/Release/net10.0-ios/ios-arm64/publish/` に出力されます。
+3. `.ipa` を Mac にコピーし、**Transporter**（無料、Mac App Store にあります）でアップロードします。アプリレコードに
+   アクセスできる Apple ID でサインインし、`.ipa` をドラッグして *Deliver* を押します。
+4. App Store Connect > *TestFlight*。ビルドは数分間 *Processing* と表示されます。
+5. **ビルドをテスターグループに割り当てます**（グループの *Builds* タブ）。招待メールが送られるのはこの手順です。そのため、
+   前のビルドを割り当てた後で追加したテスターには、この手順をもう一度行うまで何も届きません。
+   グループの設定 *Automatically distribute builds* の対象は Xcode からアップロードしたビルドだけなので、
+   Transporter でアップロードした場合は効果がありません。内部テスター（チームの最大 100 人）は数分でビルドを受け取れ、
+   ベータ版審査は不要です。外部テスターにはベータ版審査が必要です。
 
-**Things that trip this up.**
+**つまずきやすい点。**
 
-- **Export compliance.** `Info.plist` declares `ITSAppUsesNonExemptEncryption=false` - the app only uses standard
-  HTTPS. Without it, every single upload waits for a manual answer in App Store Connect before testers can
-  install. Set it to `true` (and add `ITSEncryptionExportComplianceCode`) if you add your own cryptography.
-- **The server must have a real certificate.** Release builds validate certificates; the bypass is `#if DEBUG`.
-  A TestFlight build pointed at a development server on a LAN address cannot connect at all. Testers can change
-  the address from the app's *Settings* page, but no address makes an untrusted certificate work.
-- **`NSAllowsArbitraryLoads` is still `true`** in `Info.plist`. Internal TestFlight accepts it, but App Store
-  review (and external TestFlight) asks why plain http is needed. Remove it once the server is https only.
-- **iOS always AOT compiles**, so the trimming notes below apply to every iOS Release build, not just Android's.
+- **輸出コンプライアンス。** `Info.plist` で `ITSAppUsesNonExemptEncryption=false` を宣言しています。アプリが標準の
+  HTTPS しか使わないためです。これがないと、アップロードのたびに App Store Connect での手動回答を待たないと、
+  テスターがインストールできません。独自の暗号処理を追加する場合は `true` に設定し、`ITSEncryptionExportComplianceCode` を
+  追加してください。
+- **サーバーには正規の証明書が必要です。** Release ビルドは証明書を検証し、回避処理は `#if DEBUG` です。
+  LAN アドレス上の開発サーバーを指した TestFlight ビルドは、まったく接続できません。テスターはアプリの *Settings* ページから
+  アドレスを変更できますが、どのアドレスにしても、信頼されない証明書が通るようにはなりません。
+- **`NSAllowsArbitraryLoads` は `Info.plist` で今も `true` です。** 内部 TestFlight では通りますが、App Store 審査
+  （と外部 TestFlight）では、なぜ平文の http が必要なのかを尋ねられます。サーバーが https のみになったら削除してください。
+- **iOS は常に AOT コンパイルします。** そのため、後述のトリミングに関する注意は、Android だけでなく iOS のすべての
+  Release ビルドに当てはまります。
 
-### Android: a Play internal test
+### Android: Play の内部テスト
 
-Needs a Google Play Console developer account. Internal testing takes up to 100 testers, has no review wait, and
-the build is available minutes after the upload finishes.
+Google Play Console のデベロッパーアカウントが必要です。内部テストは最大 100 人のテスターに対応し、審査の待ち時間がなく、
+アップロードが終わって数分でビルドが利用可能になります。
 
-**Once, on the Play side.**
+**Play 側での準備（初回のみ）。**
 
-1. Create the upload key. A local Release build is otherwise signed with the auto generated `CN=Android Debug`
-   certificate, which Play rejects. Keep the keystore outside the repository and back it up - losing it means a
-   support request to register a new upload key.
+1. アップロードキーを作成します。そうしないと、ローカルの Release ビルドは自動生成された `CN=Android Debug` 証明書で署名され、
+   Play に拒否されます。キーストアはリポジトリの外に置き、バックアップを取ってください。紛失すると、新しいアップロードキーを
+   登録するためにサポートへの依頼が必要になります。
 
    ```powershell
    keytool -genkeypair -v -keystore D:\keys\lowcodeapp-upload.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10950 -storetype pkcs12
    ```
 
-   Play requires a key valid past 22 October 2033, so do not shorten `-validity`. Point
-   `AndroidSigningKeyStore` at it in `LowCodeApp.Maui.local.props` and keep the password in an environment
-   variable rather than in the file - see *Publishing identity* above.
-2. Play Console: *Create app*. The package name has to match `ApplicationId` exactly and cannot be changed
-   afterwards. Leave **Play App Signing** enabled (the default): the key above only signs uploads, and Google
-   signs what reaches devices.
-3. Fill in *App content*. Data safety, content rating, target audience, ads and a privacy policy URL are all
-   required before any track - internal testing included - can be released. This app signs users in, so the
-   data safety form has to account for the credentials it handles.
-4. *Testing > Internal testing*: create the track, add testers by email (or as a mailing list), and share the
-   opt-in link with them.
+   Play は 2033 年 10 月 22 日より後まで有効なキーを要求するので、`-validity` を短くしないでください。
+   `LowCodeApp.Maui.local.props` の `AndroidSigningKeyStore` でこれを指定し、パスワードはファイルに書かず環境変数に
+   入れてください。上の *公開用の識別情報* を参照してください。
+2. Play Console: *Create app*。パッケージ名は `ApplicationId` と完全に一致している必要があり、後から変更できません。
+   **Play App Signing** は有効のままにしてください（既定）。上のキーはアップロードの署名にだけ使われ、デバイスに届くものには
+   Google が署名します。
+3. *App content* を入力します。データセーフティ、コンテンツのレーティング、ターゲット層、広告、プライバシーポリシーの URL は
+   すべて、どのトラックでも（内部テストを含め）リリースする前に必須です。このアプリはユーザーのサインインを行うため、
+   データセーフティのフォームでは、扱う認証情報を申告する必要があります。
+4. *Testing > Internal testing*: トラックを作成し、メールアドレス（またはメーリングリスト）でテスターを追加して、
+   オプトインのリンクを共有します。
 
-**Every build.**
+**ビルドのたびに行うこと。**
 
-1. Bump `ApplicationVersion` in `LowCodeApp.Maui.local.props`. It becomes the Android version code, and Play
-   rejects a version code that has already been uploaded.
-2. Publish:
+1. `LowCodeApp.Maui.local.props` の `ApplicationVersion` を上げます。これが Android のバージョンコードになり、Play は
+   アップロード済みのバージョンコードを拒否します。
+2. 公開します。
 
    ```powershell
    dotnet publish Source/Hosts/Maui/LowCodeApp.Maui/LowCodeApp.Maui.csproj -f net10.0-android -c Release
    ```
 
-   The result is `bin/Release/net10.0-android/publish/<package>-Signed.aab`. Upload that one - the unsigned
-   `.aab` next to it is rejected.
-3. Play Console > *Internal testing > Create new release*, drop the `.aab` in, roll it out. Testers get it from
-   the opt-in link; the first install can take a few minutes to appear.
+   結果は `bin/Release/net10.0-android/publish/<package>-Signed.aab` です。アップロードするのはこのファイルです。
+   隣にある署名なしの `.aab` は拒否されます。
+3. Play Console > *Internal testing > Create new release*。`.aab` をドロップしてロールアウトします。テスターはオプトインの
+   リンクから入手します。最初のインストールが表示されるまでに数分かかることがあります。
 
-**Things that trip this up.**
+**つまずきやすい点。**
 
-- **The version code is shared with iOS.** `ApplicationVersion` in `local.props` feeds both, so a TestFlight
-  upload and a Play upload consume the same number. That is harmless - both stores only require their own
-  numbers to increase - but do not expect them to line up with each other.
-- **`usesCleartextTraffic="true"`** is still in `Platforms/Android/AndroidManifest.xml`. Internal testing
-  accepts it; remove it once the server is https only.
-- **A LAN server means the testers have to be on that LAN**, with the server running. See the section below.
+- **バージョンコードは iOS と共有されます。** `local.props` の `ApplicationVersion` が両方に使われるため、TestFlight の
+  アップロードと Play のアップロードは同じ番号を消費します。どちらのストアも自分側の番号が増えることしか求めないので
+  問題はありませんが、両者が揃うとは期待しないでください。
+- **`usesCleartextTraffic="true"`** は `Platforms/Android/AndroidManifest.xml` に今も残っています。内部テストでは
+  通りますが、サーバーが https のみになったら削除してください。
+- **LAN 上のサーバーでは、テスターもその LAN 内にいる必要があります**。サーバーも起動している必要があります。
+  次のセクションを参照してください。
 
-### Pointing a Release build at a development server on the LAN
+### Release ビルドから LAN 上の開発サーバーに接続する
 
-A TestFlight or Play internal-test build is a Release build, so the certificate bypass in
-`ServerConnection.CreateHttpClient` is compiled out and the ASP.NET Core development certificate is rejected -
-`https://<lan ip>:7137/` cannot work at all. Testing an actual store build against the PC on the office network
-therefore means either giving the server a certificate the device trusts, or taking TLS out of the picture and
-talking plain `http`. The second is far less work, and the pieces are already here.
+TestFlight や Play の内部テストのビルドは Release ビルドなので、`ServerConnection.CreateHttpClient` の証明書回避処理は
+コンパイルで除外され、ASP.NET Core の開発用証明書は拒否されます。そのため `https://<lan ip>:7137/` は全く機能しません。
+オフィスのネットワーク上の PC に対して実際のストア向けビルドをテストするには、デバイスが信頼する証明書をサーバーに用意するか、
+TLS を切り離して平文の `http` で通信するかのどちらかになります。後者の方がはるかに手間が少なく、必要な部品はすでに揃っています。
 
-1. **Run the server with `http-lan`** (binds `0.0.0.0:5085`, http only, so `UseHttpsRedirection` has no https
-   port to redirect to and leaves requests alone):
+1. **サーバーを `http-lan` で動かす**（`0.0.0.0:5085` にバインドし、http のみ。そのため `UseHttpsRedirection` にはリダイレクト先の
+   https ポートがなく、リクエストはそのまま通ります）:
 
    ```powershell
    dotnet run --project Source/Hosts/Cookie/LowCodeApp.Server --launch-profile http-lan
    ```
 
-2. **Open the port for the network profile the device is actually on.** Windows classifies each network as
-   Private or Public, and a rule scoped to Private does nothing on a Wi-Fi marked Public - which is the default
-   for a wireless network. Check with `Get-NetConnectionProfile`, then, from an elevated PowerShell, either mark
-   that network Private (preferred - it is a network you control):
+2. **デバイスが実際に接続しているネットワークプロファイルに対してポートを開ける。** Windows は各ネットワークを Private または
+   Public に分類し、Private に限定したルールは、Public に設定された Wi-Fi では何の効果もありません。無線ネットワークでは
+   これが既定です。`Get-NetConnectionProfile` で確認し、管理者権限の PowerShell から、そのネットワークを Private にする
+   （推奨。自分が管理するネットワークなので）か:
 
    ```powershell
    Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private
    New-NetFirewallRule -DisplayName "LowCodeApp Server http (LAN)" -Direction Inbound -Protocol TCP -LocalPort 5085 -Profile Private -Action Allow
    ```
 
-   or, if the network must stay Public, add `-Profile Public` to the rule instead. Do not do that on a network
-   you do not control.
+   ネットワークを Public のままにする必要がある場合は、代わりにルールに `-Profile Public` を付けます。自分が管理していない
+   ネットワークでは行わないでください。
 
-3. **Put the PC's address on that interface in `appsettings.local.json`**, e.g.
+3. **そのインターフェースにある PC のアドレスを `appsettings.local.json` に書く。** 例:
 
    ```json
    { "Server": { "BaseUrl": "http://192.168.3.11:5085/" } }
    ```
 
-   A machine with several adapters has several addresses; use the one on the same subnet as the phone
-   (`Get-NetIPAddress -AddressFamily IPv4`). It usually comes from DHCP, so it changes - the app's *Settings*
-   page fixes that without a rebuild.
+   アダプターが複数あるマシンにはアドレスも複数あります。スマートフォンと同じサブネットのものを使ってください
+   （`Get-NetIPAddress -AddressFamily IPv4`）。多くは DHCP で割り当てられるため変わります。再ビルドせずに固定するには、
+   アプリの *Settings* ページを使います。
 
-4. **iOS lets this through because of `NSAllowsArbitraryLoads`** in `Info.plist`, and Android because of
-   `android:usesCleartextTraffic="true"`. Removing either (which a store release should) also removes this
-   arrangement.
+4. **iOS がこれを通すのは `Info.plist` の `NSAllowsArbitraryLoads` のおかげで、Android は
+   `android:usesCleartextTraffic="true"` のおかげです。** どちらかを削除すると（ストア向けリリースでは削除すべきです）、
+   この構成も使えなくなります。
 
-The antiforgery cookie matters here. The Cookie variant sets it with `Secure = ctx.Request.IsHttps`, so it is
-marked `Secure` over https and plain over http. Were it hardcoded to `true`, `CookieContainer` would refuse to
-send it back over http and every API call would fail CSRF validation - which looks like a broken login rather
-than a cookie problem. The authentication cookie itself already behaves this way (`CookieSecurePolicy.SameAsRequest`).
+ここではアンチフォージェリ cookie が重要です。Cookie バリアントはこれを `Secure = ctx.Request.IsHttps` で設定するため、
+https では `Secure` が付き、http では付きません。もし `true` に固定されていると、`CookieContainer` が http 経由での
+送り返しを拒否し、すべての API 呼び出しが CSRF 検証に失敗します。これは cookie の問題ではなく、ログインが壊れているように
+見えます。認証 cookie 自体はすでにこのように動作しています（`CookieSecurePolicy.SameAsRequest`）。
 
-This is still a development arrangement: traffic is unencrypted, so keep it to a network you control, and give
-real testers a server with a real certificate.
+これはあくまで開発用の構成です。通信が暗号化されないので、自分が管理するネットワークに限定し、本当のテスターには
+正規の証明書を持つサーバーを用意してください。
 
-### iOS: the Mono interpreter, not full AOT
+### iOS: フル AOT ではなく Mono インタープリタ
 
-`Release` builds for iOS set `MtouchInterpreter=all`. This is not an optimisation, it is what makes the app run
-at all: an iOS device cannot generate machine code at runtime (Apple does not allow it, so there is no JIT),
-and the low code script engine compiles scripts while the app runs. Without the interpreter the app dies with
-an unhandled exception while it loads the design - the loading screen stops part way and `#blazor-error-ui`
-shows "An unhandled error has occurred". Android is unaffected: it keeps a JIT, and the profiled AOT above only
-covers the startup path. Debug builds already use the interpreter by default (which is why the problem only
-appears in a published build).
+iOS 向けの `Release` ビルドは `MtouchInterpreter=all` を設定します。これは最適化ではなく、アプリが動作するための必須の設定です。
+iOS デバイスは実行時にマシンコードを生成できず（Apple が許可していないため、JIT がありません）、ローコードのスクリプトエンジンは
+アプリの実行中にスクリプトをコンパイルします。インタープリタがないと、デザインを読み込む間にアプリが未処理の例外で停止します。
+読み込み画面が途中で止まり、`#blazor-error-ui` に "An unhandled error has occurred" と表示されます。Android には影響しません。
+JIT が使え、上で述べたプロファイル AOT は起動パスにしか効かないためです。Debug ビルドは既定でインタープリタを使います
+（この問題が公開ビルドでしか現れないのはそのためです）。
 
-The interpreter executes IL instead of compiled machine code, so it is slower - no difference worth noticing on
-current hardware, but if an old device needs the headroom, narrow the setting to the assemblies that actually
-need dynamic code (`MtouchInterpreter=A,B`): enabling the interpreter at all is what turns dynamic code support
-back on, so the rest can stay AOT compiled. As a side effect of skipping AOT, the device build takes a few
-minutes instead of tens of them; expect the long build back if you narrow this.
+インタープリタは IL をコンパイル済みのマシンコードの代わりに実行するので遅くなりますが、最近のハードウェアでは気になるほどの
+差はありません。古いデバイスで余裕が必要なら、設定を動的コードが実際に必要なアセンブリに絞り込んでください
+（`MtouchInterpreter=A,B`）。インタープリタを有効にすること自体が動的コードのサポートを元に戻すので、残りは AOT コンパイルの
+ままにできます。AOT を省く副作用として、デバイス向けのビルドは数十分ではなく数分で済みます。絞り込むと、長いビルドが
+戻ってくると思ってください。
 
-### Trimming
+### トリミング
 
-`Release` keeps `TrimMode=partial` and Profiled AOT, and the csproj roots
-`Microsoft.AspNetCore.Components.Web` (`TrimmerRootAssembly`). That last part is not optional: root components
-are instantiated by reflection, so without it the trimmer removes `HeadOutlet`'s constructor and startup dies
-in `AttachToPageAsync` with `CtorNotLocated` - before any component of this app runs, which means no
-`try`/`catch` and no `ErrorBoundary` can catch it and the app simply sits on the loading screen forever. If you
-add root components of your own, or see that symptom after a dependency update, look for the exception in the
-WebView console (`chrome://inspect`, available because `AddBlazorWebViewDeveloperTools()` is enabled in Debug)
-and root the assembly it names.
+`Release` は `TrimMode=partial` と Profiled AOT を維持し、csproj は `Microsoft.AspNetCore.Components.Web` を
+ルートに指定しています（`TrimmerRootAssembly`）。この最後の指定は省略できません。ルートコンポーネントはリフレクションで
+インスタンス化されるため、指定がないとトリマーが `HeadOutlet` のコンストラクターを削除し、起動が `AttachToPageAsync` で
+`CtorNotLocated` により失敗します。これはこのアプリのどのコンポーネントよりも前に起こるので、`try`/`catch` も
+`ErrorBoundary` も捕捉できず、アプリは読み込み画面のまま永久に止まります。独自のルートコンポーネントを追加した場合や、
+依存関係の更新後にこの症状が出た場合は、WebView コンソール（`chrome://inspect`。Debug では `AddBlazorWebViewDeveloperTools()` が
+有効なので使えます）で例外を探し、そこで挙がっているアセンブリをルートに指定してください。
 
-Two build details worth knowing when you change trimming settings: a csproj `ItemGroup` edit does not re-run
-the trimmer (delete `obj/Release` and `bin/Release` first), and `-t:Run` can skip packaging - build normally,
-then `-t:Install`.
+トリミング設定を変更するときに知っておくべきビルド上の注意が 2 つあります。csproj の `ItemGroup` を編集してもトリマーは
+再実行されません（先に `obj/Release` と `bin/Release` を削除してください）。また `-t:Run` はパッケージ化を省略することがあります。
+通常どおりビルドしてから `-t:Install` を使ってください。
