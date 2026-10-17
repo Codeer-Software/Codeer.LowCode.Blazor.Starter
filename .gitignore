@@ -450,3 +450,6 @@ DesignProjects/*/design/.ide/
 /Design/.ide/
 # Selenium test project: machine specific connection strings
 testsettings.local.json
+
+# Developer-local server settings (copied from the .sample next to it)
+appsettings.Development.json

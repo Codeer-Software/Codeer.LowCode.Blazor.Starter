@@ -103,8 +103,9 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 
 ## Step 4. ローカルの置き場を作り、appsettings を書き換える
 
-サーバーの設定 `<ROOT>\Source\Hosts\Cookie\LowCodeApp.Server\appsettings.Development.json` は、パスが
-`C:\Codeer.LowCode.Blazor.Local\...` という固定パスになっている。データソースは 2 種類に分けて考える:
+サーバーの設定は `<ROOT>\Source\Hosts\Cookie\LowCodeApp.Server\appsettings.Development.json`。**このファイルはリポジトリに入っていない**
+（接続文字列や API キーが入る場所なので gitignore 対象）。同じフォルダの `appsettings.Development.json.sample` をコピーして作る。
+sample のパスは `C:\Codeer.LowCode.Blazor.Local\...` という固定パスになっている。データソースは 2 種類に分けて考える:
 
 - **`Main`** = このアプリ（Step 6 で作るデザインプロジェクト）の DB。**ROOT 配下**（`<ROOT>\Local\Data\main.db`）に置く。別のアプリと DB を取り合わない
 - **それ以外**（`appsettings.json` の `DataSources` に最初から並んでいるもの。名前はテンプレートの版で変わる）= デザイナのテンプレート用。**`C:\Codeer.LowCode.Blazor.Local\Data` のまま触らない。**
@@ -113,15 +114,17 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 デザインの配信先・ファイル保存先・フォントもこのアプリ固有なので ROOT 配下に向ける（別のアプリと `App.zip` を取り合わないため）。
 
 1. フォルダを作る: `<ROOT>\Local\Data`、`<ROOT>\Local\Designs`、`<ROOT>\Local\Storages`、`C:\Codeer.LowCode.Blazor.Local\Data`（`<ROOT>\Local\Font` は Step 2 の export-app が作り、PDF 出力用の Noto Sans JP（`NotoSansJP.ttf` / `NotoSansJP#b.ttf`、SIL Open Font License）が入っている）
-2. `appsettings.Development.json` を編集する（JSON として読んで書き戻す。`\` は JSON 内で `\\`）:
+2. `<ROOT>\Source\Hosts\Cookie\LowCodeApp.Server\appsettings.Development.json.sample` を同じフォルダの
+   `appsettings.Development.json` にコピーする（既にあれば上書きしない）
+3. コピーした `appsettings.Development.json` を編集する（JSON として読んで書き戻す。`\` は JSON 内で `\\`）:
    - `ConnectionStrings` に **`Main` を追加**: `"Main": "Data Source=<ROOT>\\Local\\Data\\main.db;"`
    - `ConnectionStrings` の他の値は **変えない**（`Data Source=C:\\Codeer.LowCode.Blazor.Local\\Data\\<ファイル名>` のまま）
    - `FileSystemStorages[*].Directory` → `<ROOT>\\Local\\Storages`
    - `DesignFileDirectory` → `<ROOT>\\Local\\Designs`
    - `FontFileDirectory` → `<ROOT>\\Local\\Font`
    - 他の項目は触らない
-3. 同じフォルダの `appsettings.json` の `DataSources` 配列に **`{ "Name": "Main", "DataSourceType": "SQLite" }` を追加**する（既存の要素は触らない。`Main` はこのアプリを CCFDev で作るときだけ足すもので、リポジトリや Visual Studio のテンプレートには入っていない）
-4. `appsettings.json` を読み、**`DataSourceName` でデータソースを指す配列**（例: アップロードの一時ファイル表 `TemporaryFileTableInfo`）を探す。既存のデータソースの項目が
+4. 同じフォルダの `appsettings.json` の `DataSources` 配列に **`{ "Name": "Main", "DataSourceType": "SQLite" }` を追加**する（既存の要素は触らない。`Main` はこのアプリを CCFDev で作るときだけ足すもので、リポジトリや Visual Studio のテンプレートには入っていない）
+5. `appsettings.json` を読み、**`DataSourceName` でデータソースを指す配列**（例: アップロードの一時ファイル表 `TemporaryFileTableInfo`）を探す。既存のデータソースの項目が
    あれば、**同じ形で `Main` の項目を足す**（表名・列名は既存の項目と同じにする。テンプレートの DB には同じ表が入っている）。どの設定がデータソースごとに要るかは
    そのときの `appsettings.json` で決まるので、ここに無い名前の配列でも同じ扱いにする。既存の項目が 1 つも無い設定は足さない
 
