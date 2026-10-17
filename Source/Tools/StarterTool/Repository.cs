@@ -47,18 +47,34 @@
             || name.Equals("obj", StringComparison.OrdinalIgnoreCase)
             || name.Equals(".vs", StringComparison.OrdinalIgnoreCase);
 
+        //Files listed in .gitignore for secrets / local settings must never be packed (StarterTool copies the working folder, not git).
         public static bool IsExcludedFile(string name)
             => name.EndsWith(".user", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("appsettings.Development.json", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("appsettings.local.json", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".local.props", StringComparison.OrdinalIgnoreCase)
             || name.EndsWith(".bak", StringComparison.OrdinalIgnoreCase)
             || name.Contains("_wpftmp", StringComparison.OrdinalIgnoreCase);
 
-        /// <summary>Copies a project folder without build artifacts. Optional per-file text transform.</summary>
-        public static void CopyProject(string src, string dst, Func<string, string, string>? transform = null)
+        /// <summary>Name a file gets in the output: "X.sample" becomes "X" (the sample settings ship under their real name).</summary>
+        public static string OutputFileName(string name)
+            => name.EndsWith(".sample", StringComparison.OrdinalIgnoreCase) ? name[..^".sample".Length] : name;
+
+        /// <summary>Same as OutputFileName for a relative path (only the file name part changes).</summary>
+        public static string OutputRelativePath(string relative)
+        {
+            var dir = Path.GetDirectoryName(relative);
+            var name = OutputFileName(Path.GetFileName(relative));
+            return string.IsNullOrEmpty(dir) ? name : Path.Combine(dir, name);
+        }
+
+        /// <summary>Copies a project folder without build artifacts. Optional per-file text transform. renameSample: output "X.sample" as "X".</summary>
+        public static void CopyProject(string src, string dst, Func<string, string, string>? transform = null, bool renameSample = false)
         {
             foreach (var file in EnumerateProjectFiles(src))
             {
                 var relative = Path.GetRelativePath(src, file);
-                var target = Path.Combine(dst, relative);
+                var target = Path.Combine(dst, renameSample ? OutputRelativePath(relative) : relative);
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 if (transform != null && IsTextFile(file))
                 {
@@ -84,8 +100,10 @@
             }
         }
 
+        //Judged by the name the file is written out as, so that "X.json.sample" is still treated as text:
+        //it has to go through the same token replacement as "X.json" did before the .sample migration.
         public static bool IsTextFile(string file)
-            => TextExtensions.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase);
+            => TextExtensions.Contains(Path.GetExtension(OutputFileName(file)), StringComparer.OrdinalIgnoreCase);
 
         public static void DeleteDirectory(string path)
         {
