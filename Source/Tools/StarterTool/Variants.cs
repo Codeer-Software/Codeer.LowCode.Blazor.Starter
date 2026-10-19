@@ -28,7 +28,7 @@
 
     /// <summary>One application variant and how the VS template describes it.</summary>
     /// <param name="IsTemplate">false = kept in the repository (solution generated, debug copy exported) but not shipped as a VS template.
-    /// Public templates are Cookie (the default, no suffix), Maui, Wpf and WinForms; MultiTenant stays as a host for maintenance.</param>
+    /// Public templates are Cookie (the default, no suffix), Maui, Wpf, WinForms and Batch; MultiTenant stays as a host for maintenance.</param>
     /// <param name="InAllSolution">false = the variant's own projects stay out of the maintainer solution (Source/Codeer.LowCode.Blazor.Starter.sln)
     /// and are opened from the variant's own Source/Hosts/&lt;Variant&gt;/LowCodeApp.sln instead. Used for Maui, whose workload makes the
     /// all-in-one solution slow to load and debug. Solutions are only for editing; the VSIX is packed from the project folders.</param>
@@ -86,6 +86,19 @@
                 InAllSolution: false),
             Desktop("Wpf"),
             Desktop("WinForms"),
+            //Console host for batch jobs: reads and writes the database in process with the design project's settings, no web.
+            //Customers add jobs to Jobs (IJob); Batch is the fixed entry point (job name on the command line).
+            new("Batch", "Codeer.LowCode.Blazor.Batch", "Codeer.LowCode.Blazor.Template.Batch.zip",
+                "Create a Codeer.LowCode.Blazor batch (console) application that reads and writes data with the design project's settings.",
+                new[] { "windows", "linux" }, new[] { "console" },
+                new[]
+                {
+                    Own("Jobs", "BatchApp"),
+                    Own("Batch", "BatchApp"),
+                    Common("Designer", "Tools"),
+                    Common("LicenseRegisterCli", "Tools"),
+                    Common("Client.Shared", "BatchApp"),
+                }),
             //Multi-tenant (ASP.NET Core Identity + per-tenant design/data). Kept here as a host, not templated yet.
             new("MultiTenant", "Codeer.LowCode.Blazor.MultiTenant", "Codeer.LowCode.Blazor.Template.MultiTenant.zip",
                 "Create Codeer.LowCode.Blazor with multi-tenant authorization.",

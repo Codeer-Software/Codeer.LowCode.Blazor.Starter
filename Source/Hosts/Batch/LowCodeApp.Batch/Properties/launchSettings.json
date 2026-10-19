@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "LowCodeApp.Batch": {
+      "commandName": "Project",
+      "commandLineArgs": "Sample AppUser",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
