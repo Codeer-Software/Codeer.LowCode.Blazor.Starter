@@ -1,12 +1,12 @@
 using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Match;
-using LowCodeApp.Jobs.Services;
+using LowCodeApp.Server.Services;
 
-namespace LowCodeApp.Jobs
+namespace LowCodeApp.Server.Jobs
 {
     /// <summary>
-    /// 例: LowCodeApp.Batch Sample &lt;モジュール名&gt;
+    /// 例: dotnet LowCodeApp.Server.dll job Sample &lt;モジュール名&gt;
     /// 指定したモジュールの一覧を 1 ページ読んで、件数と先頭の Id を出す。
     /// </summary>
     public class SampleJob : IJob
@@ -15,7 +15,7 @@ namespace LowCodeApp.Jobs
 
         public async Task RunAsync(DataService data, string[] args)
         {
-            if (args.Length < 1) throw new ArgumentException("モジュール名を指定してください。例: Sample Customer");
+            if (args.Length < 1) throw new ArgumentException("モジュール名を指定してください。例: job Sample Customer");
 
             var moduleName = args[0];
             var page = await data.ModuleDataIO.GetListAsync(new SearchCondition(moduleName), 0);

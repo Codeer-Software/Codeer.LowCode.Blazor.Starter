@@ -14,6 +14,7 @@ using LowCodeApp.Client.Shared.Samples;
 using LowCodeApp.Server;
 using LowCodeApp.Server.Services;
 using LowCodeApp.Server.AI;
+using LowCodeApp.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -31,7 +32,13 @@ ExtrasServerInitializer.Initialize();
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-var builder = WebApplication.CreateBuilder(args);
+//ジョブ (バッチ) モード: dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...] (Jobs/README.md)。
+//Web ホストは立てず、同じ appsettings でジョブを 1 つ実行して終了コードを返す。
+//設定は exe の隣から読む (タスクスケジューラ等ではカレントフォルダが exe の場所とは限らない)。ジョブの引数は設定に混ぜない
+var isJob = args is ["job", ..];
+var builder = isJob
+    ? WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory })
+    : WebApplication.CreateBuilder(args);
 
 LicenseManager.DomainLicense = builder.Configuration.GetSection("DomainLicense").Get<string>() ?? string.Empty;
 LicenseManager.IsAutoUpdate = builder.Configuration.GetSection("IsLicenseAutoUpdate").Get<bool>();
@@ -73,6 +80,8 @@ SystemConfig.Instance.AuditLog = builder.Configuration.GetSection("AuditLog").Ge
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
+
+if (isJob) return await JobRunner.RunAsync(builder.Configuration, args[1..]);
 
 // Cookie authentication.
 builder.UseCookieAuthentication();
@@ -228,3 +237,4 @@ app.MapFallbackToFile("index.html", htmlNoCache);
 app.UseExceptionHandlerSendToFront();
 
 app.Run();
+return 0;

@@ -58,14 +58,13 @@
 <!-- maintainer-only -->
 ## バリアントの選び方
 
-公開しているホストは 5 つ。**既定は `Cookie`**（Visual Studio テンプレート名も接尾辞なしの `Codeer.LowCode.Blazor`）。
+公開しているホストは 4 つ。**既定は `Cookie`**（Visual Studio テンプレート名も接尾辞なしの `Codeer.LowCode.Blazor`）。
 
 | フォルダ | 用途 | 選ぶ基準 |
 |---|---|---|
-| `Source/Hosts/Cookie/` | Web（WASM クライアント + ASP.NET Core サーバー）、Cookie 認証（ユーザーテーブルでパスワード検証） | 業務アプリの既定。Entra ID / Google / AWS Cognito / 汎用 OIDC のログインは `appsettings` の `ExternalLogins` に書くだけで足せる（Extras.Server の外部ログイン。手順は Codeer.LowCode.Blazor.Extras の `docs/ExternalLogin.md`、方針コードは `Server/ExternalLoginUserResolver.cs`）。TOTP など他の認証を組むときもここを土台にする（cookie スキームと `[Authorize]`、現在ユーザー解決はそのまま使え、ログインの発行方法だけ差し替える） |
+| `Source/Hosts/Cookie/` | Web（WASM クライアント + ASP.NET Core サーバー）、Cookie 認証（ユーザーテーブルでパスワード検証） | 業務アプリの既定。Entra ID / Google / AWS Cognito / 汎用 OIDC のログインは `appsettings` の `ExternalLogins` に書くだけで足せる（Extras.Server の外部ログイン。手順は Codeer.LowCode.Blazor.Extras の `docs/ExternalLogin.md`、方針コードは `Server/ExternalLoginUserResolver.cs`）。TOTP など他の認証を組むときもここを土台にする（cookie スキームと `[Authorize]`、現在ユーザー解決はそのまま使え、ログインの発行方法だけ差し替える）。定期処理・一括取込のバッチはこのサーバーのジョブモード（`LowCodeApp.Server/Jobs/README.md`）で、別ホストにしない |
 | `Source/Hosts/Maui/` | `Cookie` + .NET MAUI（Android/iOS）クライアント | スマホアプリとして配布したい。デザイン変更はストア更新なしで反映される |
 | `Source/Hosts/Wpf/` `Source/Hosts/WinForms/` | デスクトップ単体（サーバー機能を同一プロセスに内包） | サーバーを立てない・オフライン寄り |
-| `Source/Hosts/Batch/` | バッチ（コンソール）。デザインプロジェクトの設定で DB を C# から読み書きする（Web を介さない。`LowCodeApp.Batch/README.md`） | 定期処理・一括取込を Azure WebJobs / タスクスケジューラで動かしたい。ジョブは `LowCodeApp.Jobs` に `IJob` を足す |
 
 `Source/Hosts/` にはほかに `MultiTenant`（マルチテナント）も**保守用**に置いてあるが、
 テンプレートとしては提供していない。ユーザーに勧めない（認証なしが要るときは下の「認証を外す」）。
@@ -89,6 +88,7 @@
   - `AI/SemanticSearchIndex.cs` / `AI/EmbeddingProviderTable.cs`（Cookie）— SemanticSearchField（意味検索）のサーバー側入口 `SemanticSearchService` をプロセスに 1 つ。埋め込みプロバイダは appsettings の `SemanticSearch.EmbeddingProvider` の呼び名（`AzureOpenAI` / 独自）で対応表から選ぶ。保存時の索引付けは `CustomizedModuleDataIO`、再索引 API は `Controllers/SemanticSearchController.cs`、AI チャットの search_records は `AIChatAgentTable` が同じインスタンスを渡す。DB 側ベクトル検索なので対象モジュールのデータソースは PostgreSQL（pgvector）か SQL Server 2025
   - `Services/DataService.cs` — 1 リクエスト分の DB アクセス・現在ユーザー（`IAuthenticationContext`）
   - `Controllers/TestAPIController.cs` — 独自 Web API を足すときの雛形
+  - `Jobs/`（Cookie）— ジョブ（バッチ）モード。`dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...]` で Web ホストを立てずに `IJob` を 1 つ実行して終了コードを返す（`Jobs/README.md`。Azure WebJobs / タスクスケジューラから起動。実行ユーザーは appsettings の `Jobs:UserId`）
 - `LowCodeApp.Client`: Blazor WebAssembly。`Pages/LowCodePage.razor` がローコードページのホスト
 - `LowCodeApp.Client.Shared`: クライアント共通サービス（`AppInfoService`/`ModuleDataService`/`NavigationServiceBase`）。
   Web・デスクトップ・モバイルで共有。**独自フィールド型・ProCode コンポーネント・スクリプト用サービスはここに置く**
@@ -143,6 +143,7 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net10.0-windows/LowCodeApp.Des
 | `EntraLogin` / `GoogleLogin` / `CognitoLogin` / `OidcLogins`（Cookie） | なし | 外部 IdP。`ClientId` を書いたものだけ有効（Extras の `docs/ExternalLogin.md`） |
 | `TotpLogin`（Cookie） | `{ Issuer }` | 認証アプリの二要素認証の表示名。有効・無効はデザイン（`LoginAccountContractField` の TOTP 列）で決まる（Extras の `docs/TwoFactorLogin.md`） |
 | `EmailOtpLogin`（Cookie） | すべて任意 | メールのワンタイムコードの二要素認証（`MailInfraName` / `Subject` / `Body` / `CodeLifetimeMinutes` / `MaxAttempts`）。有効・無効はデザイン（`LoginAccountContractField` の `TwoFactorEmail`）で決まる |
+| `Jobs`（Cookie） | `{ UserId }` | ジョブモード（`Server/Jobs/README.md`）を実行するユーザーの Id。権限の条件はこのユーザーで判定される。空なら匿名 |
 | `Logging` / `AllowedHosts` | | ASP.NET Core 標準 |
 
 **DB を SQLite から PostgreSQL 等に変える手順**: ① `appsettings.json` の `DataSources[].DataSourceType` を変える ② `appsettings.Development.json` の接続文字列を差し替える
@@ -179,6 +180,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 | スクリプトから呼べるサービス・型 | `Client.Shared/Services/AppInfoService.cs` と `Designer/App.xaml.cs` の両方で `ScriptRuntimeTypeManager.AddService / AddType` |
 | 保存・更新時の処理 | `Server/Services/CustomizedModuleDataIO.cs` の override |
 | 独自 Web API | `Server/Controllers/` に Controller を追加（`TestAPIController` が雛形）。スクリプトからは Extras の `WebApiService` で呼ぶ（`_script_catalog.md` に載る） |
+| 定期処理・一括取込（バッチ） | `Server/Jobs/` に `IJob` を実装（`SampleJob` が雛形）。`dotnet LowCodeApp.Server.dll job <Name>` で実行（`Server/Jobs/README.md`） |
 | ファイル保存先・メール送信の独自実装 | `IFileStorage` → `FileStorageTable`、`IMailSender` → `MailSenderTable` に 1 行 |
 | AI チャットの独自 Agent | `IAIChatAgent` を実装して `Server/AI/AIChatAgentTable.cs` に 1 行。AIChatField のデザインの `Agent` にその名前を書く |
 | 意味検索の埋め込みモデルを差し替える | `IEmbeddingProvider` を実装して `Server/AI/EmbeddingProviderTable.cs` に 1 行。appsettings の `SemanticSearch.EmbeddingProvider` にその名前を書く |
