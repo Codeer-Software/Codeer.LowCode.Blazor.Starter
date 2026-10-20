@@ -35,6 +35,13 @@
         "environmentVariables": {
           "ASPNETCORE_ENVIRONMENT": "Development"
         }
+      },
+      "job": {
+        "commandName": "Project",
+        "commandLineArgs": "job Sample AppUser",
+        "environmentVariables": {
+          "ASPNETCORE_ENVIRONMENT": "Development"
+        }
       }
     }
   }

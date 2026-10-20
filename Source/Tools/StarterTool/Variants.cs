@@ -86,6 +86,7 @@
                 InAllSolution: false),
             Desktop("Wpf"),
             Desktop("WinForms"),
+            //Batch jobs are not a variant: the Cookie server has a job mode (dotnet LowCodeApp.Server.dll job <name>, Server/Jobs).
             //Multi-tenant (ASP.NET Core Identity + per-tenant design/data). Kept here as a host, not templated yet.
             new("MultiTenant", "Codeer.LowCode.Blazor.MultiTenant", "Codeer.LowCode.Blazor.Template.MultiTenant.zip",
                 "Create Codeer.LowCode.Blazor with multi-tenant authorization.",
