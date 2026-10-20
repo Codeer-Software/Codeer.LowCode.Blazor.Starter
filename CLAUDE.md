@@ -180,7 +180,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 | スクリプトから呼べるサービス・型 | `Client.Shared/Services/AppInfoService.cs` と `Designer/App.xaml.cs` の両方で `ScriptRuntimeTypeManager.AddService / AddType` |
 | 保存・更新時の処理 | `Server/Services/CustomizedModuleDataIO.cs` の override |
 | 独自 Web API | `Server/Controllers/` に Controller を追加（`TestAPIController` が雛形）。スクリプトからは Extras の `WebApiService` で呼ぶ（`_script_catalog.md` に載る） |
-| 定期処理・一括取込（バッチ） | `Server/Jobs/` に `IJob` を実装（`SampleJob` が雛形）。`dotnet LowCodeApp.Server.dll job <Name>` で実行（`Server/Jobs/README.md`） |
+| 定期処理・一括取込（バッチ） | `Server/Jobs/` に `IJob` を実装（`SampleJob` が雛形）。`dotnet LowCodeApp.Server.dll job <Name>` で実行（`Server/Jobs/README.md`）。モジュールを扱う C# クラスはデザイナの `poco` コマンドで `Client.Shared/Generated/Modules.g.cs` に生成する（手で書かない。手順は同じ README） |
 | ファイル保存先・メール送信の独自実装 | `IFileStorage` → `FileStorageTable`、`IMailSender` → `MailSenderTable` に 1 行 |
 | AI チャットの独自 Agent | `IAIChatAgent` を実装して `Server/AI/AIChatAgentTable.cs` に 1 行。AIChatField のデザインの `Agent` にその名前を書く |
 | 意味検索の埋め込みモデルを差し替える | `IEmbeddingProvider` を実装して `Server/AI/EmbeddingProviderTable.cs` に 1 行。appsettings の `SemanticSearch.EmbeddingProvider` にその名前を書く |

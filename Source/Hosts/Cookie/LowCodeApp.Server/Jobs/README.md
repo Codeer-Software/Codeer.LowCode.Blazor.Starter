@@ -36,6 +36,50 @@ public class CloseOrdersJob : IJob
 - 失敗は例外を投げる。終了コードが 1 になり、例外の内容が標準エラーに出る
 - 例は `SampleJob.cs`
 
+## モジュールを C# のクラスで扱う
+
+モジュール名・フィールド名を文字列で書く代わりに、モジュールに対応したクラス（POCO。クラス名＝モジュール名、プロパティ名＝フィールド名、型＝`TextFieldData` などの FieldData 型）で読み書きできます。
+クラスは手で書かず、デザイナの `poco` コマンドでデザインから生成します。**デザインを変えたら生成し直します**（生成したファイルは手で編集しない）。
+
+```powershell
+Start-Process -FilePath "Source/LowCodeApp.Designer/bin/Debug/net10.0-windows/LowCodeApp.Designer.exe" -Wait -ArgumentList @(
+  "poco", "DesignProjects/Project/design",
+  "--namespace", "LowCodeApp.Client.Shared.Modules",
+  "--out-file", "Source/LowCodeApp.Client.Shared/Generated/Modules.g.cs",
+  "--out", "Local/poco.json")
+Get-Content "Local/poco.json"
+```
+
+- 1 つ目の引数はデザインプロジェクトのフォルダ（`app.clprj` のあるところ）。`--namespace` は `LowCodeApp.Client.Shared` のルート名前空間 + `.Modules`
+- `Local/poco.json` の `modules` が生成したクラス、`warnings` が生成しなかったモジュール・フィールド（データを持たないモジュールなど）。失敗したときは `error`
+- リンク越しの項目は生成されません。クラスは `partial` なので、別ファイルに同じ名前空間で `public partial class <モジュール名>` を書き、`[Link] public TextFieldData? Customer_Name { get; set; }`（`Customer.Name`）のように足します
+
+```csharp
+public class CloseOrdersJob : IJob
+{
+    public string Name => "CloseOrders";
+
+    public async Task RunAsync(DataService data, string[] args)
+    {
+        var orders = await data.ModuleDataIO.GetListAsync<Order>(e => e.Status!.Value == "Open");
+
+        var submit = new ModuleSubmitData { ModuleName = nameof(Order) };
+        foreach (var order in orders)
+        {
+            submit.Update.Add(ModuleData.Create(new Order { Id = order.Id, Status = new() { Value = "Closed" } }));
+        }
+        var results = await data.ModuleDataIO.SubmitWithTransactionAsync([submit]);
+        var error = results.FirstOrDefault(e => !string.IsNullOrEmpty(e.ExceptionMessage))?.ExceptionMessage;
+        if (error != null) throw new InvalidOperationException(error);
+        Console.WriteLine($"{orders.Count} 件を締めました");
+    }
+}
+```
+
+- `GetListAsync<T>` は条件に当たる行を全部返す（`SearchCondition<T>` に `Take(n)` を付けたときは先頭 n 件）。並び・件数・ページ分け・集計（`AggregateCondition<T>`）は
+  `ClaudeCodeForDeveloper/_specs/HostCustomization.md` の「C# からデータを読み書きする」
+- 書き込みは `SubmitWithTransactionAsync` 1 回が 1 トランザクション。失敗は結果の `ExceptionMessage` に入る（例外にはならない）ので、上のように確かめて投げる
+
 ## 設定
 
 Web と同じ `appsettings.json` / `appsettings.<環境>.json` / 環境変数を読みます（環境は `ASPNETCORE_ENVIRONMENT`、無ければ `Production`）。
