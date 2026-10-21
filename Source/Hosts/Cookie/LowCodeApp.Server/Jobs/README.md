@@ -23,18 +23,72 @@ public class CloseOrdersJob : IJob
 {
     public string Name => "CloseOrders";
 
-    public async Task RunAsync(DataService data, string[] args)
+    public async Task<string?> RunAsync(DataService data, string[] args)
     {
         var page = await data.ModuleDataIO.GetListAsync(new SearchCondition("Order"), 0);
         //...
+        return $"{page.TotalCount} 件を処理しました";
     }
 }
 ```
 
 - `Name` がコマンドラインのジョブ名（大文字小文字は区別しない）。`args` はジョブ名の後ろの引数
+- 戻り値は成功したときの文言（画面のボタンから起動したときは成功の通知に出る。`null` なら既定の文言）。標準出力の最後に 1 行で書かれる
 - `data` は Web のリクエストと同じ `DataService`。`data.ModuleDataIO` で読み書きする（`GetListAsync` / `SubmitAsync` など）。`data.DbAccess` は同じ接続、`data.Design.DesignData` は読み込んだデザイン
-- 失敗は例外を投げる。終了コードが 1 になり、例外の内容が標準エラーに出る
+- 失敗は例外を投げる。終了コードが 1 になり、例外のメッセージが標準エラー（画面のボタンから起動したときは 1 行目が画面に出る文言）、例外の全文が標準出力に出る
 - 例は `SampleJob.cs`
+- ジョブの書き込みは `data.ModuleDataIO` で行う。生 SQL では編集履歴・意味検索の索引が付かない
+
+## 画面のボタンから起動する（JobTriggerField）
+
+モジュールに `JobTriggerField` を置くと、そのボタン（またはスクリプトの `Run()`）でジョブがこのモードの別プロセスとして起動されます。フィールドの振る舞い（渡る JSON の形・通知）はフィールドの仕様（デザイナのフィールドカタログ）にあり、ここはこのテンプレートの実装と制限です。
+
+### 約束（本体のフィールド ↔ このテンプレート）
+
+- クライアント: `Client.Shared/Services/ModuleDataService.RunJobAsync`（本体の `IModuleDataService.RunJobAsync`）が `POST api/job/run` に `JobRunRequest { ModuleName, FieldName, Arguments }` を送り、`JobRunResponse { Succeeded, Error, Started, Message }` を受け取る（どちらも `Codeer.LowCode.Blazor.RequestInterfaces`）
+- サーバー: `Controllers/JobController.cs` が、そのモジュールとフィールドに書けるユーザーか（`AuthorizationChecker.CheckFieldUserWriteAsync`。`ExecuteSqlField` の実行と同じ軸）を確かめ、**デザインの `JobTriggerField`** の `JobName` のジョブを `IsAsynchronous` に従って起動する（クライアントからジョブ名や待つかどうかは受け取らない）。起動の前に DB 接続をプールへ返す（同期で子プロセスを待つ間に接続を握らない）
+  - `JobName` のジョブが無ければ起動せず `Succeeded = false` と `Error`（「ジョブ 'X' がありません」）を返す（同期・非同期とも）
+  - 同期: 終わるまで待ち、終了コード 0 なら `Succeeded = true` と `Message`（**標準出力の最後の行** = `IJob.RunAsync` の戻り値。画面の成功の通知になる）、それ以外は `Error`（**標準エラーの 1 行目** = 例外のメッセージ）を返す
+  - 非同期: 起動したら `Started = true` を返す
+- 失敗（同期・非同期とも）はサーバーのログにも出る（`Program.cs` で `JobProcess.Log` をカテゴリ "Jobs" の ILogger につないでいる。標準エラーの全文と標準出力をまとめて出す）
+
+### 実装（このテンプレートの持ち物。差し替えてよい）
+
+- `JobProcess.cs` がジョブモード（`job <JobName> --stdin`）を別プロセスで起動し、画面の内容の JSON を**標準入力**に書いて閉じる（コマンドラインの長さの上限に掛からない）。押したユーザーの Id を環境変数 `Jobs__UserId` で渡す（`Jobs:UserId` を上書き）
+- `JobRunner.cs` は引数の `--stdin` を標準入力の内容に置き換える。手で動かすときは `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job Sample --stdin`
+- `JobProcess` と `JobRunner` は対（引数の並び・標準入力・環境変数・終了コード・UTF-8）。片方を変えたらもう片方も合わせる
+- 起動する実行ファイルは `LowCodeApp.Server.dll` の隣の `LowCodeApp.Server.exe`（apphost。Linux は拡張子なし。`JobProcess.HostExecutable`）。apphost はランタイムを自分で見つけるので、IIS（`w3wp.exe`）の下でも、self-contained で発行して PATH に `dotnet` が無いサーバーでも動く。single-file で発行して dll が無いときはこのプロセスの実行ファイル（`Environment.ProcessPath`）。apphost が無いとき（Linux で実行ビットが無いときも）だけ `dotnet LowCodeApp.Server.dll`（`JobProcess.DotnetPath`。このプロセスを起動した `dotnet`、`dotnet` から起動されていなければ PATH の `dotnet`）
+
+### ジョブに渡る JSON
+
+`args[0]` は JSON 1 つです（`UseSubmitData` が既定の `true` のとき。`false` なら `{}`）。
+
+```json
+{"data": ModuleData, "submit": [ModuleSubmitData] または null}
+```
+
+- `data` は画面の現在値。`JsonConverterEx.DeserializeObject<ModuleData>(data の中身)` で戻す。`data` はボタン起点のときだけ渡る。将来の別の起点（保存時・スケジュール）では無いことがあるので、ジョブは `data` の有無を見て書く
+- `submit` は保存ボタンが送るのと同じ内容。送るものが無い（変更なし・表を持たないモジュール）なら `null`。`JsonConverterEx.DeserializeObject<List<ModuleSubmitData>>(submit の中身)` で戻す
+
+```csharp
+using var json = JsonDocument.Parse(args[0]);
+if (json.RootElement.TryGetProperty("data", out var current))
+{
+    var moduleData = JsonConverterEx.DeserializeObject<ModuleData>(current.GetRawText())!;
+    //画面の内容を読んで処理する
+}
+```
+
+`SampleJob` は受け取った JSON の長さを要約（画面の通知に出る文言）として返すだけです。
+
+### 制限
+
+- JSON はクライアントが作ったもの。`data.ModuleDataIO` に渡す分（`SubmitWithTransactionAsync` 等）は権限で守られるが、それ以外（ファイルのパス・SQL・外部 API の引数など）に使うならジョブで検証する
+- 子プロセスの書き込みは属性ベースの監査ログ（`[Audit]`）に載らない。記録されるのは `JobController` の呼び出し 1 件（誰が・どのモジュールのどのジョブを・成否（非同期では起動の成否））だけ。ジョブの中で何をしたかの記録はジョブ本体で行う
+- 同期では画面がジョブの終わりまで待つ。途中で通信が切れると結果は分からない（ジョブは動き続けている）。長い処理は非同期に
+- 同じジョブが同時に動くことがある（二人が押す等）。排他が要るならジョブが自分で取る
+- ジョブが保存するときは `data.ModuleDataIO` で（編集履歴・意味検索の索引が付く）
+- 成功したジョブの標準出力はどこにも残らない（画面の通知に使うのは最後の 1 行だけ。失敗したときは上のとおり全文がサーバーのログに出る）。進捗を残すならジョブで ILogger や DB に書き、受け取った JSON や秘密情報を標準出力に出さない
 
 ## モジュールを C# のクラスで扱う
 
@@ -59,7 +113,7 @@ public class CloseOrdersJob : IJob
 {
     public string Name => "CloseOrders";
 
-    public async Task RunAsync(DataService data, string[] args)
+    public async Task<string?> RunAsync(DataService data, string[] args)
     {
         var orders = await data.ModuleDataIO.GetListAsync<Order>(e => e.Status!.Value == "Open");
 
@@ -71,7 +125,7 @@ public class CloseOrdersJob : IJob
         var results = await data.ModuleDataIO.SubmitWithTransactionAsync([submit]);
         var error = results.FirstOrDefault(e => !string.IsNullOrEmpty(e.ExceptionMessage))?.ExceptionMessage;
         if (error != null) throw new InvalidOperationException(error);
-        Console.WriteLine($"{orders.Count} 件を締めました");
+        return $"{orders.Count} 件を締めました";
     }
 }
 ```

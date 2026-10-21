@@ -89,6 +89,13 @@ namespace LowCodeApp.WinForms.Services
             return string.Empty;
         }
 
+        //ジョブ (JobTriggerField) はこのホストでは動かさない (ジョブモードは Web のサーバーの持ち物)
+        public async Task<JobRunResponse?> RunJobAsync(JobRunRequest request)
+        {
+            await _logger.Error("Jobs are not supported in this host.");
+            return null;
+        }
+
         async Task<T> CheckoutException<T>(Func<CustomizedModuleDataIO, Task<T>> f, T errResult)
         {
             await using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
