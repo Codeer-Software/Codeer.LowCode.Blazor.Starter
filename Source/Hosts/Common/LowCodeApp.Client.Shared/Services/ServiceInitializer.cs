@@ -23,6 +23,8 @@ namespace LowCodeApp.Client.Shared.Services
             ApprovalTransport.EndPointBase = "/api/approval";
             Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
             AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
+            //ジョブの実行 (JobTriggerField)。サーバーの Controllers/JobController.cs
+            JobTriggerField.EndPoint = "/api/job/run";
             //認証アプリ (TOTP) 解除ボタン (MyTotpResetButtonField)
             TotpResetClient.StatusEndPoint = "/api/account/totp/status";
             TotpResetClient.ResetEndPoint = "/api/account/totp/reset";

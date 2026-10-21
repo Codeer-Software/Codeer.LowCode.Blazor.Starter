@@ -41,23 +41,19 @@ public class CloseOrdersJob : IJob
 
 ## 画面のボタンから起動する（JobTriggerField）
 
-モジュールに `JobTriggerField` を置くと、そのボタン（またはスクリプトの `Run()`）でジョブがこのモードの別プロセスとして起動されます。フィールドの振る舞い（渡る JSON の形・通知）はフィールドの仕様（デザイナのフィールドカタログ）にあり、ここはこのテンプレートの実装と制限です。
+モジュールに `JobTriggerField`（Codeer.LowCode.Blazor.Extras）を置くと、そのボタン（またはスクリプトの `Run()`）でジョブがこのモードの別プロセスとして起動されます。フィールドの振る舞い（渡る JSON の形・通知）はフィールドの仕様（デザイナのフィールドカタログ）にあり、ここはこのテンプレートの実装と制限です。
 
-### 約束（本体のフィールド ↔ このテンプレート）
+### 仕組み（どこに何があるか）
 
-- クライアント: `Client.Shared/Services/ModuleDataService.RunJobAsync`（本体の `IModuleDataService.RunJobAsync`）が `POST api/job/run` に `JobRunRequest { ModuleName, FieldName, Arguments }` を送り、`JobRunResponse { Succeeded, Error, Started, Message }` を受け取る（どちらも `Codeer.LowCode.Blazor.RequestInterfaces`）
+- クライアント: Extras の `JobTriggerField` が `JobTriggerField.EndPoint`（`Client.Shared/Services/ServiceInitializer.cs` で `/api/job/run`）に `JobRunRequest { ModuleName, FieldName, Arguments }` を POST し、`JobRunResponse { Succeeded, Error, Started, Message }` を受け取る（どちらも `Codeer.LowCode.Blazor.Extras.Jobs`）
 - サーバー: `Controllers/JobController.cs` が、そのモジュールとフィールドに書けるユーザーか（`AuthorizationChecker.CheckFieldUserWriteAsync`。`ExecuteSqlField` の実行と同じ軸）を確かめ、**デザインの `JobTriggerField`** の `JobName` のジョブを `IsAsynchronous` に従って起動する（クライアントからジョブ名や待つかどうかは受け取らない）。起動の前に DB 接続をプールへ返す（同期で子プロセスを待つ間に接続を握らない）
   - `JobName` のジョブが無ければ起動せず `Succeeded = false` と `Error`（「ジョブ 'X' がありません」）を返す（同期・非同期とも）
-  - 同期: 終わるまで待ち、終了コード 0 なら `Succeeded = true` と `Message`（**標準出力の最後の行** = `IJob.RunAsync` の戻り値。画面の成功の通知になる）、それ以外は `Error`（**標準エラーの 1 行目** = 例外のメッセージ）を返す
+  - 同期: 終わるまで待ち、成功なら `Succeeded = true` と `Message`（`IJob.RunAsync` の戻り値。画面の成功の通知になる）、失敗なら `Error`（例外のメッセージ）を返す
   - 非同期: 起動したら `Started = true` を返す
-- 失敗（同期・非同期とも）はサーバーのログにも出る（`Program.cs` で `JobProcess.Log` をカテゴリ "Jobs" の ILogger につないでいる。標準エラーの全文と標準出力をまとめて出す）
-
-### 実装（このテンプレートの持ち物。差し替えてよい）
-
-- `JobProcess.cs` がジョブモード（`job <JobName> --stdin`）を別プロセスで起動し、画面の内容の JSON を**標準入力**に書いて閉じる（コマンドラインの長さの上限に掛からない）。押したユーザーの Id を環境変数 `Jobs__UserId` で渡す（`Jobs:UserId` を上書き）
-- `JobRunner.cs` は引数の `--stdin` を標準入力の内容に置き換える。手で動かすときは `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job Sample --stdin`
-- `JobProcess` と `JobRunner` は対（引数の並び・標準入力・環境変数・終了コード・UTF-8）。片方を変えたらもう片方も合わせる
-- 起動する実行ファイルは `LowCodeApp.Server.dll` の隣の `LowCodeApp.Server.exe`（apphost。Linux は拡張子なし。`JobProcess.HostExecutable`）。apphost はランタイムを自分で見つけるので、IIS（`w3wp.exe`）の下でも、self-contained で発行して PATH に `dotnet` が無いサーバーでも動く。single-file で発行して dll が無いときはこのプロセスの実行ファイル（`Environment.ProcessPath`）。apphost が無いとき（Linux で実行ビットが無いときも）だけ `dotnet LowCodeApp.Server.dll`（`JobProcess.DotnetPath`。このプロセスを起動した `dotnet`、`dotnet` から起動されていなければ PATH の `dotnet`）
+- 別プロセスの起動（親）とジョブモード（子）は Codeer.LowCode.Blazor.Extras.Server の `JobProcess` と `JobMode` が対で持つ（引数の並び `job <ジョブ名> --stdin`・画面の内容は標準入力・押したユーザーの Id は環境変数 `Jobs__UserId`・終了コード・UTF-8・結果の文言の取り出し）。このテンプレートにあるのは、ジョブの一覧と `DataService` の組み立て（`Jobs/JobRunner.cs`）と、`Program.cs` の `job` の分岐だけ。約束の詳細は Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`
+- 失敗（同期・非同期とも）はサーバーのログにも出る（`Program.cs` で `JobProcess.LoggerFactory` をつないでいる。標準エラーの全文と標準出力をまとめて出す）
+- 起動する実行ファイルは `LowCodeApp.Server.dll` の隣の `LowCodeApp.Server.exe`（apphost。IIS の下や PATH に `dotnet` が無いサーバーでも動く）、無ければ `dotnet LowCodeApp.Server.dll`。変えるときは `JobProcess.HostExecutable` / `EntryDll` / `DotnetPath`
+- 手で動かすときは `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job Sample --stdin`
 
 ### ジョブに渡る JSON
 

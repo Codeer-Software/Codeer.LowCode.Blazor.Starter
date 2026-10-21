@@ -15,6 +15,7 @@ using LowCodeApp.Server;
 using LowCodeApp.Server.Services;
 using LowCodeApp.Server.AI;
 using LowCodeApp.Server.Jobs;
+using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -36,7 +37,7 @@ Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 //Web ホストは立てず、同じ appsettings でジョブを 1 つ実行して終了コードを返す。
 //設定は exe の隣から読む (タスクスケジューラ等ではカレントフォルダが exe の場所とは限らない)。ジョブの引数は設定に混ぜない
 var isJob = args is ["job", ..];
-//ジョブモードの標準出力・標準エラーは UTF-8 (JobProcess がそのつもりで読む。設定の読み込みで失敗したときの出力も含める)
+//ジョブモードの標準出力・標準エラーは UTF-8 (起動した側の JobProcess がそのつもりで読む。JobMode より前 = 設定の読み込みで失敗したときの出力も含める)
 if (isJob) Console.OutputEncoding = Encoding.UTF8;
 var builder = isJob
     ? WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory })
@@ -83,7 +84,7 @@ SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = bui
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
 
-if (isJob) return await JobRunner.RunAsync(builder.Configuration, args[1..]);
+if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobArgs) => JobRunner.RunAsync(builder.Configuration, name, jobArgs));
 
 // Cookie authentication.
 builder.UseCookieAuthentication();
@@ -151,9 +152,8 @@ builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Crea
 var app = builder.Build();
 //意味検索の警告ログ (埋め込みの失敗など) をアプリのログに出す
 LowCodeApp.Server.AI.SemanticSearchIndex.Service.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
-//非同期で起動したジョブ (JobTriggerField) の失敗をアプリのログに出す
-var jobLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Jobs");
-LowCodeApp.Server.Jobs.JobProcess.Log = message => jobLogger.LogError("{Message}", message);
+//画面のボタン (JobTriggerField) から起動したジョブの失敗をアプリのログに出す
+JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 
 //SQL debug log: dump executed SQL and parameters (enable via appsettings.Development.json or the SqlLog app setting).
 //ILogger output reaches the local console, Azure App Service Log Stream and Application Insights
