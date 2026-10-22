@@ -10,7 +10,8 @@ namespace StarterTool
     ///
     ///   &lt;dest&gt;/
     ///     CLAUDE.md                      (maintainer-only blocks removed, paths rewritten)
-    ///     ClaudeCodeForDeveloper/claude-code-setup.md
+    ///     ClaudeCodeForDeveloper/claude-code-setup.md  claude-code-update.md
+    ///     ClaudeCodeForDeveloper/starter-origin.json   (the exported Starter commit; the base of an update)
     ///     .vscode/  .gitignore  LICENSE
     ///     Source/LowCodeApp.sln
     ///     Source/LowCodeApp.Server  LowCodeApp.Client  LowCodeApp.Client.Shared  LowCodeApp.Designer  LowCodeApp.LicenseRegisterCli
@@ -32,7 +33,9 @@ namespace StarterTool
             _root = root;
         }
 
-        public void Run(string dest, bool withMaui)
+        /// <param name="starterCommit">The Starter commit being exported (the setup downloads the zip of that commit). Recorded in
+        /// ClaudeCodeForDeveloper/starter-origin.json so that an update can export the same commit again as the base of a 3-way comparison.</param>
+        public void Run(string dest, bool withMaui, string? starterCommit)
         {
             var sourceDir = Path.Combine(dest, Repository.SourceDir);
             if (Directory.Exists(sourceDir) && Directory.EnumerateFileSystemEntries(sourceDir).Any())
@@ -65,10 +68,13 @@ namespace StarterTool
             Console.WriteLine($"created Source/{Repository.AppName}.sln");
 
             //Documents and settings that belong to the application folder (not to this repository).
-            foreach (var relative in new[] { "CLAUDE.md", Path.Combine("ClaudeCodeForDeveloper", "claude-code-setup.md"), ".gitignore", "LICENSE" })
+            foreach (var relative in new[] { "CLAUDE.md", Path.Combine("ClaudeCodeForDeveloper", "claude-code-setup.md"), Path.Combine("ClaudeCodeForDeveloper", "claude-code-update.md"), ".gitignore", "LICENSE" })
                 CopyText(relative, dest);
             foreach (var file in Directory.EnumerateFiles(Path.Combine(_root, ".vscode"), "*.json"))
                 CopyText(Path.Combine(".vscode", Path.GetFileName(file)), dest);
+            var origin = new { starterCommit, maui = withMaui };
+            File.WriteAllText(Path.Combine(dest, UpdateDiff.OriginFile),
+                System.Text.Json.JsonSerializer.Serialize(origin, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }) + "\n", new UTF8Encoding(false));
             Console.WriteLine("exported CLAUDE.md, ClaudeCodeForDeveloper/, .vscode/, .gitignore, LICENSE");
 
             //Fonts for PDF output (FontFileDirectory): Noto Sans JP (SIL Open Font License 1.1; OFL.txt goes with them).

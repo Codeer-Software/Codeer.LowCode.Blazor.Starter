@@ -4,7 +4,8 @@ using StarterTool;
 //   dotnet run --project Source/Tools/StarterTool -- assemble
 //   dotnet run --project Source/Tools/StarterTool -- pack-vsix
 //   dotnet run --project Source/Tools/StarterTool -- export-debug <path to Codeer.LowCode.Blazor/Source>
-//   dotnet run --project Source/Tools/StarterTool -- export-app <destination folder> [--maui]   (customer-shaped application folder = Cookie host + Claude Code documents)
+//   dotnet run --project Source/Tools/StarterTool -- export-app <destination folder> [--maui] [--starter-commit <sha>]   (customer-shaped application folder = Cookie host + Claude Code documents)
+//   dotnet run --project Source/Tools/StarterTool -- update-diff <application folder> --new <export of the latest> [--base <export of starter-origin.json's commit>] --out <json>   (ClaudeCodeForDeveloper/claude-code-update.md)
 //
 // Every project exists once:
 //   Source/Hosts/Common/*                        projects shared by every variant
@@ -32,8 +33,12 @@ switch (command)
         break;
     case "export-app":
         if (args.Length < 2) return Usage();
-        new AppExporter(root).Run(Path.GetFullPath(args[1]), args.Contains("--maui"));
+        new AppExporter(root).Run(Path.GetFullPath(args[1]), args.Contains("--maui"), Option(args, "--starter-commit"));
         break;
+    case "update-diff":
+        if (args.Length < 2 || args[1].StartsWith("--") || Option(args, "--new") is not { } newDir || Option(args, "--out") is not { } outPath) return Usage();
+        var baseDir = Option(args, "--base");
+        return UpdateDiff.Run(Path.GetFullPath(args[1]), baseDir == null ? null : Path.GetFullPath(baseDir), Path.GetFullPath(newDir), Path.GetFullPath(outPath));
     default:
         return Usage();
 }
@@ -41,6 +46,12 @@ return 0;
 
 static int Usage()
 {
-    Console.Error.WriteLine("usage: StarterTool assemble | pack-vsix | export-debug <Codeer.LowCode.Blazor/Source> | export-app <dest> [--maui]");
+    Console.Error.WriteLine("usage: StarterTool assemble | pack-vsix | export-debug <Codeer.LowCode.Blazor/Source> | export-app <dest> [--maui] [--starter-commit <sha>] | update-diff <app> --new <dir> [--base <dir>] --out <json>");
     return 1;
+}
+
+static string? Option(string[] args, string name)
+{
+    var i = Array.IndexOf(args, name);
+    return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
 }

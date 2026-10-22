@@ -77,12 +77,17 @@ Claude Code 用の文書と設定）だけを書き出す。他のホスト・�
 
 ```powershell
 $tmp = Join-Path $env:TEMP ("starter_" + [Guid]::NewGuid().ToString("N"))
-Invoke-WebRequest https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter/archive/refs/heads/main.zip -OutFile "$tmp.zip"
+$commit = (Invoke-RestMethod https://api.github.com/repos/Codeer-Software/Codeer.LowCode.Blazor.Starter/commits/main).sha
+Invoke-WebRequest "https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter/archive/$commit.zip" -OutFile "$tmp.zip"
 Expand-Archive "$tmp.zip" -DestinationPath $tmp -Force
-$repo = Join-Path $tmp "Codeer.LowCode.Blazor.Starter-main"
-dotnet run --project "$repo\Source\Tools\StarterTool" -- export-app "<ROOT>"      # スマホアプリ (Android/iOS) も要るなら末尾に --maui
+$repo = Join-Path $tmp "Codeer.LowCode.Blazor.Starter-$commit"
+dotnet run --project "$repo\Source\Tools\StarterTool" -- export-app "<ROOT>" --starter-commit $commit      # スマホアプリ (Android/iOS) も要るなら末尾に --maui
 Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 ```
+
+`--starter-commit` は書き出し元の版を `<ROOT>\ClaudeCodeForDeveloper\starter-origin.json` に残す（後で最新化するとき、その版と比べて
+ユーザーが変えた箇所とテンプレートが変わった箇所を見分ける。[claude-code-update.md](claude-code-update.md)）。
+`api.github.com` に届かないとき（社内プロキシ等）は `$commit` を取らずに `archive/refs/heads/main.zip`（展開先は `...-main`）を使い、`--starter-commit` を付けない。
 
 書き出し後、`<ROOT>\Source\LowCodeApp.sln`、`<ROOT>\CLAUDE.md`、`<ROOT>\ClaudeCodeForDeveloper\claude-code-setup.md` があることを確認する。
 **以降はこの手順書の ROOT にあるコピーを読んで続ける**（パスがアプリの配置に書き換わっている。Web 上の原本は Step 2 までの案内）。

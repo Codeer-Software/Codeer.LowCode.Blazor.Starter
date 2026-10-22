@@ -24,6 +24,8 @@
 ├── .claude/                         ← Claude Code の設定。settings.json (共通・コミット済み) と settings.local.json (デザイナ exe パス入りの許可・フック。developer-workspace が生成。gitignore)
 ├── ClaudeCodeForDeveloper/          ← ホスト (C#) を触る Claude Code 向けの文書
 │   ├── claude-code-setup.md         ←   セットアップ手順 (コミット済み・Claude Code が実行する)
+│   ├── claude-code-update.md        ←   最新化の手順 (同上)
+│   ├── starter-origin.json          ←   書き出し元のテンプレートの版 (最新化で比べる元。コミットする)
 │   ├── _specs/                      ←   ライブラリの拡張点リファレンス (デザイナの developer-workspace が生成。gitignore)
 │   └── _hooks/                      ←   ルート用フック (DesignProjects/*/ のワークスペースを巡回して最新化。同上)
 ├── Source/                          ← ホストのソース (C#: LowCodeApp.sln / Server / Client / Client.Shared / Designer / LicenseRegisterCli)。最後の手段
@@ -51,6 +53,9 @@
 
 **自動テスト (Selenium)**: ユーザーが求めたら `DesignProjects/<デザイン名>/ClaudeCodeForDesigner/Docs/SeleniumTestGuide.md` の手順で。デザイナの `selenium-test-init` がテストプロジェクトの雛形（WebDriverManager / DataManager / ログイン / スモークテスト）を展開し、`pageobject` が PageObject を生成する。テスト対象はユーザーのデザインプロジェクトで、置き場は `Source/LowCodeApp.SeleniumTest`（`LowCodeApp.sln` に追加する）。
 <!-- maintainer-only -->リポジトリには同じ雛形のコピー `Source/Hosts/Common/LowCodeApp.SeleniumTest` が各 Web バリアントの `LowCodeApp.sln` に入っている（ホスト自身のテスト用。VSIX・export-app には含めない）。<!-- /maintainer-only -->
+
+**最新化**: ユーザーが「最新化して」「パッケージを最新にして」と言ったら [ClaudeCodeForDeveloper/claude-code-update.md](ClaudeCodeForDeveloper/claude-code-update.md) の手順で行う
+（パッケージの版を上げ、ホストのコードをテンプレートの最新に揃えるかは**ユーザーに確認してから**。`.csproj` の版を手で上げるだけで済ませない）。
 
 `ClaudeCodeForDeveloper/_specs/` が無い（セットアップ前・パッケージ更新後）なら `developer-workspace`、デザインプロジェクトの `ClaudeCodeForDesigner/` が無いなら
 `claude-workspace` で展開する（コマンドは `ClaudeCodeForDeveloper/claude-code-setup.md` の Step 5 / Step 7）。
