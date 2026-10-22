@@ -71,6 +71,7 @@ SystemConfig.Instance.AIChat = builder.Configuration.GetSection("AIChat").Get<AI
 SystemConfig.Instance.SemanticSearch = builder.Configuration.GetSection("SemanticSearch").Get<SemanticSearchSettings>() ?? new();
 SystemConfig.Instance.AzureOpenAIEmbedding = builder.Configuration.GetSection("AzureOpenAIEmbedding").Get<AzureOpenAIEmbeddingSettings>() ?? new();
 SystemConfig.Instance.AllowPasswordLogin = builder.Configuration.GetValue<bool?>("AllowPasswordLogin") ?? true;
+SystemConfig.Instance.LoginLockout = builder.Configuration.GetSection("LoginLockout").Get<LoginLockoutSettings>() ?? new();
 //外部 IdP の設定 (種類ごとのセクション。実体は Services/ExternalLoginTable が組み立てる)
 SystemConfig.Instance.EntraLogin = builder.Configuration.GetSection("EntraLogin").Get<EntraLoginSettings>() ?? new();
 SystemConfig.Instance.GoogleLogin = builder.Configuration.GetSection("GoogleLogin").Get<GoogleLoginSettings>() ?? new();

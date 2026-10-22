@@ -88,6 +88,8 @@
             }
           }
           showError();
+        } else if (res.status === 429) {
+          showError("Too many failed attempts. Please try again later.");
         } else {
           showError();
         }
@@ -109,9 +111,9 @@
         .find(x => x.startsWith(name + "="))
         ?.split("=")[1] ?? "";
     }
-    function showError() {
+    function showError(message) {
       const el = document.getElementById("ErrorMessage");
-      el.textContent = "Login failed";
+      el.textContent = message ?? "Login failed";
       el.style.display = "block";
     }
     function sanitizeReturnUrl(u) {

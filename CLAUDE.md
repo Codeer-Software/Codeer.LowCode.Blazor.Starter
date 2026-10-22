@@ -78,7 +78,7 @@
 ### 認証を外す（前段のリバースプロキシや Easy Auth で守られている等、ログイン画面が要らないとき）
 
 `Cookie` から引き算する。触るのは 6 か所: `Server/CookieAuthentication.cs`（cookie スキームの登録。`Program.cs` の呼び出しごと）、
-`Server/Controllers/AccountController.cs`（パスワード照合は Extras.Server の `LoginAccountStore`。表・列はユーザーモジュールのデザインから）、`Server/ExternalLoginUserResolver.cs` と `Services/ExternalLoginTable.cs`（+ `appsettings*.json` の `AllowPasswordLogin` / `TotpLogin` / 外部 IdP セクションと `SystemConfig` の該当プロパティ）、
+`Server/Controllers/AccountController.cs`（パスワード照合は Extras.Server の `LoginAccountStore`。表・列はユーザーモジュールのデザインから）、`Server/ExternalLoginUserResolver.cs` と `Services/ExternalLoginTable.cs`（+ `appsettings*.json` の `AllowPasswordLogin` / `LoginLockout` / `TotpLogin` / 外部 IdP セクションと `SystemConfig` の該当プロパティ）、
 各 Controller の `[Authorize]`、`Client/wwwroot/login.html` と `Client/LoginInfo.cs`（`Program.cs` / `NavigationService.cs` のログイン遷移）、
 `Services/DataService.cs` の現在ユーザー解決（前段認証のヘッダから取るか固定値にする）。
 
@@ -146,6 +146,7 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net10.0-windows/LowCodeApp.Des
 | （ログインのユーザーテーブル） | 設定なし | ユーザーモジュール（`CurrentUserModuleDesignName`）のデザインから引く: 表 = `DbTable`、ID = `IdField`、ログイン ID / 外部 IdP の突き合わせ / 有効フラグ / 表示名 = `LoginAccountContractField` の役割、ハッシュ / ソルト = 契約の照合用の列。初回起動時にユーザーが 0 件なら `admin`/`admin` を作る |
 | `AllowPasswordLogin`（Cookie） | `true` | ID/パスワードのログインを出すか。外部 IdP 専用なら `false` |
 | `EntraLogin` / `GoogleLogin` / `CognitoLogin` / `OidcLogins`（Cookie） | なし | 外部 IdP。`ClientId` を書いたものだけ有効（Extras の `docs/ExternalLogin.md`） |
+| `LoginLockout`（Cookie） | `{ MaxFailedAttempts: 10, LockoutMinutes: 5, MaxLockoutMinutes: 1440 }` | パスワードログインの総当たり対策。ログインの失敗（パスワード・二要素認証のコードの不一致）がアカウントごとに続けて `MaxFailedAttempts` 回で、そのアカウントを最後の失敗から `LockoutMinutes` 分受け付けない（ロック中は 429）。ロックが繰り返されるたびに長さは倍（上限 `MaxLockoutMinutes`）、サインインできたら元に戻る。存在しないログイン名は数えない。`MaxFailedAttempts` を 0 で無効。回数は `IDistributedCache` に置く（複数インスタンスなら共有キャッシュに。Extras の `docs/Authentication.md`） |
 | `TotpLogin`（Cookie） | `{ Issuer }` | 認証アプリの二要素認証の表示名。有効・無効はデザイン（`LoginAccountContractField` の TOTP 列）で決まる（Extras の `docs/TwoFactorLogin.md`） |
 | `EmailOtpLogin`（Cookie） | すべて任意 | メールのワンタイムコードの二要素認証（`MailInfraName` / `Subject` / `Body` / `CodeLifetimeMinutes` / `MaxAttempts`）。有効・無効はデザイン（`LoginAccountContractField` の `TwoFactorEmail`）で決まる |
 | `Jobs`（Cookie） | `{ UserId }` | ジョブモード（`Server/Jobs/README.md`）を実行するユーザーの Id。権限の条件はこのユーザーで判定される。空なら匿名 |

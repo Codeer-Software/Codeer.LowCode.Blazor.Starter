@@ -110,6 +110,9 @@
     public string? Code { get; set; }
   }
 
+  //サーバーの総当たり対策 (LoginLockout) でロック中のとき (429)
+  const string LockedMessage = "ログインの失敗が続いたため、しばらくログインできません。時間をおいてやり直してください";
+
   readonly LoginInfo _login = new();
   bool _passwordEnabled = true;
   List<LoginProvider> _providers = new();
@@ -151,6 +154,7 @@
       if (!response.IsSuccessStatusCode)
       {
         _failed = true;
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests) _errorMessage = LockedMessage;
         return;
       }
 
@@ -203,9 +207,18 @@
       if (!response.IsSuccessStatusCode)
       {
         _failed = true;
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests) _errorMessage = LockedMessage;
         return;
       }
       var result = await ReadResultAsync(response);
+      if (result.Status == "code_expired")
+      {
+        //メールのコードの期限切れ・使用済み: パスワードからやり直す (新しいコードが送られる)
+        BackToLogin();
+        _failed = true;
+        _errorMessage = "認証コードの有効期限が切れました。もう一度ログインしてください";
+        return;
+      }
       if (result.Status != "ok")
       {
         _failed = true;

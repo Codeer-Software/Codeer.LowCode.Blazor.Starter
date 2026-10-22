@@ -66,31 +66,60 @@ namespace LowCodeApp.Server.Controllers
             var accounts = LoginAccountStore.Create(designData, _dataService.DbAccess);
             if (accounts == null || !accounts.HasPassword) return NotFound();
 
-            var account = await accounts.VerifyPasswordAsync(loginInfo.Id, loginInfo.Password);
-            if (account == null) return Unauthorized();
-
-            //二要素認証。コード検証が通ったとき (status: ok) だけ下のサインインへ進む
-            var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
-            if (totp != null)
+            //総当たり対策: パスワード・二要素認証のコードの不一致が続いたアカウントはしばらく受け付けない (appsettings の LoginLockout)。
+            //アカウントの Id で数える (存在しないログイン名は数えない)
+            var lockout = new LoginLockout(SystemConfig.Instance.LoginLockout, _cache);
+            var lockId = (await accounts.FindByLoginNameAsync(loginInfo.Id))?.UserId;
+            if (!await lockout.TryStartAttemptAsync(lockId))
             {
-                var result = await totp.VerifyAsync(account.UserId, account.LoginName, loginInfo.TwoFactorCode);
-                if (result.Status == TotpLoginStatus.InvalidCode) _audit.Deny($"LoginName={loginInfo.Id}; TwoFactor={result.Status}");
-                else if (result.Status != TotpLoginStatus.Ok) _audit.Event.Detail += $"; TwoFactor={result.Status}";
-                if (result.Status != TotpLoginStatus.Ok) return Ok(result);
+                _audit.Deny($"LoginName={loginInfo.Id}; Locked");
+                return StatusCode(StatusCodes.Status429TooManyRequests);
             }
-            else if (accounts.HasTwoFactorEmail)
+
+            LoginAccount? account;
+            try
             {
-                var dispatcher = new MailDispatcher(SystemConfig.Instance.Mail, MailSenderTable.Create);
-                var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin,
-                    message => dispatcher.SendAsync(SystemConfig.Instance.EmailOtpLogin.MailInfraName, message), _cache);
-                var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail ?? string.Empty, loginInfo.TwoFactorCode);
-                if (result.Status == EmailOtpLoginStatus.InvalidCode) _audit.Deny($"LoginName={loginInfo.Id}; TwoFactor={result.Status}");
-                else if (result.Status != EmailOtpLoginStatus.Ok) _audit.Event.Detail += $"; TwoFactor={result.Status}";
-                if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);
+                account = await accounts.VerifyPasswordAsync(loginInfo.Id, loginInfo.Password);
+                if (account == null) return Unauthorized();
+
+                //二要素認証。コード検証が通ったとき (status: ok) だけ下のサインインへ進む
+                var totp = TotpLogin.Create(designData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
+                if (totp != null)
+                {
+                    var result = await totp.VerifyAsync(account.UserId, account.LoginName, loginInfo.TwoFactorCode);
+                    if (result.Status == TotpLoginStatus.InvalidCode) _audit.Deny($"LoginName={loginInfo.Id}; TwoFactor={result.Status}");
+                    else if (result.Status != TotpLoginStatus.Ok)
+                    {
+                        _audit.Event.Detail += $"; TwoFactor={result.Status}";
+                        await lockout.CancelAttemptAsync(lockId);   //コードを求めた・送れなかった (失敗ではない)
+                    }
+                    if (result.Status != TotpLoginStatus.Ok) return Ok(result);
+                }
+                else if (accounts.HasTwoFactorEmail)
+                {
+                    var dispatcher = new MailDispatcher(SystemConfig.Instance.Mail, MailSenderTable.Create);
+                    var email = new EmailOtpLogin(SystemConfig.Instance.EmailOtpLogin,
+                        message => dispatcher.SendAsync(SystemConfig.Instance.EmailOtpLogin.MailInfraName, message), _cache);
+                    var result = await email.VerifyAsync(account.UserId, account.TwoFactorEmail ?? string.Empty, loginInfo.TwoFactorCode);
+                    if (result.Status == EmailOtpLoginStatus.InvalidCode) _audit.Deny($"LoginName={loginInfo.Id}; TwoFactor={result.Status}");
+                    else if (result.Status != EmailOtpLoginStatus.Ok)
+                    {
+                        _audit.Event.Detail += $"; TwoFactor={result.Status}";
+                        await lockout.CancelAttemptAsync(lockId);   //コードを求めた・送れなかった (失敗ではない)
+                    }
+                    if (result.Status != EmailOtpLoginStatus.Ok) return Ok(result);
+                }
+            }
+            catch
+            {
+                //照合できずに終わった (DB の障害など) 回は失敗に数えない
+                await lockout.CancelAttemptAsync(lockId);
+                throw;
             }
 
             //監査ログのユーザー Id は Cookie を発行するときだけ入れる (二要素認証待ちの行には入れない)
             _audit.Event.UserId = account.UserId;
+            await lockout.ResetAsync(lockId);
 
             var claims = new List<Claim>
             {

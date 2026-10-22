@@ -7,7 +7,9 @@
     loginFailed: "ログインに失敗しました",
     enterCode: "認証コードを入力してください",
     invalidCode: "認証コードが正しくありません",
+    codeExpired: "認証コードの有効期限が切れました。もう一度ログインしてください",
     sendFailed: "認証コードのメールを送れませんでした。管理者に連絡してください",
+    locked: "ログインの失敗が続いたため、しばらくログインできません。時間をおいてやり直してください",
     loginWith: "{0} でログイン",
     errors: {
       remote_failure: "ログインが中断されたか、失敗しました",
@@ -85,6 +87,7 @@
     hideError();
     try {
       const res = await postLogin({ Id: id, Password: password, IsPersistent: isPersistent });
+      if (res.status === 429) { showError(texts.locked); return; }
       if (!res.ok) { showError(); return; }
 
       //二要素認証が有効なら status が setup / totp (認証アプリ) か email (メール) で返り、まだサインインしていない
@@ -121,10 +124,12 @@
     hideError();
     try {
       const res = await postLogin({ ...pending, TwoFactorCode: code });
+      if (res.status === 429) { showError(texts.locked); return; }
       if (!res.ok) { showError(); return; }
       const j = await readJson(res);
       const status = j?.status ?? j?.Status ?? "ok";
       if (status === "send_failed") { showError(texts.sendFailed); return; }
+      if (status === "code_expired") { backToLogin(); showError(texts.codeExpired); return; }
       if (status !== "ok") { showError(texts.invalidCode); return; }
       await enterApp();
     } catch {

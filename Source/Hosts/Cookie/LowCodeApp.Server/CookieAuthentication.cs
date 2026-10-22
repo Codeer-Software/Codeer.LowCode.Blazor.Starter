@@ -14,7 +14,8 @@ namespace LowCodeApp.Server
             //ログイン途中の一時データ (外部 IdP の MAUI 向け使い捨てチケット、メール認証コード) の置き場。
             //これはプロセス内メモリなので単一インスタンス向け。App Service 等で複数インスタンスに広げるときは
             //AddStackExchangeRedisCache / AddDistributedSqlServerCache などの共有キャッシュに差し替える
-            //(発行したインスタンスと検証するインスタンスが違うと失敗するため)
+            //(発行したインスタンスと検証するインスタンスが違うと失敗するため)。総当たり対策 (LoginLockout) の回数もここに置く。
+            //共有キャッシュを複数のアプリで使うときは InstanceName でアプリごとに分ける (キーはユーザーの Id なので、分けないと別のアプリの同じ Id と混ざる)
             builder.Services.AddDistributedMemoryCache();
 
             builder.Services

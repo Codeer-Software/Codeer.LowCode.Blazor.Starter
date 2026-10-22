@@ -52,7 +52,9 @@ namespace LowCodeApp.Server.Controllers
             var user = await _userManager.FindByNameAsync(loginInfo.Id ?? string.Empty);
             if (user == null) return Unauthorized();
 
-            var result = await _signInManager.CheckPasswordSignInAsync(user, loginInfo.Password ?? string.Empty, false);
+            //Brute-force protection: ASP.NET Identity locks the user out after repeated failures (IdentityOptions.Lockout, default 5 failures / 5 minutes; concurrent failures may be under-counted)
+            var result = await _signInManager.CheckPasswordSignInAsync(user, loginInfo.Password ?? string.Empty, lockoutOnFailure: true);
+            if (result.IsLockedOut) return StatusCode(StatusCodes.Status429TooManyRequests);
             if (result.Succeeded)
             {
                 var claims = new List<Claim>

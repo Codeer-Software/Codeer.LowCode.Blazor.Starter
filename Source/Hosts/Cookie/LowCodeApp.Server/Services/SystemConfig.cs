@@ -40,6 +40,8 @@ namespace LowCodeApp.Server.Services
         public AzureOpenAIEmbeddingSettings AzureOpenAIEmbedding { get; set; } = new();
         //ID/パスワードのログイン。外部 IdP 専用にするなら false
         public bool AllowPasswordLogin { get; set; } = true;
+        //ID/パスワードのログインの総当たり対策 (失敗が続いたログイン名のロック)
+        public LoginLockoutSettings LoginLockout { get; set; } = new();
         //外部 IdP (使うものだけ書けばよい)。実体は Services/ExternalLoginTable が組み立てる
         public EntraLoginSettings EntraLogin { get; set; } = new();
         public GoogleLoginSettings GoogleLogin { get; set; } = new();
