@@ -85,7 +85,9 @@
 ## 共通の構成
 
 - `LowCodeApp.Server`（デスクトップは `LowCodeApp.Wpf` / `LowCodeApp.WinForms`）: サーバー。`Program.cs` で `SystemConfig` に appsettings を流し込み、
-  Controller（`ModuleDataController` 等）が API を出す。DB は `Codeer.LowCode.Blazor.DbAccess`
+  Controller（`ModuleDataController` 等）が API を出す。DB は `Codeer.LowCode.Blazor.DbAccess`。
+  Server のフォルダは `Infrastructure/`＝ホストの骨（DataService / RequestDesign / AppDesign / SystemConfig / CustomizedModuleDataIO / 認証）、`Extras/`＝Extras ライブラリの結線（対応表とその設定 POCO）、
+  `Controllers/`・`Jobs/`。Wpf / WinForms は骨が `Services/`（本当の DI サービス）で、対応表だけ `Extras/`
   - `Infrastructure/CustomizedModuleDataIO.cs` — `PasswordHashingModuleDataIO`（行を書くときのパスワードのハッシュ化）を継承。コンストラクタでインターセプタの登録（監査 → 編集履歴 → 意味検索の順）と一括 INSERT の閾値。保存を変えたいときは `AddAsync` / `BulkAddAsync` / `UpdateAsync` を override する（base を呼ぶ）
   - `Extras/FileStorageTable.cs` — appsettings の保存先設定 → `IFileStorage`（FileSystem / Azure Blob / S3）
   - `Extras/MailSenderTable.cs` — 送信インフラ名 → `IMailSender`（Smtp / GraphApi / Gmail）
