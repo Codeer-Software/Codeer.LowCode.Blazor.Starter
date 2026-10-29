@@ -1,6 +1,6 @@
 using Codeer.LowCode.Blazor.DbAccess;
-using LowCodeApp.Server.AI;
-using LowCodeApp.Server.Services;
+using LowCodeApp.Server.Extras;
+using LowCodeApp.Server.Infrastructure;
 
 namespace LowCodeApp.Server.Jobs
 {
@@ -21,7 +21,7 @@ namespace LowCodeApp.Server.Jobs
             //ロガーはジョブの後に閉じて出し切る (標準出力の最後の行は JobMode が書く成功の文言)
             using var loggerFactory = LoggerFactory.Create(builder => builder.AddSimpleConsole(options => options.SingleLine = true));
             //意味検索の警告ログ (埋め込みの失敗など) を標準出力に出す
-            SemanticSearchIndex.Service.LoggerFactory = loggerFactory;
+            SemanticSearchTable.Service.LoggerFactory = loggerFactory;
             //実行した SQL とパラメータを標準出力に出す
             if (config.GetSection("SqlLog").Get<bool>()) DbAccessor.SqlLog = Console.WriteLine;
 

@@ -1,3 +1,4 @@
+using LowCodeApp.Server.Extras;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
@@ -5,7 +6,7 @@ using System.Security.Claims;
 using Codeer.LowCode.Blazor.Utils;
 using Microsoft.AspNetCore.Authorization;
 using LowCodeApp.Client;
-using LowCodeApp.Server.Services;
+using LowCodeApp.Server.Infrastructure;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Codeer.LowCode.Blazor;

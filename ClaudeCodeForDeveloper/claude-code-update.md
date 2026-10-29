@@ -107,7 +107,7 @@ dotnet run --project "$newRepo\Source\Tools\StarterTool" -- update-diff "<ROOT>"
   - Server/Controllers/JobController.cs（追加）: 画面のボタンからジョブ（バッチ）を起動する受け口
   - Server/Program.cs: …
 あなたが変更したファイルにも、テンプレートの変更があります:
-  - Server/Services/DataService.cs: テンプレートは … を足した。あなたの … の変更とは別の箇所
+  - Server/Infrastructure/DataService.cs: テンプレートは … を足した。あなたの … の変更とは別の箇所
 ```
 
 そのうえで聞く（AskUserQuestion などで選べる形に。既定は先頭）:

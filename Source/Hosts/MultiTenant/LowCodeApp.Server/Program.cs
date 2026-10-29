@@ -3,7 +3,6 @@ using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.Extras;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.License;
-using Codeer.LowCode.Blazor.SystemSettings;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
@@ -12,13 +11,9 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
 using LowCodeApp.Client.Shared.Samples;
-using LowCodeApp.Server;
 using LowCodeApp.Server.Data;
-using LowCodeApp.Server.Services;
-using Codeer.LowCode.Blazor.Extras.Server.AI;
-using Codeer.LowCode.Blazor.Extras.Server.Mail;
+using LowCodeApp.Server.Infrastructure;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
-using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
 using Microsoft.AspNetCore.SignalR;
 
@@ -33,28 +28,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 LicenseManager.DomainLicense = builder.Configuration.GetSection("DomainLicense").Get<string>() ?? string.Empty;
 LicenseManager.IsAutoUpdate = builder.Configuration.GetSection("IsLicenseAutoUpdate").Get<bool>();
-SystemConfig.Instance.UseHotReload = builder.Configuration.GetSection("UseHotReload").Get<bool>();
-SystemConfig.Instance.CanScriptDebug = builder.Configuration.GetSection("CanScriptDebug").Get<bool>();
-SystemConfig.Instance.DataSources = builder.Configuration.GetSection("DataSources").Get<DataSource[]>() ?? [];
-//ファイル保存先の設定 (種類ごとのセクション。実体は Services/FileStorageTable が組み立てる)
-SystemConfig.Instance.FileSystemStorages = builder.Configuration.GetSection("FileSystemStorages").Get<FileSystemStorageSettings[]>() ?? [];
-SystemConfig.Instance.AzureBlobStorages = builder.Configuration.GetSection("AzureBlobStorages").Get<AzureBlobStorageSettings[]>() ?? [];
-SystemConfig.Instance.S3Storages = builder.Configuration.GetSection("S3Storages").Get<S3StorageSettings[]>() ?? [];
-SystemConfig.Instance.FileStorages = builder.Configuration.GetSection("FileStorages").Get<FileStorage[]>() ?? [];
-//Azure Blob の接続文字列は ConnectionStrings:<Name> にも置ける
+//appsettings → SystemConfig (セクション名 = プロパティ名。設定を足すときは SystemConfig にプロパティを足す。使うものだけ書けばよい)
+builder.Configuration.Bind(SystemConfig.Instance);
+//接続文字列は ConnectionStrings:<Name> に置く (Azure Blob とファイル保存先の簡易形式は設定に直接書いてもよい)
+SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 foreach (var storage in SystemConfig.Instance.AzureBlobStorages) if (string.IsNullOrEmpty(storage.ConnectionString) && string.IsNullOrEmpty(storage.BlobServiceUri)) storage.ConnectionString = builder.Configuration.GetConnectionString(storage.Name) ?? string.Empty;
 foreach (var storage in SystemConfig.Instance.FileStorages) if (string.IsNullOrEmpty(storage.ConnectionString)) storage.ConnectionString = builder.Configuration.GetConnectionString(storage.Name) ?? string.Empty;
-SystemConfig.Instance.TemporaryFileTableInfo = builder.Configuration.GetSection("TemporaryFileTableInfo").Get<TemporaryFileTableInfo[]>() ?? [];
-SystemConfig.Instance.DesignFileDirectory = builder.Configuration["DesignFileDirectory"] ?? string.Empty;
-SystemConfig.Instance.FontFileDirectory = builder.Configuration["FontFileDirectory"] ?? string.Empty;
-SystemConfig.Instance.Mail = builder.Configuration.GetSection("Mail").Get<MailConfig>() ?? new();
-//メールのプロバイダ設定はそれぞれ独立したセクション (使うものだけ書けばよい)
-SystemConfig.Instance.Smtp = builder.Configuration.GetSection("Smtp").Get<SmtpSettings>() ?? new();
-SystemConfig.Instance.GraphApi = builder.Configuration.GetSection("GraphApi").Get<GraphApiSettings>() ?? new();
-SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Get<SendGridSettings>() ?? new();
-SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
-SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
-SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
 SystemConfig.Instance.DefaultConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;

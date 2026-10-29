@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.Services;
+using LowCodeApp.WinForms.Extras;
 
 namespace LowCodeApp.WinForms.Services
 {

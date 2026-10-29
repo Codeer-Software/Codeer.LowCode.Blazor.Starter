@@ -1,13 +1,14 @@
+using LowCodeApp.Server.Extras;
 using Codeer.LowCode.Blazor.Extras.Api;
 using Codeer.LowCode.Blazor.Extras.Server.Api;
-using LowCodeApp.Server.Services;
+using LowCodeApp.Server.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LowCodeApp.Server.Controllers
 {
     //Extras の機能 (メール・承認・Excel → PDF・AI 文書解析) の受け口。1 本の POST で受け、要求の Feature / Action で機能に振り分ける。
-    //出す機能と機能に渡すものは Services/ExtrasApiTable.cs。デザインはテナントごと
+    //出す機能と機能に渡すものは Extras/ExtrasApiTable.cs。デザインはテナントごと
     [Authorize, AutoValidateAntiforgeryToken]
     [ApiController]
     [Route("api/extras")]
