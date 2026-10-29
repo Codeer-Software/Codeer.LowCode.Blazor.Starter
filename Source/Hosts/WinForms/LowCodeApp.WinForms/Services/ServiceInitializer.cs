@@ -14,6 +14,7 @@ namespace LowCodeApp.WinForms.Services
         {
             //デスクトップはフック(Excel.ConvertPdf / MailTransport.Handler / AITextAnalyzerField.XxxCoreAsync)で
             //ローカル処理するためエンドポイント(static プロパティ)は未設定
+            Codeer.LowCode.Blazor.Extras.Api.ExtrasTransport.EndPoint = string.Empty;
             services.AddScoped<IAppInfoService, AppInfoService>();
             services.AddScoped<IModuleDataService, ModuleDataService>();
             services.AddScoped<IUIService, UIService>();

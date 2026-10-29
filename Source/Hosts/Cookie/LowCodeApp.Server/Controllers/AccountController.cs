@@ -182,33 +182,5 @@ namespace LowCodeApp.Server.Controllers
         [HttpGet("logout/{provider}"), Audit(AuditCategory.Authentication)]
         public Task<IActionResult> ExternalLogout(string provider)
             => _externalLogins.SignOutAsync(this, provider, LoginPage);
-
-        //ログイン中の自分の認証アプリ (TOTP) の登録状態と解除 (Extras の MyTotpResetButtonField が使う)。
-        //対象は常に自分。列は書き込み専用なのでここが唯一の入口
-        [Authorize]
-        [HttpGet("totp/status")]
-        public async Task<IActionResult> GetTotpStatus()
-        {
-            var totp = TotpLogin.Create(_dataService.Design.DesignData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
-            if (totp == null) return Ok(new TotpStatus());
-            var current = await totp.FindAsync(DataService.GetCurrentUserId(HttpContext));
-            return Ok(new TotpStatus { Enabled = true, Registered = current?.IsConfirmed == true });
-        }
-
-        [Authorize]
-        [HttpPost("totp/reset"), Audit(AuditCategory.Authentication)]
-        public async Task<IActionResult> TotpReset()
-        {
-            var totp = TotpLogin.Create(_dataService.Design.DesignData, SystemConfig.Instance.TotpLogin, _dataService.DbAccess);
-            if (totp == null) return NotFound();
-            await totp.ResetAsync(DataService.GetCurrentUserId(HttpContext));
-            return Ok(new TotpStatus { Enabled = true, Registered = false });
-        }
-
-        public class TotpStatus
-        {
-            public bool Enabled { get; set; }
-            public bool Registered { get; set; }
-        }
     }
 }

@@ -58,14 +58,5 @@ namespace LowCodeApp.Server.Services
             PasswordHashHelper.ApplyPasswordHash(moduleDesign, data);
             await base.UpdateAsync(transactionId, moduleSubmitId, data);
         }
-
-        //メール送信履歴・承認データなどシステムの記録を、操作ユーザーの書き込み権限に依存せず追加する内部経路。
-        //クライアントから直接は呼ばれない (サーバー内部の記録専用)。戻り値は採番された Id
-        internal async Task<string> AddSystemRecordAsync(ModuleData data)
-            => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
-
-        //承認フローなどが使う内部経路 (操作ユーザーの書き込み権限を通さない)。data に含まれるフィールドだけが更新される
-        internal async Task UpdateSystemRecordAsync(ModuleData data)
-            => await UpdateAsync(Guid.NewGuid(), Guid.NewGuid(), data);
     }
 }
