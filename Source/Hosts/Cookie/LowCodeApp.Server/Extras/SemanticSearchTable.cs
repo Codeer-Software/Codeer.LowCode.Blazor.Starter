@@ -14,7 +14,7 @@ namespace LowCodeApp.Server.Extras
         static readonly Lazy<IEmbeddingProvider?> _provider = new(() => CreateEmbeddingProvider(SystemConfig.Instance.SemanticSearch.EmbeddingProvider));
 
         /// <summary>プロセスに 1 つ。索引付け (CustomizedModuleDataIO の Interceptor)・再索引 (ExtrasApiTable の SemanticSearchApi)・AI チャットの search_records が使う。</summary>
-        public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => DesignerService.GetDesignData())
+        public static SemanticSearchService Service { get; } = new(() => _provider.Value, () => AppDesign.Store.GetDesignData())
         {
             //SourceFields に書いた FileField の添付の中身を索引に入れるときに読む置き場所 (外すとファイル名だけ)
             FileStorages = () => FileStorageTable.Storages,

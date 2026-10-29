@@ -26,7 +26,7 @@ namespace LowCodeApp.WinForms.Services
         {
             await using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
             var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
-            var dataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
+            var dataIO = new CustomizedModuleDataIO(AppDesign.Store.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
             return await dataIO.AggregateAsync(conditions);
         }
 
@@ -54,7 +54,7 @@ namespace LowCodeApp.WinForms.Services
                 {
                     using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
                     var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
-                    var moduleDataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
+                    var moduleDataIO = new CustomizedModuleDataIO(AppDesign.Store.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
 
                     var location = moduleDataIO.FileFieldDataIO.GetFileLocation(moduleName!, id!, fieldName!).Result;
                     moduleDataIO.DbAccess.ClearAsync().AsTask().Wait();
@@ -94,7 +94,7 @@ namespace LowCodeApp.WinForms.Services
         {
             await using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
             var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
-            var dataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
+            var dataIO = new CustomizedModuleDataIO(AppDesign.Store.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
             try
             {
                 return await f(dataIO);

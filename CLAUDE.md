@@ -86,7 +86,7 @@
 
 - `LowCodeApp.Server`（デスクトップは `LowCodeApp.Wpf` / `LowCodeApp.WinForms`）: サーバー。`Program.cs` で `SystemConfig` に appsettings を流し込み、
   Controller（`ModuleDataController` 等）が API を出す。DB は `Codeer.LowCode.Blazor.DbAccess`
-  - `Infrastructure/CustomizedModuleDataIO.cs` — 保存・更新・一括 INSERT のフック（パスワードハッシュはここ）
+  - `Infrastructure/CustomizedModuleDataIO.cs` — `PasswordHashingModuleDataIO`（行を書くときのパスワードのハッシュ化）を継承。コンストラクタでインターセプタの登録（監査 → 編集履歴 → 意味検索の順）と一括 INSERT の閾値。保存を変えたいときは `AddAsync` / `BulkAddAsync` / `UpdateAsync` を override する（base を呼ぶ）
   - `Extras/FileStorageTable.cs` — appsettings の保存先設定 → `IFileStorage`（FileSystem / Azure Blob / S3）
   - `Extras/MailSenderTable.cs` — 送信インフラ名 → `IMailSender`（Smtp / GraphApi / Gmail）
   - `Extras/AIChatAgentTable.cs`（Cookie）— AIChatField の Agent 名 → `IAIChatAgent`。既定（空 / `RawDataAccess`）は Extras.Server の `RawDataAccessAgent`（AI がアプリの DB を読み取り専用 SQL で集計・グラフ化して答える。`AISettings` の Azure OpenAI が必要）。`ModuleDataAccess` は `ModuleDataAccessAgent`（ログインユーザーの権限でレコードを読み、本体の集計 API で集計・クロス集計。ツール呼び出しごとに `new DataService(userId)` を開き、接続 `DbAccess` も渡すので `AIChat:ModuleDataAccess` の SQL タイムアウトが効く）。受け口は共通の API (`Controllers/ExtrasController.cs` → `Extras/ExtrasApiTable.cs` の `AIChatApi`)。補足文書はデザインプロジェクトの `Resources/{DocumentFolder}/*.md|*.txt`（本体の `DesignDataFileManager.GetResourceTexts` で読む）
@@ -184,7 +184,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 | 独自フィールド型 | `LowCodeApp.Client.Shared` に 4 ファイル（`XxxFieldDesign` / `XxxFieldData` / `XxxField` / `XxxFieldComponent.razor`）。登録不要（リフレクション検出）。デザイナのプレビューに CSS を出すには `App.xaml.cs` の `BlazorRuntime.InstallBundleCss("LowCodeApp.Client.Shared")`（既に呼んでいる） |
 | 画面の一部を Blazor で書く / スクリプトの代わりに C# | `Client.Shared/Samples/ProCodeComponentSample.razor`（ProCodeField）/ `CodeBehindSample.cs`（コードビハインド。クラス名＝モジュール名）を写す |
 | スクリプトから呼べるサービス・型 | `Client.Shared/Services/AppInfoService.cs` と `Designer/App.xaml.cs` の両方で `ScriptRuntimeTypeManager.AddService / AddType` |
-| 保存・更新時の処理 | `Server/Infrastructure/CustomizedModuleDataIO.cs` の override |
+| 保存・更新時の処理 | `Server/Infrastructure/CustomizedModuleDataIO.cs`（`PasswordHashingModuleDataIO` を継承。`AddAsync` / `BulkAddAsync` / `UpdateAsync` の override (base を呼ぶ)。コンストラクタには監査・編集履歴・意味検索のインターセプタの登録がある） |
 | 独自 Web API | `Server/Controllers/` に Controller を追加（`TestAPIController` が雛形）。スクリプトからは Extras の `WebApiService` で呼ぶ（`_script_catalog.md` に載る） |
 | 定期処理・一括取込（バッチ） | `Server/Jobs/` に `IJob` を実装（`SampleJob` が雛形）。`dotnet LowCodeApp.Server.dll job <Name>` で実行（`Server/Jobs/README.md`）。モジュールを扱う C# クラスはデザイナの `poco` コマンドで `Client.Shared/Generated/Modules.g.cs` に生成する（手で書かない。手順は同じ README） |
 | ファイル保存先・メール送信の独自実装 | `IFileStorage` → `FileStorageTable`、`IMailSender` → `MailSenderTable` に 1 行 |

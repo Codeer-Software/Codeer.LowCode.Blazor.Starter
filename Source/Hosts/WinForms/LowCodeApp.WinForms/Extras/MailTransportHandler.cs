@@ -16,13 +16,13 @@ namespace LowCodeApp.WinForms.Extras
             => await RunAsync(async (dispatcher, io) => await dispatcher.SendAsync(request, io));
 
         public async Task<MailSendResult> SendBulkSearchAsync(MailBulkSearchRequest request)
-            => await RunAsync(async (dispatcher, io) => await new MailBulkSearch(dispatcher, io, DesignerService.GetDesignData(), LogError).SendAsync(request));
+            => await RunAsync(async (dispatcher, io) => await new MailBulkSearch(dispatcher, io, AppDesign.Store.GetDesignData(), LogError).SendAsync(request));
 
         public async Task<byte[]?> PreviewAsync(MailPreviewRequest request)
-            => await RunAsync(async (dispatcher, io) => ToBytes(await new MailPreviewBuilder(dispatcher, io, DesignerService.GetDesignData()).BuildSingleHtmlAsync(request)));
+            => await RunAsync(async (dispatcher, io) => ToBytes(await new MailPreviewBuilder(dispatcher, io, AppDesign.Store.GetDesignData()).BuildSingleHtmlAsync(request)));
 
         public async Task<byte[]?> PreviewBulkSearchAsync(MailBulkSearchRequest request)
-            => await RunAsync(async (dispatcher, io) => ToBytes(await new MailPreviewBuilder(dispatcher, io, DesignerService.GetDesignData()).BuildBulkHtmlAsync(request)));
+            => await RunAsync(async (dispatcher, io) => ToBytes(await new MailPreviewBuilder(dispatcher, io, AppDesign.Store.GetDesignData()).BuildBulkHtmlAsync(request)));
 
         static byte[] ToBytes(string html) => System.Text.Encoding.UTF8.GetBytes(html);
         static void LogError(string message) => System.Diagnostics.Debug.WriteLine(message);
@@ -31,12 +31,12 @@ namespace LowCodeApp.WinForms.Extras
         {
             await using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
             var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
-            var io = new CustomizedModuleDataIO(DesignerService.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
+            var io = new CustomizedModuleDataIO(AppDesign.Store.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
 
             var mail = SystemConfig.Instance.Mail;
             var historyWriter = string.IsNullOrEmpty(mail.HistoryModuleName)
                 ? null
-                : new MailHistoryWriter(mail.HistoryModuleName, DesignerService.GetDesignData(), data => io.AddSystemRecordAsync(data), LogError);
+                : new MailHistoryWriter(mail.HistoryModuleName, AppDesign.Store.GetDesignData(), data => io.AddSystemRecordAsync(data), LogError);
             var dispatcher = new MailDispatcher(mail,
                 name => name switch
                 {

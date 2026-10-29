@@ -54,7 +54,7 @@ namespace LowCodeApp.WinForms.Services
         {
             if (_design != null) return;
             await Task.CompletedTask;
-            _design = DesignerService.GetDesignDataForFront(null);
+            _design = AppDesign.Store.GetCurrent().ForDesktop(new PageLinkUrlResolver(), null);
             _localizeService = await this.CreateLocalizeService();
         }
 
@@ -70,7 +70,7 @@ namespace LowCodeApp.WinForms.Services
         public async Task<MemoryStream?> GetResourceAsync(string resourcePath)
         {
             await Task.CompletedTask;
-            return DesignerService.GetResource(resourcePath ?? string.Empty);
+            return AppDesign.Store.GetResource(resourcePath ?? string.Empty);
         }
 
         void InvokeHotReload() => _navigationManager.Refresh(true);

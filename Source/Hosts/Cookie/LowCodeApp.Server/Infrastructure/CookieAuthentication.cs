@@ -70,7 +70,7 @@ namespace LowCodeApp.Server.Infrastructure
         static async Task CreateInitialUserAsync(WebApplication app)
         {
             await using var dbAccessor = new DbAccessor(SystemConfig.Instance.DataSources);
-            var designData = DesignerService.GetDesignData();
+            var designData = AppDesign.Store.GetDesignData();
             var accounts = LoginAccountStore.Create(designData, dbAccessor);
             if (accounts == null || !accounts.HasPassword || await accounts.AnyAsync()) return;
             var userId = await accounts.AddAsync("admin", "admin");

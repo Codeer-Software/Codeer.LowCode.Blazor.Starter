@@ -47,7 +47,7 @@ namespace LowCodeApp.Server.Extras
             return new RawDataAccessAgent(
                 chatClientFactory,
                 () => new DbAccessor(config.DataSources),
-                () => DesignerService.GetDesignData(),
+                () => AppDesign.Store.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
                 options,
                 semanticSearch: SemanticSearchTable.Service);
@@ -66,7 +66,7 @@ namespace LowCodeApp.Server.Extras
                     var dataService = new DataService(userId);
                     return Task.FromResult(new ModuleDataAccessScope(dataService.ModuleDataIO, dataService, dataService.DbAccess));
                 },
-                () => DesignerService.GetDesignData(),
+                () => AppDesign.Store.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
                 config.AIChat.ModuleDataAccess,
                 //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする。権限は一覧検索と同じに効く

@@ -3,10 +3,8 @@ using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.Extras;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.License;
-using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.ResponseCompression;
 using PdfSharp.Fonts;
-using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
 using LowCodeApp.Client.Shared.Samples;
@@ -81,29 +79,8 @@ builder.Services.AddResponseCompression(options =>
         .Concat(["application/octet-stream"]);
 });
 
-//Localize
-builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
-builder.Services.Configure<RequestLocalizationOptions>(options =>
-{
-    var supportedCultures = new[]
-    {
-        new CultureInfo("ja-JP")
-    };
-    //set neutral as default
-    options.DefaultRequestCulture = new RequestCulture(string.Empty);
-    options.SupportedCultures = supportedCultures;
-    options.SupportedUICultures = supportedCultures;
-
-    options.RequestCultureProviders.Add(new CustomRequestCultureProvider(async context =>
-    {
-        //localization by the request header
-        var userLanguages = context.Request.Headers["Accept-Language"].ToString();
-        var firstLanguage = userLanguages.Split(',').FirstOrDefault();
-        if (firstLanguage == "ja") firstLanguage = "ja-JP";
-
-        return await Task.FromResult(new ProviderCultureResult(firstLanguage));
-    }));
-});
+//画面の言語 (ブラウザの Accept-Language で日本語 / 英語)
+builder.Services.AddLowCodeLocalization();
 
 builder.Services.AddHttpContextAccessor();
 //リクエストが使うデザインは最初に参照した時点の版に固定する
@@ -111,7 +88,7 @@ builder.Services.AddScoped<RequestDesign>();
 builder.Services.AddScoped<DataService>();
 //監査ログ (appsettings の AuditLog で有効化)。出力先は Extras/AuditSinkTable
 builder.Services.AddAuditLog(SystemConfig.Instance.AuditLog, AuditSinkTable.Create(),
-    http => http?.RequestServices.GetRequiredService<RequestDesign>().Version ?? DesignerService.GetCurrent().Version);
+    http => http?.RequestServices.GetRequiredService<RequestDesign>().Version ?? AppDesign.Store.GetCurrent().Version);
 
 var app = builder.Build();
 //意味検索の警告ログ (埋め込みの失敗など) をアプリのログに出す

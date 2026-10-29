@@ -3,11 +3,9 @@ using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.Extras;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.License;
-using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using PdfSharp.Fonts;
-using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
 using LowCodeApp.Client.Shared.Samples;
@@ -77,29 +75,8 @@ builder.Services.AddResponseCompression(options =>
         .Concat(["application/octet-stream"]);
 });
 
-//Localize
-builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
-builder.Services.Configure<RequestLocalizationOptions>(options =>
-{
-    var supportedCultures = new[]
-    {
-        new CultureInfo("ja-JP")
-    };
-    //set neutral as default
-    options.DefaultRequestCulture = new RequestCulture(string.Empty);
-    options.SupportedCultures = supportedCultures;
-    options.SupportedUICultures = supportedCultures;
-
-    options.RequestCultureProviders.Add(new CustomRequestCultureProvider(async context =>
-    {
-        //localization by the request header
-        var userLanguages = context.Request.Headers["Accept-Language"].ToString();
-        var firstLanguage = userLanguages.Split(',').FirstOrDefault();
-        if (firstLanguage == "ja") firstLanguage = "ja-JP";
-
-        return await Task.FromResult(new ProviderCultureResult(firstLanguage));
-    }));
-});
+//画面の言語 (ブラウザの Accept-Language で日本語 / 英語)
+builder.Services.AddLowCodeLocalization();
 
 builder.Services.AddScoped<DataService>();
 

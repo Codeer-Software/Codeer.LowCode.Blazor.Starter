@@ -124,7 +124,7 @@ namespace LowCodeApp.Server.Controllers
         [HttpGet("resource")]
         public IActionResult GetResourceAsync(string? resource)
         {
-            var mem = DesignerService.GetResource(resource ?? string.Empty);
+            var mem = AppDesign.Store.GetResource(resource ?? string.Empty);
             return mem == null ? Ok() : this.FileWithETag(mem.ToArray(), "application/octet-stream");
         }
 
