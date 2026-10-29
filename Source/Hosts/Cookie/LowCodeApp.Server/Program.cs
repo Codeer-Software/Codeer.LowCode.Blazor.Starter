@@ -16,6 +16,7 @@ using LowCodeApp.Server.Services;
 using LowCodeApp.Server.AI;
 using LowCodeApp.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
+using Microsoft.Extensions.Caching.Distributed;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Embedding;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -155,6 +156,8 @@ var app = builder.Build();
 LowCodeApp.Server.AI.SemanticSearchIndex.Service.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 //画面のボタン (JobTriggerField) から起動したジョブの失敗をアプリのログに出す
 JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+//非同期で起動したジョブの状態の置き場 (複数インスタンスでは共有キャッシュに差し替える。CookieAuthentication.cs の AddDistributedMemoryCache)
+JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 
 //SQL debug log: dump executed SQL and parameters (enable via appsettings.Development.json or the SqlLog app setting).
 //ILogger output reaches the local console, Azure App Service Log Stream and Application Insights

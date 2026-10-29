@@ -12,12 +12,12 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LowCodeApp.Client\LowCodeApp.Client.csproj" />
-    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.2.1" />
+    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.2.2" />
     <!-- Overrides vulnerable versions that the referenced packages pull in transitively. -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
   </ItemGroup>
 	<ItemGroup>
-    <PackageReference Include="Codeer.LowCode.Blazor.Extras.Server" Version="0.24.0" />
+    <PackageReference Include="Codeer.LowCode.Blazor.Extras.Server" Version="0.25.0" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.11.0" />
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.30.1" />

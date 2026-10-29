@@ -45,11 +45,11 @@ public class CloseOrdersJob : IJob
 
 ### 仕組み（どこに何があるか）
 
-- クライアント: Extras の `JobTriggerField` が `JobTriggerField.EndPoint`（`Client.Shared/Services/ServiceInitializer.cs` で `/api/job/run`）に `JobRunRequest { ModuleName, FieldName, Arguments }` を POST し、`JobRunResponse { Succeeded, Error, Started, Message }` を受け取る（どちらも `Codeer.LowCode.Blazor.Extras.Jobs`）
-- サーバー: `Controllers/JobController.cs` が、そのモジュールとフィールドに書けるユーザーか（`AuthorizationChecker.CheckFieldUserWriteAsync`。`ExecuteSqlField` の実行と同じ軸）を確かめ、**デザインの `JobTriggerField`** の `JobName` のジョブを `IsAsynchronous` に従って起動する（クライアントからジョブ名や待つかどうかは受け取らない）。起動の前に DB 接続をプールへ返す（同期で子プロセスを待つ間に接続を握らない）
+- クライアント: Extras の `JobTriggerField` が `JobTriggerField.EndPoint`（`Client.Shared/Services/ServiceInitializer.cs` で `/api/job/run`）に `JobRunRequest { ModuleName, FieldName, Arguments }` を POST し、`JobRunResponse { Succeeded, Error, Started, JobId, Message }` を受け取る（どちらも `Codeer.LowCode.Blazor.Extras.Jobs`）
+- サーバー: `Controllers/JobController.cs` が、そのモジュールとフィールドに書けるユーザーか（`AuthorizationChecker.CheckFieldUserWriteAsync`。`ExecuteSqlField` の実行と同じ軸）を確かめ、**デザインの `JobTriggerField`** の `JobName` のジョブを `IsAsynchronous` に従って起動する（クライアントからジョブ名や待つかどうかは受け取らない）。`AllowsConcurrentRuns` が `false`（既定）なら、同じ名前のジョブが実行中のときは起動せず `Error`（「ジョブ 'X' は実行中です」）を返す（`JobProcess` がジョブ名で判定する。同期・非同期とも）。起動の前に DB 接続をプールへ返す（同期で子プロセスを待つ間に接続を握らない）
   - `JobName` のジョブが無ければ起動せず `Succeeded = false` と `Error`（「ジョブ 'X' がありません」）を返す（同期・非同期とも）
   - 同期: 終わるまで待ち、成功なら `Succeeded = true` と `Message`（`IJob.RunAsync` の戻り値。画面の成功の通知になる）、失敗なら `Error`（例外のメッセージ）を返す
-  - 非同期: 起動したら `Started = true` を返す
+  - 非同期: 起動したら `Started = true` と `JobId` を返す（画面は「開始しました」を通知し、フィールドの `JobId` / `JobIds` に持つ）。状態はスクリプトがフィールドの `GetJobStatus()` で問い合わせ、`GET /api/job/run/{jobId}`（`JobController.StatusAsync`）が `JobStatusResponse { Status, Message, Error }` を返す。状態の置き場は `JobProcess.Cache`（`IDistributedCache`。`Program.cs` でつないでいる。テンプレートはメモリキャッシュなのでサーバーを再起動すると消える。複数インスタンスでは Redis 等の共有キャッシュに差し替える）。終わった結果は終了から 30 分（`JobProcess.FinishedRetention`）で消え、消えた後は 404（`GetJobStatus` は null）。状態を返すのは起動したユーザーにだけ
 - 別プロセスの起動（親）とジョブモード（子）は Codeer.LowCode.Blazor.Extras.Server の `JobProcess` と `JobMode` が対で持つ（引数の並び `job <ジョブ名> --stdin`・画面の内容は標準入力・押したユーザーの Id は環境変数 `Jobs__UserId`・終了コード・UTF-8・結果の文言の取り出し）。このテンプレートにあるのは、ジョブの一覧と `DataService` の組み立て（`Jobs/JobRunner.cs`）と、`Program.cs` の `job` の分岐だけ。約束の詳細は Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`
 - 失敗（同期・非同期とも）はサーバーのログにも出る（`Program.cs` で `JobProcess.LoggerFactory` をつないでいる。標準エラーの全文と標準出力をまとめて出す）
 - 起動する実行ファイルは `LowCodeApp.Server.dll` の隣の `LowCodeApp.Server.exe`（apphost。IIS の下や PATH に `dotnet` が無いサーバーでも動く）、無ければ `dotnet LowCodeApp.Server.dll`。変えるときは `JobProcess.HostExecutable` / `EntryDll` / `DotnetPath`
@@ -81,8 +81,8 @@ if (json.RootElement.TryGetProperty("data", out var current))
 
 - JSON はクライアントが作ったもの。`data.ModuleDataIO` に渡す分（`SubmitWithTransactionAsync` 等）は権限で守られるが、それ以外（ファイルのパス・SQL・外部 API の引数など）に使うならジョブで検証する
 - 子プロセスの書き込みは属性ベースの監査ログ（`[Audit]`）に載らない。記録されるのは `JobController` の呼び出し 1 件（誰が・どのモジュールのどのジョブを・成否（非同期では起動の成否））だけ。ジョブの中で何をしたかの記録はジョブ本体で行う
-- 同期では画面がジョブの終わりまで待つ。途中で通信が切れると結果は分からない（ジョブは動き続けている）。長い処理は非同期に
-- 同じジョブが同時に動くことがある（二人が押す等）。排他が要るならジョブが自分で取る
+- 同期では画面がジョブの終わりまで待つ。途中で通信が切れると結果は分からない（ジョブは動き続けている）。長い処理は非同期に（画面を待たせず、結果はスクリプトが `GetJobStatus` で問い合わせる）
+- `AllowsConcurrentRuns` が `false` のときの実行中の判定は 1 台のサーバーの中だけ（複数台では止まらない）。複数台で排他が要るならジョブが自分で取る。非同期の状態は共有キャッシュにすれば複数台でも問い合わせられる
 - ジョブが保存するときは `data.ModuleDataIO` で（編集履歴・意味検索の索引が付く）
 - 成功したジョブの標準出力はどこにも残らない（画面の通知に使うのは最後の 1 行だけ。失敗したときは上のとおり全文がサーバーのログに出る）。進捗を残すならジョブで ILogger や DB に書き、受け取った JSON や秘密情報を標準出力に出さない
 

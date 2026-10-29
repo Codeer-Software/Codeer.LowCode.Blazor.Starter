@@ -7,7 +7,7 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Codeer.LowCode.Blazor.Extras.Server" Version="0.24.0" />
+    <PackageReference Include="Codeer.LowCode.Blazor.Extras.Server" Version="0.25.0" />
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <PackageReference Include="System.Net.Http.WinHttpHandler" Version="10.0.13" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="10.0.110" />
@@ -18,12 +18,12 @@
     <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="5.9.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.9.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.9.0" />
-    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.58" />
+    <PackageReference Include="Codeer.LowCode.Blazor" Version="1.3.59" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.30.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Common\LowCodeApp.Client.Shared\LowCodeApp.Client.Shared.csproj" />
-    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.2.1" />
+    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.2.2" />
     <!-- Overrides vulnerable versions that the referenced packages pull in transitively. -->
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.13" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
