@@ -78,7 +78,7 @@
 ### 認証を外す（前段のリバースプロキシや Easy Auth で守られている等、ログイン画面が要らないとき）
 
 `Cookie` から引き算する。触るのは 6 か所: `Server/Infrastructure/CookieAuthentication.cs`（cookie スキームの登録。`Program.cs` の呼び出しごと）、
-`Server/Controllers/AccountController.cs`（パスワード照合は Extras.Server の `LoginAccountStore`。表・列はユーザーモジュールのデザインから）、`Server/Infrastructure/ExternalLoginUserResolver.cs` と `Extras/ExternalLoginTable.cs`（+ `appsettings*.json` の `AllowPasswordLogin` / `LoginLockout` / `TotpLogin` / 外部 IdP セクションと `SystemConfig` の該当プロパティ）、
+`Server/Controllers/AccountController.cs`（ID/パスワードの検証の流れは Extras.Server の `PasswordLogin`。表・列はユーザーモジュールのデザインから）、`Server/Infrastructure/ExternalLoginUserResolver.cs` と `Extras/ExternalLoginTable.cs`（+ `appsettings*.json` の `AllowPasswordLogin` / `LoginLockout` / `TotpLogin` / 外部 IdP セクションと `SystemConfig` の該当プロパティ）、
 各 Controller の `[Authorize]`、`Client/wwwroot/login.html` と `Client/LoginInfo.cs`（`Program.cs` / `NavigationService.cs` のログイン遷移）、
 `Infrastructure/DataService.cs` の現在ユーザー解決（前段認証のヘッダから取るか固定値にする）。
 

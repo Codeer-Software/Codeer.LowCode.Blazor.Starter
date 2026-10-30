@@ -1,6 +1,6 @@
 using LowCodeApp.Server.Extras;
 using Codeer.LowCode.Blazor.DataIO;
-using System.Security.Claims;
+using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.DbAccess;
 
@@ -30,10 +30,7 @@ namespace LowCodeApp.Server.Infrastructure
             => _fixedUserId = userId;
 
         public Task<string> GetCurrentUserIdAsync()
-            => Task.FromResult(_fixedUserId ?? GetCurrentUserId(_httpContextAccessor?.HttpContext));
-
-        public static string GetCurrentUserId(HttpContext? httpContext)
-            => httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+            => Task.FromResult(_fixedUserId ?? LoginPrincipal.GetUserId(_httpContextAccessor?.HttpContext?.User));
 
         public async ValueTask DisposeAsync()
             => await DbAccess.DisposeAsync();
