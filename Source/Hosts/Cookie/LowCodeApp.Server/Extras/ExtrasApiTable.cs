@@ -26,11 +26,11 @@ namespace LowCodeApp.Server.Extras
                 new MailApi(SystemConfig.Instance.Mail, MailSenderTable.Create),
                 //ジョブ (JobTriggerField)。動かせるジョブは Jobs/JobRunner
                 new JobApi(JobRunner.Names),
-                //承認フロー (ApprovalFlowField)。順番到達の通知メールはメンバー契約の TurnNotifyMail が設定されているときだけ
+                //承認フロー (ApprovalFlowField)
                 new ApprovalApi(SystemConfig.Instance.Mail, MailSenderTable.Create),
                 //AI チャット (AIChatField)。Agent は Extras/AIChatAgentTable で選ばれる
                 new AIChatApi(AIChatAgentTable.Service),
-                //意味検索の再索引 (SemanticSearchField のスクリプト)。バックグラウンドではリクエストの HttpContext が無いので、ユーザー Id を固定した DataService を開いて渡す
+                //意味検索の再索引 (SemanticSearchField)。バックグラウンドで動くので、ユーザー Id を固定した DataService を渡す
                 new SemanticSearchApi(SemanticSearchTable.Service, userId =>
                 {
                     var dataService = new DataService(userId);

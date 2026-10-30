@@ -72,8 +72,7 @@ namespace LowCodeApp.Server.Infrastructure
                 new CookieOptions
                 {
                     HttpOnly = false,
-                    //認証 Cookie (AddCookie の既定 SameAsRequest) と ASP.NET の antiforgery 自身の Cookie に合わせ、HTTPS のリクエストにだけ Secure を付ける。
-                    //HTTPS で動かす限り挙動は変わらない。HTTP で動かす (Program.cs の UseHttpsRedirection を外す) ときにこの Cookie だけが送られなくなるのを防ぐ
+                    //HTTPS のリクエストにだけ Secure を付ける (HTTP で動かす構成でも送られるように)
                     Secure = ctx.Request.IsHttps,
                     SameSite = SameSiteMode.Lax
                 });

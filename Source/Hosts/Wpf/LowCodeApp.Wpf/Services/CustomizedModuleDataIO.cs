@@ -10,8 +10,7 @@ namespace LowCodeApp.Wpf.Services
 {
     public class CustomizedModuleDataIO : PasswordHashingModuleDataIO
     {
-        //一括INSERT (multi-row INSERT) の有効化。純Addのみの大量Submit (一括取込) がこの行数以上のとき束ねて挿入される。
-        //-1 (コア既定) で無効
+        //一括 INSERT を使う最小行数 (-1 で無効)
         static CustomizedModuleDataIO() => BulkAddThreshold = 100;
 
         public DbAccessor DbAccess { get; }
@@ -26,7 +25,7 @@ namespace LowCodeApp.Wpf.Services
             TemporaryFileManager = temporaryFileManager;
         }
 
-        //メール送信履歴などを操作ユーザーの書き込み権限を通さず追加する内部経路。戻り値は採番された Id
+        //操作ユーザーの書き込み権限を通さずに追加する内部経路 (メール送信履歴など)。戻り値は採番された Id
         internal async Task<string> AddSystemRecordAsync(ModuleData data)
             => await AddAsync(Guid.NewGuid(), Guid.NewGuid(), data);
     }

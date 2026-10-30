@@ -6,8 +6,7 @@ using LowCodeApp.Client.Shared.Services;
 namespace LowCodeApp.Server.Infrastructure
 {
     /// <summary>
-    /// このリクエストが使うデザイン (スコープ)。最初に参照した時点の版に固定し、途中で App.zip が差し替わっても最後まで同じ版で動く。
-    /// リクエストの中では AppDesign.Store から直接取らず、これ (DataService.Design) を使う。
+    /// このリクエストが使うデザイン。最初に参照した時点の版に固定する (リクエストの中では AppDesign.Store でなくこれを使う)。
     /// </summary>
     public class RequestDesign
     {

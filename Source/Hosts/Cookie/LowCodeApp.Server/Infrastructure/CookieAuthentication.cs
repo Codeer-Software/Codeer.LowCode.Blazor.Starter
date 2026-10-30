@@ -11,11 +11,8 @@ namespace LowCodeApp.Server.Infrastructure
     {
         public static void UseCookieAuthentication(this WebApplicationBuilder builder)
         {
-            //ログイン途中の一時データ (外部 IdP の MAUI 向け使い捨てチケット、メール認証コード) の置き場。
-            //これはプロセス内メモリなので単一インスタンス向け。App Service 等で複数インスタンスに広げるときは
-            //AddStackExchangeRedisCache / AddDistributedSqlServerCache などの共有キャッシュに差し替える
-            //(発行したインスタンスと検証するインスタンスが違うと失敗するため)。総当たり対策 (LoginLockout) の回数もここに置く。
-            //共有キャッシュを複数のアプリで使うときは InstanceName でアプリごとに分ける (キーはユーザーの Id なので、分けないと別のアプリの同じ Id と混ざる)
+            //ログイン途中の一時データ (使い捨てチケット・メール認証コード・ロックアウトの回数) の置き場。プロセス内メモリなので単一インスタンス向け。
+            //複数インスタンスでは AddStackExchangeRedisCache 等の共有キャッシュに差し替える (複数のアプリで共有するときは InstanceName で分ける)
             builder.Services.AddDistributedMemoryCache();
 
             builder.Services
@@ -61,8 +58,7 @@ namespace LowCodeApp.Server.Infrastructure
                 new CookieOptions
                 {
                     HttpOnly = false,
-                    //認証 Cookie (AddCookie の既定 SameAsRequest) と ASP.NET の antiforgery 自身の Cookie に合わせ、HTTPS のリクエストにだけ Secure を付ける。
-                    //HTTPS で動かす限り挙動は変わらない。HTTP で動かす (Program.cs の UseHttpsRedirection を外す) ときにこの Cookie だけが送られなくなるのを防ぐ
+                    //HTTPS のリクエストにだけ Secure を付ける (HTTP で動かす構成でも送られるように)
                     Secure = ctx.Request.IsHttps,
                     SameSite = SameSiteMode.Lax
                 });

@@ -104,7 +104,7 @@ dotnet run --project "$newRepo\Source\Tools\StarterTool" -- update-diff "<ROOT>"
 ```
 パッケージ: Codeer.LowCode.Blazor 1.3.50 → 1.3.54、Codeer.LowCode.Blazor.Extras 0.22.0 → 0.23.1 …（.NET のターゲットが変わるときはそれも）
 テンプレートのコードの変更（あなたは触っていないファイル）:
-  - Server/Controllers/JobController.cs（追加）: 画面のボタンからジョブ（バッチ）を起動する受け口
+  - Server/Extras/ExtrasApiTable.cs（追加）: 画面から呼ぶ Extras の機能（ジョブの起動など）を共通の API に載せる対応表
   - Server/Program.cs: …
 あなたが変更したファイルにも、テンプレートの変更があります:
   - Server/Infrastructure/DataService.cs: テンプレートは … を足した。あなたの … の変更とは別の箇所
@@ -116,7 +116,7 @@ dotnet run --project "$newRepo\Source\Tools\StarterTool" -- update-diff "<ROOT>"
 2. **パッケージを上げて、テンプレートのコードの変更も取り込む** — `update` / `add` / `delete` はそのまま反映し、`merge` などユーザーが変えたファイルは 1 つずつ差分を見せて確認する
 3. **取り込むものを選ぶ** — 一覧から選んでもらう
 
-補足として 1 行添える: 「テンプレートのコードの変更を取り込まないと、新しい版で増えた機能（例: 上の JobController）の一部が使えないことがあります。あとから取り込むこともできます」。
+補足として 1 行添える: 「テンプレートのコードの変更を取り込まないと、新しい版で増えた機能（例: 上の ExtrasApiTable に載る機能）の一部が使えないことがあります。あとから取り込むこともできます」。
 `docs`（Codeer が配る文書）は、ユーザーが変えていなければ（`update` / `add`）聞かずに最新にする（Claude Code の知識を新しい版に合わせるため）。
 ユーザーが変えていた `docs`（`merge`）は、コードと同じく確認する。
 

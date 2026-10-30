@@ -30,11 +30,9 @@ public partial class App : DesignerApp
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        //load dll.
         typeof(LowCodeApp.Client.Shared.Services.AppInfoService).ToString();
 
-        //プロジェクトテンプレートと claude-workspace verb は headless CLI からも参照されるため、
-        //headless 分岐が走る base.OnStartup より前に登録する (冪等)。
+        //プロジェクトテンプレートと claude-workspace は headless CLI でも使うので base.OnStartup より前に登録する
         DesignerStandard.SetupHeadless();
         ApexChartsDesignerInitializer.Initialize(BlazorRuntime);
         ExtrasDesignerInitializer.Initialize(BlazorRuntime);

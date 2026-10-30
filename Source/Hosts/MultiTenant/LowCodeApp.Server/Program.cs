@@ -15,7 +15,6 @@ using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
 using Microsoft.AspNetCore.SignalR;
 
-//load dll.
 typeof(CodeBehindSample).ToString();
 ApexChartsServerInitializer.Initialize();
 ExtrasServerInitializer.Initialize();
@@ -36,7 +35,6 @@ foreach (var storage in SystemConfig.Instance.FileStorages) if (string.IsNullOrE
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
 SystemConfig.Instance.DefaultConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
 
-// Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options
@@ -44,7 +42,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     .UseSnakeCaseNamingConvention());
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// Cookie authentication.
 builder.UseCookieAuthentication();
 
 builder.Services.AddControllersWithViews();
@@ -63,9 +60,7 @@ if (SystemConfig.Instance.UseHotReload)
     builder.Services.AddHostedService(sp => new FileWatcherService(sp.GetRequiredService<IHubContext<HotReloadHub>>(), SystemConfig.Instance.DesignFileDirectory));
 }
 
-// Compress dynamic responses (e.g. the design data fetched on every reload).
-// Brotli/Gzip are decoded by the browser's native network stack, so this adds
-// no decompression cost to the WASM runtime.
+//動的な応答を圧縮する (毎回読むデザインデータなど)
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -82,9 +77,7 @@ builder.Services.AddScoped<DataService>();
 
 var app = builder.Build();
 
-//SQL debug log: dump executed SQL and parameters (enable via appsettings.Development.json or the SqlLog app setting).
-//ILogger output reaches the local console, Azure App Service Log Stream and Application Insights
-//(raw Console.WriteLine is discarded on Windows App Service).
+//SQL のデバッグログ (実行した SQL とパラメータ)。appsettings の SqlLog で有効化
 if (builder.Configuration.GetSection("SqlLog").Get<bool>())
 {
     var sqlLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SqlLog");
@@ -94,7 +87,6 @@ if (builder.Configuration.GetSection("SqlLog").Get<bool>())
 app.UseResponseCompression();
 app.UseRequestLocalization();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
@@ -102,7 +94,6 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -110,8 +101,7 @@ app.UseHttpsRedirection();
 
 app.UseBlazorFrameworkFiles();
 
-// Always revalidate .html entry pages so a deployed update takes effect
-// immediately instead of being served stale from the browser cache.
+//.html は常に再検証させる (配置した更新がブラウザキャッシュで古いまま見えないように)
 var htmlNoCache = new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
@@ -124,8 +114,7 @@ var htmlNoCache = new StaticFileOptions
 };
 app.UseStaticFiles(htmlNoCache);
 
-// API responses are never served from the browser cache unless the action set its own
-// Cache-Control (FileWithETag uses no-cache + ETag so downloads can still be revalidated).
+//API の応答はブラウザキャッシュしない (アクションが自分で Cache-Control を付けたときを除く)
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/api"))
@@ -149,14 +138,12 @@ if (SystemConfig.Instance.UseHotReload)
     app.MapHub<HotReloadHub>("/hot_reload_hub");
 }
 
-// Cookie authentication.
 app.UseCookieAuthentication();
 
 app.MapRazorPages();
 app.MapControllers();
 app.MapFallbackToFile("index.html", htmlNoCache);
 
-// Exception handling.
 app.UseExceptionHandlerSendToFront();
 
 app.Run();

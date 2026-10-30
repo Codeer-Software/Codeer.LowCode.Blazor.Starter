@@ -53,8 +53,7 @@ namespace LowCodeApp.Client.Shared.Services
             return (MemoryStream)await result.Content.ReadAsStreamAsync();
         }
 
-        //ブラウザが直接読む URL (FileField の動画再生 <video> とダウンロードのリンクが使う)。download と同じ API なので権限も同じ。
-        //要素に渡すので <base href> 相対 (先頭に / を付けない)。ブラウザ (WebAssembly) 以外 (MAUI / WPF の WebView) は要素の要求に認証が付かないので null
+        //ブラウザが直接読む URL (FileField の動画再生とダウンロードのリンク)。<base href> 相対で返す。MAUI / WPF の WebView は要素の要求に認証が付かないので null
         public string? GetFileUrl(string moduleName, string fieldName, string id)
             => OperatingSystem.IsBrowser()
                 ? $"api/module_data/download?moduleName={Uri.EscapeDataString(moduleName)}&fieldName={Uri.EscapeDataString(fieldName)}&id={Uri.EscapeDataString(id)}"

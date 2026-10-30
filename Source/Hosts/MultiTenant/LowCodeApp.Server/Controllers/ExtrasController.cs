@@ -7,8 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LowCodeApp.Server.Controllers
 {
-    //Extras の機能 (メール・承認・Excel → PDF・AI 文書解析) の受け口。1 本の POST で受け、要求の Feature / Action で機能に振り分ける。
-    //出す機能と機能に渡すものは Extras/ExtrasApiTable.cs。デザインはテナントごと
+    //Extras の機能の受け口。1 本の POST で受け、要求の Feature / Action で振り分ける。出す機能は Extras/ExtrasApiTable.cs
     [Authorize, AutoValidateAntiforgeryToken]
     [ApiController]
     [Route("api/extras")]

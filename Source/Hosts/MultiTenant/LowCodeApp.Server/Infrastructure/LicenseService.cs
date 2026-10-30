@@ -7,8 +7,7 @@ namespace LowCodeApp.Server.Infrastructure
     {
         static readonly ConcurrentDictionary<string, DateTime> _checkedTimes = new();
 
-        //ライセンス更新。専用エンドポイントは持たず、デザインデータ取得の直前に呼ぶ。
-        //テナントごとに1分間隔にスロットリングし、更新に失敗しても既存のライセンス状態で処理を続行させる。
+        //サーバーライセンスの更新 (テナントごとに 1 分間隔。失敗しても処理は続ける)
         internal static async Task UpdateAsync(HttpRequest request, MultiTenantUserInfo userInfo)
         {
             var now = DateTime.Now;

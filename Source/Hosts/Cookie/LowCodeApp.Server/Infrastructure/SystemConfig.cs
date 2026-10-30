@@ -11,8 +11,7 @@ using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 namespace LowCodeApp.Server.Infrastructure
 {
     /// <summary>
-    /// appsettings の設定 (Program.cs がトップレベルのセクションを同じ名前のプロパティに Bind する)。設定を足すときはここにプロパティを足す。
-    /// 使う機能のものだけ書けばよい。組み立て済みのオブジェクト (保存先・送信インフラ等) は持たず、Extras/ の対応表がこれを読んで作る。
+    /// appsettings の設定 (トップレベルのセクションを同じ名前のプロパティに Bind する)。設定を足すときはここにプロパティを足す。使うものだけ書けばよい。
     /// </summary>
     public class SystemConfig
     {
@@ -21,7 +20,7 @@ namespace LowCodeApp.Server.Infrastructure
         public bool CanScriptDebug { get; set; }
         public bool UseHotReload { get; set; }
         public DataSource[] DataSources { get; set; } = [];
-        //ファイル保存先 (使うものだけ書けばよい)。実体は Extras/FileStorageTable が組み立てる
+        //ファイル保存先 (実体は Extras/FileStorageTable が組み立てる)
         public FileSystemStorageSettings[] FileSystemStorages { get; set; } = [];
         public AzureBlobStorageSettings[] AzureBlobStorages { get; set; } = [];
         public S3StorageSettings[] S3Storages { get; set; } = [];
@@ -30,7 +29,7 @@ namespace LowCodeApp.Server.Infrastructure
         public TemporaryFileTableInfo[] TemporaryFileTableInfo { get; set; } = [];
         public string DesignFileDirectory { get; set; } = string.Empty;
         public string FontFileDirectory { get; set; } = string.Empty;
-        //Mail = 製品 (共通層) が読む設定。プロバイダごとの設定 (Smtp / Gmail 等) は個別のセクションとして持つ
+        //メールの共通設定。プロバイダごとの設定 (Smtp / Gmail 等) は個別のセクション
         public MailConfig Mail { get; set; } = new();
         public SmtpSettings Smtp { get; set; } = new();
         public GraphApiSettings GraphApi { get; set; } = new();
@@ -46,7 +45,7 @@ namespace LowCodeApp.Server.Infrastructure
         public bool AllowPasswordLogin { get; set; } = true;
         //ID/パスワードのログインの総当たり対策 (失敗が続いたログイン名のロック)
         public LoginLockoutSettings LoginLockout { get; set; } = new();
-        //外部 IdP (使うものだけ書けばよい)。実体は Extras/ExternalLoginTable が組み立てる
+        //外部 IdP (実体は Extras/ExternalLoginTable が組み立てる)
         public EntraLoginSettings EntraLogin { get; set; } = new();
         public GoogleLoginSettings GoogleLogin { get; set; } = new();
         public CognitoLoginSettings CognitoLogin { get; set; } = new();
@@ -57,7 +56,7 @@ namespace LowCodeApp.Server.Infrastructure
         public TotpLoginSettings TotpLogin { get; set; } = new();
         //メールのワンタイムコードによる二要素認証 (メールの体裁と有効期限)
         public EmailOtpLoginSettings EmailOtpLogin { get; set; } = new();
-        //監査ログ (Extras.Server の AuditLog)。出力先の実体は Extras/AuditSinkTable
+        //監査ログ。出力先は Extras/AuditSinkTable
         public AuditLogSettings AuditLog { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }

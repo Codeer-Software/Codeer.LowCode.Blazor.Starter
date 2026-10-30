@@ -3,10 +3,7 @@ using System.Net;
 namespace LowCodeApp.Maui.Services
 {
     /// <summary>
-    /// Connection to the Codeer.LowCode.Blazor server (the Cookie authentication variant).
-    /// Holds the cookie jar (authentication cookie + antiforgery cookie) and the antiforgery
-    /// request token that the server expects in the X-ANTIFORGERY-TOKEN header.
-    /// In the browser these are handled by the browser itself; in a native app we do it here.
+    /// サーバーとの接続。Cookie (認証・antiforgery) と、X-ANTIFORGERY-TOKEN ヘッダに入れるトークンを持つ (ブラウザが行うことをネイティブアプリではここで行う)。
     /// </summary>
     public class ServerConnection
     {
@@ -15,12 +12,12 @@ namespace LowCodeApp.Maui.Services
         readonly CookieContainer _cookies = new();
         string? _antiforgeryToken;
 
-        /// <summary>Current server URL (see ServerSettings). Read when an HttpClient is created.</summary>
+        /// <summary>現在のサーバー URL (ServerSettings)。HttpClient を作るときに読む。</summary>
         public Uri BaseAddress => new(ServerSettings.BaseUrl);
 
         public HttpClient CreateHttpClient()
         {
-            //A new client is created per BlazorWebView, so a changed server URL is picked up after the page restarts.
+            //HttpClient は BlazorWebView ごとに作るので、サーバー URL の変更はページの再起動後に効く
             _antiforgeryToken = null;
             var inner = new HttpClientHandler
             {
@@ -28,24 +25,20 @@ namespace LowCodeApp.Maui.Services
                 CookieContainer = _cookies
             };
 #if DEBUG
-            //The ASP.NET Core development certificate is issued for "localhost" and is not trusted by the device,
-            //while the emulator reaches the PC as 10.0.2.2. Accept any certificate in Debug builds only.
+            //開発証明書は localhost 向けで端末からは信頼されない (エミュレータは 10.0.2.2 で PC に届く)。Debug ビルドだけ証明書を検証しない
             inner.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
 #endif
             var handler = new AntiforgeryHandler(this) { InnerHandler = inner };
-            //A request in flight may take long (uploading a large attachment such as a video).
-            //A wrong BaseUrl still fails fast: the antiforgery token request that precedes the first POST has its own short timeout.
+            //大きな添付のアップロードに備えて長めにする (BaseUrl の誤りは直前の antiforgery の取得が短いタイムアウトで失敗する)
             return new HttpClient(handler) { BaseAddress = BaseAddress, Timeout = TimeSpan.FromMinutes(30) };
         }
 
         /// <summary>
-        /// The antiforgery token is bound to the signed-in user. Call this after login/logout so the next
-        /// request fetches a token for the new identity.
+        /// antiforgery トークンはログインユーザーに紐づく。ログイン / ログアウトの後に呼ぶと次の要求で取り直す。
         /// </summary>
         public void ResetAntiforgeryToken() => _antiforgeryToken = null;
 
-        //The server issues the token as a readable cookie from GET api/account/antiforgery (and marks it Secure,
-        //so the cookie container would not send it back over http). We read it from the Set-Cookie header instead.
+        //トークンは GET api/account/antiforgery の Set-Cookie ヘッダから読む
         void CaptureAntiforgeryToken(HttpResponseMessage response)
         {
             if (!response.Headers.TryGetValues("Set-Cookie", out var setCookies)) return;
@@ -70,7 +63,7 @@ namespace LowCodeApp.Maui.Services
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                //AutoValidateAntiforgeryToken only validates unsafe methods.
+                //antiforgery の検証は POST 等の更新系だけ
                 if (request.Method != HttpMethod.Get && request.Method != HttpMethod.Head && request.Method != HttpMethod.Options)
                 {
                     var token = await GetAntiforgeryTokenAsync(cancellationToken);
@@ -89,7 +82,7 @@ namespace LowCodeApp.Maui.Services
             async Task<string?> GetAntiforgeryTokenAsync(CancellationToken cancellationToken)
             {
                 if (_connection._antiforgeryToken != null) return _connection._antiforgeryToken;
-                //This is the first request to the server (before login). Give up quickly so a wrong BaseUrl does not look like a hang.
+                //ログイン前の最初の要求。BaseUrl の誤りが固まって見えないよう短く打ち切る
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(TimeSpan.FromSeconds(15));
                 using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(_connection.BaseAddress, "api/account/antiforgery"));

@@ -18,18 +18,16 @@ using Codeer.LowCode.Blazor.Extras.Server.Web;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Microsoft.AspNetCore.SignalR;
 
-//load dll.
 typeof(CodeBehindSample).ToString();
 ApexChartsServerInitializer.Initialize();
 ExtrasServerInitializer.Initialize();
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-//ジョブ (バッチ) モード: dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...] (Jobs/README.md)。
-//Web ホストは立てず、同じ appsettings でジョブを 1 つ実行して終了コードを返す。
-//設定は exe の隣から読む (タスクスケジューラ等ではカレントフォルダが exe の場所とは限らない)。ジョブの引数は設定に混ぜない
+//ジョブ (バッチ) モード: dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...] (Jobs/README.md)。Web ホストは立てずジョブを 1 つ実行して終了する。
+//設定は exe の隣から読む
 var isJob = args is ["job", ..];
-//ジョブモードの標準出力・標準エラーは UTF-8 (起動した側の JobProcess がそのつもりで読む。JobMode より前 = 設定の読み込みで失敗したときの出力も含める)
+//ジョブモードの標準出力・標準エラーは UTF-8
 if (isJob) Console.OutputEncoding = Encoding.UTF8;
 var builder = isJob
     ? WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory })
@@ -48,7 +46,6 @@ GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.F
 
 if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobArgs) => JobRunner.RunAsync(builder.Configuration, name, jobArgs));
 
-// Cookie authentication.
 builder.UseCookieAuthentication();
 
 builder.Services.AddControllersWithViews();
@@ -67,9 +64,7 @@ if (SystemConfig.Instance.UseHotReload)
     builder.Services.AddHostedService(sp => new FileWatcherService(sp.GetRequiredService<IHubContext<HotReloadHub>>(), SystemConfig.Instance.DesignFileDirectory));
 }
 
-// Compress dynamic responses (e.g. the design data fetched on every reload).
-// Brotli/Gzip are decoded by the browser's native network stack, so this adds
-// no decompression cost to the WASM runtime.
+//動的な応答を圧縮する (毎回読むデザインデータなど)
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -98,9 +93,7 @@ JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 //非同期で起動したジョブの状態の置き場 (複数インスタンスでは共有キャッシュに差し替える。CookieAuthentication.cs の AddDistributedMemoryCache)
 JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
 
-//SQL debug log: dump executed SQL and parameters (enable via appsettings.Development.json or the SqlLog app setting).
-//ILogger output reaches the local console, Azure App Service Log Stream and Application Insights
-//(raw Console.WriteLine is discarded on Windows App Service).
+//SQL のデバッグログ (実行した SQL とパラメータ)。appsettings の SqlLog で有効化
 if (builder.Configuration.GetSection("SqlLog").Get<bool>())
 {
     var sqlLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SqlLog");
@@ -110,7 +103,6 @@ if (builder.Configuration.GetSection("SqlLog").Get<bool>())
 app.UseResponseCompression();
 app.UseRequestLocalization();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
@@ -118,7 +110,6 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -126,8 +117,7 @@ app.UseHttpsRedirection();
 
 app.UseBlazorFrameworkFiles();
 
-// Always revalidate .html entry pages so a deployed update takes effect
-// immediately instead of being served stale from the browser cache.
+//.html は常に再検証させる (配置した更新がブラウザキャッシュで古いまま見えないように)
 var htmlNoCache = new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
@@ -140,8 +130,7 @@ var htmlNoCache = new StaticFileOptions
 };
 app.UseStaticFiles(htmlNoCache);
 
-// API responses are never served from the browser cache unless the action set its own
-// Cache-Control (FileWithETag uses no-cache + ETag so downloads can still be revalidated).
+//API の応答はブラウザキャッシュしない (アクションが自分で Cache-Control を付けたときを除く)
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/api"))
@@ -174,14 +163,12 @@ if (SystemConfig.Instance.UseHotReload)
     app.MapHub<HotReloadHub>("/hot_reload_hub");
 }
 
-// Cookie authentication.
 app.UseCookieAuthentication();
 
 app.MapRazorPages();
 app.MapControllers();
 app.MapFallbackToFile("index.html", htmlNoCache);
 
-// Exception handling.
 app.UseExceptionHandlerSendToFront();
 
 app.Run();

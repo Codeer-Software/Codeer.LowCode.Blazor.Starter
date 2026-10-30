@@ -18,7 +18,7 @@ namespace LowCodeApp.Server.Extras
     {
         static readonly ConcurrentDictionary<string, Lazy<IAIChatAgent?>> _agents = new(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>Extras/ExtrasApiTable.cs (AIChatApi) が使う入口。送信で Agent をバックグラウンド実行し、ポーリングに状態を返す。</summary>
+        /// <summary>AI チャットの入口 (Extras/ExtrasApiTable.cs が使う)。</summary>
         public static AIChatService Service { get; } = new(Create);
 
         /// <summary>名前に対応する Agent (無ければ null = ジョブは error)。</summary>
@@ -53,7 +53,7 @@ namespace LowCodeApp.Server.Extras
                 semanticSearch: SemanticSearchTable.Service);
         }
 
-        //レコードは依頼したユーザーの権限で読む (ツール呼び出しごとにそのユーザーの DataService を開く)。上限は appsettings の AIChat:ModuleDataAccess
+        //レコードは依頼したユーザーの権限で読む。上限は appsettings の AIChat:ModuleDataAccess
         static IAIChatAgent? CreateModuleDataAccess()
         {
             var config = SystemConfig.Instance;
@@ -69,7 +69,7 @@ namespace LowCodeApp.Server.Extras
                 () => AppDesign.Store.GetDesignData(),
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
                 config.AIChat.ModuleDataAccess,
-                //SemanticSearchField を置いたモジュールを search_records (意味検索) で探せるようにする。権限は一覧検索と同じに効く
+                //SemanticSearchField を置いたモジュールを意味検索 (search_records) で探せるようにする
                 semanticSearch: SemanticSearchTable.Service);
         }
     }

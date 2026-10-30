@@ -6,8 +6,7 @@ namespace LowCodeApp.Server.Infrastructure
     {
         static DateTime _checkedTime;
 
-        //ライセンス更新。専用エンドポイントは持たず、デザインデータ取得の直前に呼ぶ。
-        //1分間隔にスロットリングし、更新に失敗しても既存のライセンス状態で処理を続行させる。
+        //サーバーライセンスの更新 (1 分間隔。失敗しても処理は続ける)
         internal static async Task UpdateAsync(HttpRequest request)
         {
             var now = DateTime.Now;

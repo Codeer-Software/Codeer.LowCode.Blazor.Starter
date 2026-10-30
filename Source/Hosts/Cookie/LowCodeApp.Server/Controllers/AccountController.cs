@@ -8,7 +8,6 @@ using LowCodeApp.Client;
 using LowCodeApp.Server.Infrastructure;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
-using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Microsoft.Extensions.Caching.Distributed;
 
@@ -37,8 +36,7 @@ namespace LowCodeApp.Server.Controllers
         public StringWrapper GetCurrentUser()
             => new(LoginPrincipal.GetUserId(User));
 
-        //Sole issuer of the antiforgery token cookie. login.html fetches this before
-        //every login attempt, and the WASM client fetches it at startup.
+        //antiforgery トークンの Cookie を発行する (login.html とアプリの起動時に取る)
         [HttpGet("antiforgery")]
         public IActionResult Antiforgery()
         {
@@ -62,8 +60,7 @@ namespace LowCodeApp.Server.Controllers
             if (!SystemConfig.Instance.AllowPasswordLogin) return NotFound();
             _audit.Event.Detail = $"LoginName={loginInfo.Id}";
 
-            //ID / パスワードの照合・総当たり対策 (appsettings の LoginLockout)・二要素認証 (認証アプリ / メール) の流れは Extras.Server の PasswordLogin。
-            //ここでは結果を HTTP と監査ログに写し、通ったら Cookie を発行する
+            //ID / パスワードの照合・ロックアウト・二要素認証は PasswordLogin。結果を HTTP と監査ログに写し、通ったら Cookie を発行する
             var login = new PasswordLogin(_dataService.Design.DesignData, _dataService.DbAccess, _cache,
                 SystemConfig.Instance.LoginLockout, SystemConfig.Instance.TotpLogin, SystemConfig.Instance.EmailOtpLogin,
                 message => new MailDispatcher(SystemConfig.Instance.Mail, MailSenderTable.Create).SendAsync(SystemConfig.Instance.EmailOtpLogin.MailInfraName, message));
@@ -84,7 +81,6 @@ namespace LowCodeApp.Server.Controllers
             var account = result.Account!;
             _audit.Event.UserId = account.UserId;
 
-            //Cookie に積むクレームの形は LoginPrincipal (外部 IdP の経路も同じ)。読むのも LoginPrincipal.GetUserId
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 LoginPrincipal.Create(account.UserId, account.DisplayName),
@@ -93,10 +89,8 @@ namespace LowCodeApp.Server.Controllers
             return Ok(result.Response);
         }
 
-        //外部 IdP: ブラウザがここに遷移 (GET) すると IdP へ送られる。IdP が本人確認した後、ExternalLoginUserResolver が
-        //ユーザー行に解決し、パスワードログインと同じ Cookie を発行する。
-        //persistent=true は「ログイン状態を保持する」(ブラウザを閉じても残る Cookie)。
-        //mobile=true はネイティブアプリ (システムブラウザ) の流れで、Cookie の代わりに使い捨てチケットをアプリへ返す
+        //外部 IdP でログイン。IdP が本人確認した後、ExternalLoginUserResolver がユーザー行に解決して Cookie を発行する。
+        //persistent = ログイン状態を保持する。mobile = ネイティブアプリ (Cookie の代わりに使い捨てチケットを返す)
         [HttpGet("login/{provider}"), Audit(AuditCategory.Authentication)]
         public IActionResult ExternalLogin(string provider, string? returnUrl, bool mobile = false, bool persistent = false)
             => _externalLogins.Challenge(this, provider, returnUrl, mobile, persistent);

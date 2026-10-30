@@ -8,8 +8,7 @@ namespace LowCodeApp.Server.Infrastructure
 {
     public class CustomizedModuleDataIO : PasswordHashingModuleDataIO
     {
-        //一括INSERT (multi-row INSERT) の有効化。純Addのみの大量Submit (一括取込) がこの行数以上のとき束ねて挿入される。
-        //-1 (コア既定) で無効
+        //一括 INSERT を使う最小行数 (-1 で無効)
         static CustomizedModuleDataIO() => BulkAddThreshold = 100;
 
         public CustomizedModuleDataIO(DesignData designData, IAuthenticationContext authenticationContext, IDbAccessor dbAccess, ITemporaryFileManager temporaryFileManager)

@@ -13,9 +13,7 @@ namespace LowCodeApp.Client.Shared.Services
     {
         public static void AddSharedServices(this IServiceCollection services)
         {
-            //Extras の組み込みサービスが使うエンドポイント。
-            //メール・ジョブ・承認・AI チャット・意味検索・認証アプリの解除・Excel → PDF・AI 文書解析は共通の口 (ExtrasTransport.EndPoint = /api/extras → サーバーの Controllers/ExtrasController.cs) なので設定不要。
-            //ここに並ぶのはファイル取込の API (受け口は本体の ModuleDataController)
+            //Extras の機能は共通の API (/api/extras) に送るので設定不要。ここに並ぶのはファイル取込の API
             BulkFileReader.ParseFileEndPoint = "/api/module_data/parse_file";
             BulkFileTransferService.ListFileByDataEndPoint = "/api/module_data/list_file_by_data";
             BulkFileTransferService.BulkSubmitEndPoint = "/api/module_data/bulk_submit";

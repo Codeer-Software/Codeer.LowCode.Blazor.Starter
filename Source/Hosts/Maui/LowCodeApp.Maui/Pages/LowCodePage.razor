@@ -60,8 +60,7 @@ else
     _isValid = false;
     await base.OnInitializedAsync();
 
-    //401 means "not signed in" and goes to the login page. Anything else (server down, wrong BaseUrl,
-    //cleartext blocked, ...) is a connection problem and is shown as such instead of a silent wait.
+    //401 は未ログイン (ログイン画面へ)。それ以外は接続の問題として表示する
     try
     {
       using var response = await HttpClient.GetAsync("api/account/current_user");

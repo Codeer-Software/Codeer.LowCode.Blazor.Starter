@@ -25,7 +25,7 @@ namespace LowCodeApp.Server.Infrastructure
             ModuleDataIO = new CustomizedModuleDataIO(Design.DesignData, this, DbAccess, TemporaryFileManager);
         }
 
-        //リクエストの外 (意味検索の再索引などバックグラウンドのジョブ) で、そのユーザーの権限のまま使うための DataService
+        //リクエストの外 (ジョブなど) で、そのユーザーの権限で使う DataService
         public DataService(string userId) : this(httpContextAccessor: null)
             => _fixedUserId = userId;
 

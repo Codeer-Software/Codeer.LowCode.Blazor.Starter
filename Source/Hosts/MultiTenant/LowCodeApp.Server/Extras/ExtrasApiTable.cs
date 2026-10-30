@@ -20,7 +20,7 @@ namespace LowCodeApp.Server.Extras
             {
                 //メール (MailField / BulkMailField / Mail スクリプトオブジェクト)。送信インフラの対応表は MailSenderTable
                 new MailApi(SystemConfig.Instance.Mail, MailSenderTable.Create),
-                //承認フロー (ApprovalFlowField)。順番到達の通知メールはメンバー契約の TurnNotifyMail が設定されているときだけ
+                //承認フロー (ApprovalFlowField)
                 new ApprovalApi(SystemConfig.Instance.Mail, MailSenderTable.Create),
                 //Excel → PDF (Excel スクリプトオブジェクトの DownloadPdf)
                 new ExcelApi(),

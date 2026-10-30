@@ -16,7 +16,6 @@ namespace LowCodeApp.Wpf
     {
         protected override void OnStartup(StartupEventArgs e)
         {
-            //load dll.
             typeof(CodeBehindSample).ToString();
 
             Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdf = ExcelConverter.ConvertToPdf;
@@ -36,7 +35,7 @@ namespace LowCodeApp.Wpf
             foreach (var dataSource in SystemConfig.Instance.DataSources) dataSource.ConnectionString = config.GetConnectionString(dataSource.Name) ?? string.Empty;
             foreach (var storage in SystemConfig.Instance.AzureBlobStorages) if (string.IsNullOrEmpty(storage.ConnectionString) && string.IsNullOrEmpty(storage.BlobServiceUri)) storage.ConnectionString = config.GetConnectionString(storage.Name) ?? string.Empty;
             foreach (var storage in SystemConfig.Instance.FileStorages) if (string.IsNullOrEmpty(storage.ConnectionString)) storage.ConnectionString = config.GetConnectionString(storage.Name) ?? string.Empty;
-            //SQL debug log: dump executed SQL and parameters to the debug output (enable via appsettings.Development.json)
+            //SQL のデバッグログ (実行した SQL とパラメータをデバッグ出力へ)。appsettings.Development.json で有効化
             if (config.GetSection("SqlLog").Get<bool>()) DbAccessor.SqlLog = s => System.Diagnostics.Debug.WriteLine(s);
 
             GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);

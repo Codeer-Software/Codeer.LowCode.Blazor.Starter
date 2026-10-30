@@ -25,8 +25,7 @@ namespace LowCodeApp.Maui
 
         void OnResetClicked(object? sender, EventArgs e) => Apply(ServerSettings.DefaultBaseUrl);
 
-        //The Blazor side keeps its HttpClient for the lifetime of the WebView, so the app restarts the
-        //main page to pick up the new server.
+        //HttpClient は WebView の寿命の間使い回すので、メインページを作り直して新しいサーバーに切り替える
         void Apply(string url)
         {
             ServerSettings.BaseUrl = url;

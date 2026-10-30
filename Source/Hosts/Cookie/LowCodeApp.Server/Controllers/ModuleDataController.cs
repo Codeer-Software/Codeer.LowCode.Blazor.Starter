@@ -99,8 +99,7 @@ namespace LowCodeApp.Server.Controllers
             return results;
         }
 
-        //スクリプトの一括ファイル出力 (BulkFileTransferService.Download(List<Module>)) 用。
-        //クライアントで加工済みのモジュールデータ列をそのままファイル化する
+        //スクリプトの一括ファイル出力 (BulkFileTransferService.Download) 用
         [HttpPost("list_file_by_data"), Audit(AuditCategory.Export)]
         public async Task<IActionResult> GetListFileByDataAsync(string? moduleName)
         {
@@ -108,13 +107,12 @@ namespace LowCodeApp.Server.Controllers
             return Ok(await BulkFileTransfer.GetListFileByDataAsync(_dataService.Design.DesignData, _dataService.ModuleDataIO, moduleName, Request.Body));
         }
 
-        //スクリプトの一括保存 (BulkFileTransferService.Submit(List<Module>)) 用。
-        //クライアントで加工済みのモジュールデータ列を一括保存する (ファイル取込と同じ追加/更新判定の経路)
+        //スクリプトの一括保存 (BulkFileTransferService.Submit) 用
         [HttpPost("bulk_submit"), Audit(AuditCategory.DataWrite)]
         public async Task<IActionResult> BulkSubmitAsync(string? moduleName)
             => Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
 
-        //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)
+        //スクリプトの一括ファイル取込 (BulkFileReader) 用。DB には書き込まない
         [HttpPost("parse_file")]
         public async Task<IActionResult> ParseFileAsync(string? moduleName)
             => Content(Codeer.LowCode.Blazor.Json.JsonConverterEx.SerializeObject(
@@ -128,8 +126,7 @@ namespace LowCodeApp.Server.Controllers
             return mem == null ? Ok() : this.FileWithETag(mem.ToArray(), "application/octet-stream");
         }
 
-        //FileField の動画再生 (<video>) もここを読む。ストレージから読みながら Range 要求に応じて返す (全部をメモリに置かない)。
-        //再生 (再生欄を開く・シーク) の部分要求も同じ Download として残し、要求された範囲は Detail の Range= で分かる
+        //FileField の動画再生 (<video>) もここを読む (Range 要求に対応)
         [HttpGet("download"), Audit(AuditCategory.Export)]
         public async Task<IActionResult> DownloadFileAsync(string? moduleName, string? id, string? fieldName)
         {
