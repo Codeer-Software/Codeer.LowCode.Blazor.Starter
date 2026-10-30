@@ -53,12 +53,12 @@ namespace StarterTool
                 var dst = Path.Combine(templateDir, project.Name);
                 var files = new List<(string path, bool replaceParameters)>();
                 Repository.CopyProject(src, dst, (relative, text) =>
-                    Tokenize(relative.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase) ? Repository.FlattenProjectReferences(text) : text, project.ProjectName));
+                    Tokenize(relative.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase) ? Repository.FlattenProjectReferences(text) : text, project.ProjectName), renameSample: true);
                 foreach (var file in Repository.EnumerateProjectFiles(src))
                 {
                     var relative = Path.GetRelativePath(src, file);
                     if (Path.GetExtension(file).Equals(".csproj", StringComparison.OrdinalIgnoreCase)) continue;
-                    files.Add((relative, Repository.IsTextFile(file)));
+                    files.Add((Repository.OutputRelativePath(relative), Repository.IsTextFile(file)));
                 }
                 File.WriteAllText(Path.Combine(dst, "MyTemplate.vstemplate"), ProjectTemplate(project, files), new UTF8Encoding(false));
             }

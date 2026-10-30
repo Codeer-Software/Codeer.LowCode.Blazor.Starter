@@ -60,7 +60,7 @@ namespace StarterTool
                 {
                     if (!relative.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)) return text;
                     return Repository.FlattenProjectReferences(text);
-                });
+                }, renameSample: true);
                 entries.Add((Path.Combine(dst, project.ProjectName + ".csproj"), project.SolutionFolder, project.Deploy));
                 Console.WriteLine($"exported {project.ProjectName}");
             }
