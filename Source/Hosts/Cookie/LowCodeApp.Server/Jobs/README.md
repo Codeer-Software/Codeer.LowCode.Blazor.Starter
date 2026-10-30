@@ -4,7 +4,7 @@
 
 ```
 dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...]
-dotnet LowCodeApp.Server.dll job Sample AppUser
+dotnet LowCodeApp.Server.dll job CloseOrders
 ```
 
 Web ホストは立てず、同じ `appsettings` と同じ `App.zip` でデザイン・接続・`ModuleDataIO` を組み立ててジョブを走らせます。
@@ -16,18 +16,27 @@ Web から保存したときと同じ処理を通ります。独自フィール�
 
 ## ジョブの足し方
 
-このフォルダに `IJob` を実装したクラスを足します（引数なしの public コンストラクタ）。登録は要りません。
+このフォルダに `IJob` を実装したクラスを足します（引数なしの public コンストラクタ）。登録は要りません。次の 1 ファイルで動きます。
 
 ```csharp
-public class CloseOrdersJob : IJob
-{
-    public string Name => "CloseOrders";
+using Codeer.LowCode.Blazor.Repository.Match;
+using LowCodeApp.Server.Infrastructure;
 
-    public async Task<string?> RunAsync(DataService data, string[] args)
+namespace LowCodeApp.Server.Jobs
+{
+    /// <summary>
+    /// 例: dotnet LowCodeApp.Server.dll job CloseOrders
+    /// </summary>
+    public class CloseOrdersJob : IJob
     {
-        var page = await data.ModuleDataIO.GetListAsync(new SearchCondition("Order"), 0);
-        //...
-        return $"{page.TotalCount} 件を処理しました";
+        public string Name => "CloseOrders";
+
+        public async Task<string?> RunAsync(DataService data, string[] args)
+        {
+            var page = await data.ModuleDataIO.GetListAsync(new SearchCondition("Order"), 0);
+            //... 締めの処理。保存も data.ModuleDataIO で行う
+            return $"{page.TotalCount} 件を締めました";
+        }
     }
 }
 ```
@@ -36,7 +45,6 @@ public class CloseOrdersJob : IJob
 - 戻り値は成功したときの文言（画面のボタンから起動したときは成功の通知に出る。`null` なら既定の文言）。標準出力の最後に 1 行で書かれる
 - `data` は Web のリクエストと同じ `DataService`。`data.ModuleDataIO` で読み書きする（`GetListAsync` / `SubmitAsync` など）。`data.DbAccess` は同じ接続、`data.Design.DesignData` は読み込んだデザイン
 - 失敗は例外を投げる。終了コードが 1 になり、例外のメッセージが標準エラー（画面のボタンから起動したときは 1 行目が画面に出る文言）、例外の全文が標準出力に出る
-- 例は `SampleJob.cs`
 - ジョブの書き込みは `data.ModuleDataIO` で行う。生 SQL では編集履歴・意味検索の索引が付かない
 
 ## 画面のボタンから起動する（JobTriggerField）
@@ -53,7 +61,7 @@ public class CloseOrdersJob : IJob
 - 別プロセスの起動（親）とジョブモード（子）は Codeer.LowCode.Blazor.Extras.Server の `JobProcess` と `JobMode` が対で持つ（引数の並び `job <ジョブ名> --stdin`・画面の内容は標準入力・押したユーザーの Id は環境変数 `Jobs__UserId`・終了コード・UTF-8・結果の文言の取り出し）。このテンプレートにあるのは、ジョブの一覧と `DataService` の組み立て（`Jobs/JobRunner.cs`）と、`Program.cs` の `job` の分岐だけ。約束の詳細は Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`
 - 失敗（同期・非同期とも）はサーバーのログにも出る（`Program.cs` で `JobProcess.LoggerFactory` をつないでいる。標準エラーの全文と標準出力をまとめて出す）
 - 起動する実行ファイルは `LowCodeApp.Server.dll` の隣の `LowCodeApp.Server.exe`（apphost。IIS の下や PATH に `dotnet` が無いサーバーでも動く）、無ければ `dotnet LowCodeApp.Server.dll`。変えるときは `JobProcess.HostExecutable` / `EntryDll` / `DotnetPath`
-- 手で動かすときは `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job Sample --stdin`
+- 手で動かすときは `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job CloseOrders --stdin`
 
 ### ジョブに渡る JSON
 
@@ -75,7 +83,7 @@ if (json.RootElement.TryGetProperty("data", out var current))
 }
 ```
 
-`SampleJob` は受け取った JSON の長さを要約（画面の通知に出る文言）として返すだけです。
+コマンドラインから起動したときの `args` はジョブ名の後ろの引数です。両方から起動するジョブは、`args[0]` が `{` または `[` で始まるかで見分けます。
 
 ### 制限
 
@@ -139,7 +147,7 @@ Web と同じ `appsettings.json` / `appsettings.<環境>.json` / 環境変数を
 |---|---|
 | `Jobs:UserId` | ジョブを実行するユーザーの Id（ユーザーモジュールの Id）。権限の条件はこのユーザーで判定される。空なら匿名（アプリにログインが要るデザインでは読み書きできない） |
 
-Visual Studio からは起動プロファイル `job`（`Properties/launchSettings.json`。引数 `job Sample AppUser`）で実行できます。
+Visual Studio からは起動プロファイル `job`（`Properties/launchSettings.json`。引数 `job`。そのままではジョブの一覧が出るので、引数にジョブ名を足して実行します）で実行できます。
 
 ## Azure WebJobs から起動する
 

@@ -94,7 +94,7 @@
   - `Extras/AIChatAgentTable.cs`（Cookie）— AIChatField の Agent 名 → `IAIChatAgent`。既定（空 / `RawDataAccess`）は Extras.Server の `RawDataAccessAgent`（AI がアプリの DB を読み取り専用 SQL で集計・グラフ化して答える。`AISettings` の Azure OpenAI が必要）。`ModuleDataAccess` は `ModuleDataAccessAgent`（ログインユーザーの権限でレコードを読み、本体の集計 API で集計・クロス集計。ツール呼び出しごとに `new DataService(userId)` を開き、接続 `DbAccess` も渡すので `AIChat:ModuleDataAccess` の SQL タイムアウトが効く）。受け口は共通の API (`Controllers/ExtrasController.cs` → `Extras/ExtrasApiTable.cs` の `AIChatApi`)。補足文書はデザインプロジェクトの `Resources/{DocumentFolder}/*.md|*.txt`（本体の `DesignDataFileManager.GetResourceTexts` で読む）
   - `Extras/SemanticSearchTable.cs`（Cookie）— SemanticSearchField（意味検索）のサーバー側入口 `SemanticSearchService` をプロセスに 1 つ（`SemanticSearchTable.Service`）。埋め込みプロバイダは appsettings の `SemanticSearch.EmbeddingProvider` の呼び名（`AzureOpenAI` / 独自）で対応表（`CreateEmbeddingProvider`）から選ぶ。保存時の索引付けは `CustomizedModuleDataIO`、再索引は共通の API (`ExtrasApiTable` の `SemanticSearchApi`)、AI チャットの search_records は `AIChatAgentTable` が同じインスタンスを渡す。DB 側ベクトル検索なので対象モジュールのデータソースは PostgreSQL（pgvector）か SQL Server 2025
   - `Infrastructure/DataService.cs` — 1 リクエスト分の DB アクセス・現在ユーザー（`IAuthenticationContext`）
-  - `Controllers/TestAPIController.cs` — 独自 Web API を足すときの雛形
+  - `Controllers/` — Web API。独自の API を足すときは `ExtrasController.cs` と同じ形（`[Authorize]`・`[AutoValidateAntiforgeryToken]` を付け、`DataService` を注入する）
   - `Jobs/`（Cookie）— ジョブ（バッチ）モード。`dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...]` で Web ホストを立てずに `IJob` を 1 つ実行して終了コードを返す（`Jobs/README.md`。Azure WebJobs / タスクスケジューラから起動。実行ユーザーは appsettings の `Jobs:UserId`）。画面のボタンからは Extras の `JobTriggerField` で起動する（クライアントは共通の API `/api/extras` へ Feature=Job → `Controllers/ExtrasController.cs` → `ExtrasApiTable` の `JobApi` がデザインの `JobName` のジョブを押したユーザーで別プロセス起動。別プロセスの起動 (親 `JobProcess`) とジョブモード (子 `JobMode`) は Extras.Server の持ち物で、テンプレにあるのはジョブの一覧と `DataService` の組み立て (`Jobs/JobRunner.cs`) だけ）
 - `LowCodeApp.Client`: Blazor WebAssembly。`Pages/LowCodePage.razor` がローコードページのホスト
 - `LowCodeApp.Client.Shared`: クライアント共通サービス（`AppInfoService`/`ModuleDataService`/`NavigationServiceBase`）。
@@ -187,8 +187,8 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 | 画面の一部を Blazor で書く / スクリプトの代わりに C# | `Client.Shared/Samples/ProCodeComponentSample.razor`（ProCodeField）/ `CodeBehindSample.cs`（コードビハインド。クラス名＝モジュール名）を写す |
 | スクリプトから呼べるサービス・型 | `Client.Shared/Services/AppInfoService.cs` と `Designer/App.xaml.cs` の両方で `ScriptRuntimeTypeManager.AddService / AddType` |
 | 保存・更新時の処理 | `Server/Infrastructure/CustomizedModuleDataIO.cs`（`PasswordHashingModuleDataIO` を継承。`AddAsync` / `BulkAddAsync` / `UpdateAsync` の override (base を呼ぶ)。コンストラクタには監査・編集履歴・意味検索のインターセプタの登録がある） |
-| 独自 Web API | `Server/Controllers/` に Controller を追加（`TestAPIController` が雛形）。スクリプトからは Extras の `WebApiService` で呼ぶ（`_script_catalog.md` に載る） |
-| 定期処理・一括取込（バッチ） | `Server/Jobs/` に `IJob` を実装（`SampleJob` が雛形）。`dotnet LowCodeApp.Server.dll job <Name>` で実行（`Server/Jobs/README.md`）。モジュールを扱う C# クラスはデザイナの `poco` コマンドで `Client.Shared/Generated/Modules.g.cs` に生成する（手で書かない。手順は同じ README） |
+| 独自 Web API | `Server/Controllers/` に Controller を追加（`ExtrasController` と同じ形。`[Authorize]`・`[AutoValidateAntiforgeryToken]` を付け、`DataService` を注入する）。スクリプトからは Extras の `WebApiService` で呼ぶ（`_script_catalog.md` に載る） |
+| 定期処理・一括取込（バッチ） | `Server/Jobs/` に `IJob` を実装（完成形の例は `Server/Jobs/README.md`）。`dotnet LowCodeApp.Server.dll job <Name>` で実行（`Server/Jobs/README.md`）。モジュールを扱う C# クラスはデザイナの `poco` コマンドで `Client.Shared/Generated/Modules.g.cs` に生成する（手で書かない。手順は同じ README） |
 | ファイル保存先・メール送信の独自実装 | `IFileStorage` → `FileStorageTable`、`IMailSender` → `MailSenderTable` に 1 行 |
 | AI チャットの独自 Agent | `IAIChatAgent` を実装して `Server/Extras/AIChatAgentTable.cs` に 1 行。AIChatField のデザインの `Agent` にその名前を書く |
 | 意味検索の埋め込みモデルを差し替える | `IEmbeddingProvider` を実装して `Server/Extras/SemanticSearchTable.cs` の `CreateEmbeddingProvider` に 1 行。appsettings の `SemanticSearch.EmbeddingProvider` にその名前を書く |

@@ -38,7 +38,7 @@
       },
       "job": {
         "commandName": "Project",
-        "commandLineArgs": "job Sample AppUser",
+        "commandLineArgs": "job",
         "environmentVariables": {
           "ASPNETCORE_ENVIRONMENT": "Development"
         }
