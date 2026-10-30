@@ -67,7 +67,7 @@
 
 | フォルダ | 用途 | 選ぶ基準 |
 |---|---|---|
-| `Source/Hosts/Cookie/` | Web（WASM クライアント + ASP.NET Core サーバー）、Cookie 認証（ユーザーテーブルでパスワード検証） | 業務アプリの既定。Entra ID / Google / AWS Cognito / 汎用 OIDC のログインは `appsettings` の `ExternalLogins` に書くだけで足せる（Extras.Server の外部ログイン。手順は Codeer.LowCode.Blazor.Extras の `docs/ExternalLogin.md`、方針コードは `Server/ExternalLoginUserResolver.cs`）。TOTP など他の認証を組むときもここを土台にする（cookie スキームと `[Authorize]`、現在ユーザー解決はそのまま使え、ログインの発行方法だけ差し替える）。定期処理・一括取込のバッチはこのサーバーのジョブモード（`LowCodeApp.Server/Jobs/README.md`）で、別ホストにしない |
+| `Source/Hosts/Cookie/` | Web（WASM クライアント + ASP.NET Core サーバー）、Cookie 認証（ユーザーテーブルでパスワード検証） | 業務アプリの既定。Entra ID / Google / AWS Cognito / 汎用 OIDC のログインは `appsettings` の `ExternalLogins` に書くだけで足せる（Extras.Server の外部ログイン。手順は Codeer.LowCode.Blazor.Extras の `docs/ExternalLogin.md`、方針コードは `Server/Infrastructure/ExternalLoginUserResolver.cs`）。TOTP など他の認証を組むときもここを土台にする（cookie スキームと `[Authorize]`、現在ユーザー解決はそのまま使え、ログインの発行方法だけ差し替える）。定期処理・一括取込のバッチはこのサーバーのジョブモード（`LowCodeApp.Server/Jobs/README.md`）で、別ホストにしない |
 | `Source/Hosts/Maui/` | `Cookie` + .NET MAUI（Android/iOS）クライアント | スマホアプリとして配布したい。デザイン変更はストア更新なしで反映される |
 | `Source/Hosts/Wpf/` `Source/Hosts/WinForms/` | デスクトップ単体（サーバー機能を同一プロセスに内包） | サーバーを立てない・オフライン寄り |
 
@@ -77,23 +77,25 @@
 <!-- /maintainer-only -->
 ### 認証を外す（前段のリバースプロキシや Easy Auth で守られている等、ログイン画面が要らないとき）
 
-`Cookie` から引き算する。触るのは 6 か所: `Server/CookieAuthentication.cs`（cookie スキームの登録。`Program.cs` の呼び出しごと）、
-`Server/Controllers/AccountController.cs`（パスワード照合は Extras.Server の `LoginAccountStore`。表・列はユーザーモジュールのデザインから）、`Server/ExternalLoginUserResolver.cs` と `Services/ExternalLoginTable.cs`（+ `appsettings*.json` の `AllowPasswordLogin` / `LoginLockout` / `TotpLogin` / 外部 IdP セクションと `SystemConfig` の該当プロパティ）、
+`Cookie` から引き算する。触るのは 6 か所: `Server/Infrastructure/CookieAuthentication.cs`（cookie スキームの登録。`Program.cs` の呼び出しごと）、
+`Server/Controllers/AccountController.cs`（ID/パスワードの検証の流れは Extras.Server の `PasswordLogin`。表・列はユーザーモジュールのデザインから）、`Server/Infrastructure/ExternalLoginUserResolver.cs` と `Extras/ExternalLoginTable.cs`（+ `appsettings*.json` の `AllowPasswordLogin` / `LoginLockout` / `TotpLogin` / 外部 IdP セクションと `SystemConfig` の該当プロパティ）、
 各 Controller の `[Authorize]`、`Client/wwwroot/login.html` と `Client/LoginInfo.cs`（`Program.cs` / `NavigationService.cs` のログイン遷移）、
-`Services/DataService.cs` の現在ユーザー解決（前段認証のヘッダから取るか固定値にする）。
+`Infrastructure/DataService.cs` の現在ユーザー解決（前段認証のヘッダから取るか固定値にする）。
 
 ## 共通の構成
 
 - `LowCodeApp.Server`（デスクトップは `LowCodeApp.Wpf` / `LowCodeApp.WinForms`）: サーバー。`Program.cs` で `SystemConfig` に appsettings を流し込み、
-  Controller（`ModuleDataController` 等）が API を出す。DB は `Codeer.LowCode.Blazor.DbAccess`
-  - `Services/CustomizedModuleDataIO.cs` — 保存・更新・一括 INSERT のフック（パスワードハッシュはここ）
-  - `Services/FileStorageTable.cs` — appsettings の保存先設定 → `IFileStorage`（FileSystem / Azure Blob / S3）
-  - `Services/MailSenderTable.cs` — 送信インフラ名 → `IMailSender`（Smtp / GraphApi / Gmail）
-  - `AI/AIChatAgentTable.cs`（Cookie）— AIChatField の Agent 名 → `IAIChatAgent`。既定（空 / `RawDataAccess`）は Extras.Server の `RawDataAccessAgent`（AI がアプリの DB を読み取り専用 SQL で集計・グラフ化して答える。`AISettings` の Azure OpenAI が必要）。`ModuleDataAccess` は `ModuleDataAccessAgent`（ログインユーザーの権限でレコードを読み、本体の集計 API で集計・クロス集計。ツール呼び出しごとに `new DataService(userId)` を開き、接続 `DbAccess` も渡すので `AIChat:ModuleDataAccess` の SQL タイムアウトが効く）。受け口は `Controllers/AIChatController.cs`。補足文書はデザインプロジェクトの `Resources/{DocumentFolder}/*.md|*.txt`（本体の `DesignDataFileManager.GetResourceTexts` で読む）
-  - `AI/SemanticSearchIndex.cs` / `AI/EmbeddingProviderTable.cs`（Cookie）— SemanticSearchField（意味検索）のサーバー側入口 `SemanticSearchService` をプロセスに 1 つ。埋め込みプロバイダは appsettings の `SemanticSearch.EmbeddingProvider` の呼び名（`AzureOpenAI` / 独自）で対応表から選ぶ。保存時の索引付けは `CustomizedModuleDataIO`、再索引 API は `Controllers/SemanticSearchController.cs`、AI チャットの search_records は `AIChatAgentTable` が同じインスタンスを渡す。DB 側ベクトル検索なので対象モジュールのデータソースは PostgreSQL（pgvector）か SQL Server 2025
-  - `Services/DataService.cs` — 1 リクエスト分の DB アクセス・現在ユーザー（`IAuthenticationContext`）
-  - `Controllers/TestAPIController.cs` — 独自 Web API を足すときの雛形
-  - `Jobs/`（Cookie）— ジョブ（バッチ）モード。`dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...]` で Web ホストを立てずに `IJob` を 1 つ実行して終了コードを返す（`Jobs/README.md`。Azure WebJobs / タスクスケジューラから起動。実行ユーザーは appsettings の `Jobs:UserId`）。画面のボタンからは Extras の `JobTriggerField` で起動する（クライアントは `JobTriggerField.EndPoint` = `/api/job/run` への POST → `Controllers/JobController.cs` がデザインの `JobName` のジョブを押したユーザーで別プロセス起動。別プロセスの起動 (親 `JobProcess`) とジョブモード (子 `JobMode`) は Extras.Server の持ち物で、テンプレにあるのはジョブの一覧と `DataService` の組み立て (`Jobs/JobRunner.cs`) だけ）
+  Controller（`ModuleDataController` 等）が API を出す。DB は `Codeer.LowCode.Blazor.DbAccess`。
+  Server のフォルダは `Infrastructure/`＝ホストの骨（DataService / RequestDesign / AppDesign / SystemConfig / CustomizedModuleDataIO / 認証）、`Extras/`＝Extras ライブラリの結線（対応表とその設定 POCO）、
+  `Controllers/`・`Jobs/`。Wpf / WinForms は骨が `Services/`（本当の DI サービス）で、対応表だけ `Extras/`
+  - `Infrastructure/CustomizedModuleDataIO.cs` — `PasswordHashingModuleDataIO`（行を書くときのパスワードのハッシュ化）を継承。コンストラクタでインターセプタの登録（監査 → 編集履歴 → 意味検索の順）と一括 INSERT の閾値。保存を変えたいときは `AddAsync` / `BulkAddAsync` / `UpdateAsync` を override する（base を呼ぶ）
+  - `Extras/FileStorageTable.cs` — appsettings の保存先設定 → `IFileStorage`（FileSystem / Azure Blob / S3）
+  - `Extras/MailSenderTable.cs` — 送信インフラ名 → `IMailSender`（Smtp / GraphApi / Gmail）
+  - `Extras/AIChatAgentTable.cs`（Cookie）— AIChatField の Agent 名 → `IAIChatAgent`。既定（空 / `RawDataAccess`）は Extras.Server の `RawDataAccessAgent`（AI がアプリの DB を読み取り専用 SQL で集計・グラフ化して答える。`AISettings` の Azure OpenAI が必要）。`ModuleDataAccess` は `ModuleDataAccessAgent`（ログインユーザーの権限でレコードを読み、本体の集計 API で集計・クロス集計。ツール呼び出しごとに `new DataService(userId)` を開き、接続 `DbAccess` も渡すので `AIChat:ModuleDataAccess` の SQL タイムアウトが効く）。受け口は共通の API (`Controllers/ExtrasController.cs` → `Extras/ExtrasApiTable.cs` の `AIChatApi`)。補足文書はデザインプロジェクトの `Resources/{DocumentFolder}/*.md|*.txt`（本体の `DesignDataFileManager.GetResourceTexts` で読む）
+  - `Extras/SemanticSearchTable.cs`（Cookie）— SemanticSearchField（意味検索）のサーバー側入口 `SemanticSearchService` をプロセスに 1 つ（`SemanticSearchTable.Service`）。埋め込みプロバイダは appsettings の `SemanticSearch.EmbeddingProvider` の呼び名（`AzureOpenAI` / 独自）で対応表（`CreateEmbeddingProvider`）から選ぶ。保存時の索引付けは `CustomizedModuleDataIO`、再索引は共通の API (`ExtrasApiTable` の `SemanticSearchApi`)、AI チャットの search_records は `AIChatAgentTable` が同じインスタンスを渡す。DB 側ベクトル検索なので対象モジュールのデータソースは PostgreSQL（pgvector）か SQL Server 2025
+  - `Infrastructure/DataService.cs` — 1 リクエスト分の DB アクセス・現在ユーザー（`IAuthenticationContext`）
+  - `Controllers/` — Web API。独自の API を足すときは `ExtrasController.cs` と同じ形（`[Authorize]`・`[AutoValidateAntiforgeryToken]` を付け、`DataService` を注入する）
+  - `Jobs/`（Cookie）— ジョブ（バッチ）モード。`dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...]` で Web ホストを立てずに `IJob` を 1 つ実行して終了コードを返す（`Jobs/README.md`。Azure WebJobs / タスクスケジューラから起動。実行ユーザーは appsettings の `Jobs:UserId`）。画面のボタンからは Extras の `JobTriggerField` で起動する（クライアントは共通の API `/api/extras` へ Feature=Job → `Controllers/ExtrasController.cs` → `ExtrasApiTable` の `JobApi` がデザインの `JobName` のジョブを押したユーザーで別プロセス起動。別プロセスの起動 (親 `JobProcess`) とジョブモード (子 `JobMode`) は Extras.Server の持ち物で、テンプレにあるのはジョブの一覧と `DataService` の組み立て (`Jobs/JobRunner.cs`) だけ）
 - `LowCodeApp.Client`: Blazor WebAssembly。`Pages/LowCodePage.razor` がローコードページのホスト
 - `LowCodeApp.Client.Shared`: クライアント共通サービス（`AppInfoService`/`ModuleDataService`/`NavigationServiceBase`）。
   Web・デスクトップ・モバイルで共有。**独自フィールド型・ProCode コンポーネント・スクリプト用サービスはここに置く**
@@ -121,7 +123,7 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net10.0-windows/LowCodeApp.Des
 
 ## appsettings リファレンス（`appsettings.json` / `appsettings.Development.json`）
 
-`Program.cs` が読んで `Services/SystemConfig.cs` に入れる。**接続文字列・鍵など秘密情報は `appsettings.Development.json`（gitignore 対象）か環境変数**。
+`Program.cs` が `builder.Configuration.Bind(SystemConfig.Instance)` で `Infrastructure/SystemConfig.cs` に入れる（セクション名 = プロパティ名。設定を足すときは `SystemConfig` にプロパティを足すだけ）。**接続文字列・鍵など秘密情報は `appsettings.Development.json`（gitignore 対象）か環境変数**。
 `appsettings.json` には名前と種別だけ書く。
 
 | キー | 型 | 意味 |
@@ -140,7 +142,7 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net10.0-windows/LowCodeApp.Des
 | `Mail` | `{ DefaultInfraName, DefaultBulkInfraName, HistoryModuleName }` | メール送信の既定インフラ名（`MailSenderTable` のキー）と送信履歴モジュール |
 | `Smtp` / `GraphApi` / `Gmail` | | 送信インフラごとの設定。項目は `api --type Codeer.LowCode.Blazor.Extras.Server.Mail.SmtpSettings --assembly <同上の dll パス>` 等で確認 |
 | `AISettings` | `{ OpenAIEndPoint, OpenAIKey, ChatModel, DocumentAnalysisEndPoint, DocumentAnalysisKey }` | AI 文書解析と AI チャット（Azure OpenAI / Document Intelligence）。未使用なら空 |
-| `SemanticSearch`（Cookie） | `{ EmbeddingProvider: "" }` | 意味検索（SemanticSearchField）の埋め込みプロバイダの呼び名（`EmbeddingProviderTable` のキー）。空なら文章だけ保存され意味検索なし |
+| `SemanticSearch`（Cookie） | `{ EmbeddingProvider: "" }` | 意味検索（SemanticSearchField）の埋め込みプロバイダの呼び名（`SemanticSearchTable.CreateEmbeddingProvider` のキー）。空なら文章だけ保存され意味検索なし |
 | `AzureOpenAIEmbedding`（Cookie） | `{ EndPoint, Key, Deployment, Dimensions }` | `EmbeddingProvider: "AzureOpenAI"` のときの Azure OpenAI 埋め込みモデル。`Dimensions` は DB のベクトル列の次元と合わせる |
 | `AIChat`（Cookie） | `{ RawDataAccessDataSources: [], RawDataAccess: {…}, ModuleDataAccess: {…} }` | AI チャット（`RawDataAccessAgent`）が読むデータソース名。空なら `DataSources` の全部。**何を読めるかは DB 側で決める**: 本番は AI 用の読み取り専用 DB ユーザー（見せてよい表・列だけ GRANT）で接続するデータソースを別に用意してここに書く。`RawDataAccess` は DB の負荷の上限（Extras.Server の `RawDataAccessOptions` にそのまま束縛）: `CommandTimeoutSeconds`（SQL 1 文の秒数・30）/ `MaxQuerySecondsPerReply`（1 返事の SQL 合計秒数・0 = 無効）/ `MaxConcurrentQueries`（データソースごとの同時実行本数・0 = 無効）/ `CancelQueryAtRowLimit`（行数上限で DB のクエリを中止・true）/ `LargeTableRows`（この行数以上の表を索引の先頭列と一緒に AI に伝える・100000）。0 / false で無効。待たせる・断る種類（合計時間・同時実行）は既定で無効。`ModuleDataAccess` は `ModuleDataAccessAgent` の上限（`CommandTimeoutSeconds` / `MaxQuerySecondsPerReply` / `MaxConcurrentQueries`。既定はすべて 0 = 無効） |
 | （ログインのユーザーテーブル） | 設定なし | ユーザーモジュール（`CurrentUserModuleDesignName`）のデザインから引く: 表 = `DbTable`、ID = `IdField`、ログイン ID / 外部 IdP の突き合わせ / 有効フラグ / 表示名 = `LoginAccountContractField` の役割、ハッシュ / ソルト = 契約の照合用の列。初回起動時にユーザーが 0 件なら `admin`/`admin` を作る |
@@ -184,12 +186,12 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 | 独自フィールド型 | `LowCodeApp.Client.Shared` に 4 ファイル（`XxxFieldDesign` / `XxxFieldData` / `XxxField` / `XxxFieldComponent.razor`）。登録不要（リフレクション検出）。デザイナのプレビューに CSS を出すには `App.xaml.cs` の `BlazorRuntime.InstallBundleCss("LowCodeApp.Client.Shared")`（既に呼んでいる） |
 | 画面の一部を Blazor で書く / スクリプトの代わりに C# | `Client.Shared/Samples/ProCodeComponentSample.razor`（ProCodeField）/ `CodeBehindSample.cs`（コードビハインド。クラス名＝モジュール名）を写す |
 | スクリプトから呼べるサービス・型 | `Client.Shared/Services/AppInfoService.cs` と `Designer/App.xaml.cs` の両方で `ScriptRuntimeTypeManager.AddService / AddType` |
-| 保存・更新時の処理 | `Server/Services/CustomizedModuleDataIO.cs` の override |
-| 独自 Web API | `Server/Controllers/` に Controller を追加（`TestAPIController` が雛形）。スクリプトからは Extras の `WebApiService` で呼ぶ（`_script_catalog.md` に載る） |
-| 定期処理・一括取込（バッチ） | `Server/Jobs/` に `IJob` を実装（`SampleJob` が雛形）。`dotnet LowCodeApp.Server.dll job <Name>` で実行（`Server/Jobs/README.md`）。モジュールを扱う C# クラスはデザイナの `poco` コマンドで `Client.Shared/Generated/Modules.g.cs` に生成する（手で書かない。手順は同じ README） |
+| 保存・更新時の処理 | `Server/Infrastructure/CustomizedModuleDataIO.cs`（`PasswordHashingModuleDataIO` を継承。`AddAsync` / `BulkAddAsync` / `UpdateAsync` の override (base を呼ぶ)。コンストラクタには監査・編集履歴・意味検索のインターセプタの登録がある） |
+| 独自 Web API | `Server/Controllers/` に Controller を追加（`ExtrasController` と同じ形。`[Authorize]`・`[AutoValidateAntiforgeryToken]` を付け、`DataService` を注入する）。スクリプトからは Extras の `WebApiService` で呼ぶ（`_script_catalog.md` に載る） |
+| 定期処理・一括取込（バッチ） | `Server/Jobs/` に `IJob` を実装（完成形の例は `Server/Jobs/README.md`）。`dotnet LowCodeApp.Server.dll job <Name>` で実行（`Server/Jobs/README.md`）。モジュールを扱う C# クラスはデザイナの `poco` コマンドで `Client.Shared/Generated/Modules.g.cs` に生成する（手で書かない。手順は同じ README） |
 | ファイル保存先・メール送信の独自実装 | `IFileStorage` → `FileStorageTable`、`IMailSender` → `MailSenderTable` に 1 行 |
-| AI チャットの独自 Agent | `IAIChatAgent` を実装して `Server/AI/AIChatAgentTable.cs` に 1 行。AIChatField のデザインの `Agent` にその名前を書く |
-| 意味検索の埋め込みモデルを差し替える | `IEmbeddingProvider` を実装して `Server/AI/EmbeddingProviderTable.cs` に 1 行。appsettings の `SemanticSearch.EmbeddingProvider` にその名前を書く |
+| AI チャットの独自 Agent | `IAIChatAgent` を実装して `Server/Extras/AIChatAgentTable.cs` に 1 行。AIChatField のデザインの `Agent` にその名前を書く |
+| 意味検索の埋め込みモデルを差し替える | `IEmbeddingProvider` を実装して `Server/Extras/SemanticSearchTable.cs` の `CreateEmbeddingProvider` に 1 行。appsettings の `SemanticSearch.EmbeddingProvider` にその名前を書く |
 | デザイナのメニュー・チェック・テンプレート | `Designer/App.xaml.cs`（`DesignerEnvironment.AddMainMenu` / `AddCustomDesignCheckHandler` / `ProjectCatalog.Add`）。テンプレート・headless verb の登録は `base.OnStartup(e)` より前 |
 
 ## Claude Code が作業するときの原則

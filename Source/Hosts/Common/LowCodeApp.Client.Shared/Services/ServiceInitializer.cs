@@ -1,9 +1,7 @@
 using Codeer.LowCode.Blazor.RequestInterfaces;
 using Sotsera.Blazor.Toaster.Core.Models;
 using Codeer.LowCode.Blazor.Components.AppParts.Loading;
-using Codeer.LowCode.Blazor.Extras.Approval;
 using Codeer.LowCode.Blazor.Extras.Fields;
-using Codeer.LowCode.Blazor.Extras.Mail;
 using Codeer.LowCode.Blazor.Extras.ScriptObjects;
 using Codeer.LowCode.Blazor.Extras.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,22 +13,7 @@ namespace LowCodeApp.Client.Shared.Services
     {
         public static void AddSharedServices(this IServiceCollection services)
         {
-            //Extras の組み込みサービスが使うエンドポイント
-            MailTransport.SendMailEndPoint = "/api/mail";
-            MailTransport.BulkSearchMailEndPoint = "/api/mail/bulk_search";
-            MailTransport.PreviewMailEndPoint = "/api/mail/preview";
-            MailTransport.BulkPreviewMailEndPoint = "/api/mail/bulk_preview";
-            ApprovalTransport.EndPointBase = "/api/approval";
-            Codeer.LowCode.Blazor.Extras.ScriptObjects.Excel.ConvertPdfEndPoint = "api/excel/pdf";
-            AITextAnalyzerField.FileToModuleDataEndPoint = "/api/ai_text_analyze/file";
-            //ジョブの実行 (JobTriggerField)。サーバーの Controllers/JobController.cs
-            JobTriggerField.EndPoint = "/api/job/run";
-            //認証アプリ (TOTP) 解除ボタン (MyTotpResetButtonField)
-            TotpResetClient.StatusEndPoint = "/api/account/totp/status";
-            TotpResetClient.ResetEndPoint = "/api/account/totp/reset";
-            AITextAnalyzerField.TextToModuleDataEndPoint = "/api/ai_text_analyze/text";
-            AIChatField.EndPoint = "/api/ai_chat";
-            SemanticSearchField.EndPoint = "/api/semantic_search/reindex";
+            //Extras の機能は共通の API (/api/extras) に送るので設定不要。ここに並ぶのはファイル取込の API
             BulkFileReader.ParseFileEndPoint = "/api/module_data/parse_file";
             BulkFileTransferService.ListFileByDataEndPoint = "/api/module_data/list_file_by_data";
             BulkFileTransferService.BulkSubmitEndPoint = "/api/module_data/bulk_submit";

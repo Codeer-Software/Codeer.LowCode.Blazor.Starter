@@ -4,7 +4,7 @@
 
 ```
 dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...]
-dotnet LowCodeApp.Server.dll job Sample AppUser
+dotnet LowCodeApp.Server.dll job CloseOrders
 ```
 
 Web ホストは立てず、同じ `appsettings` と同じ `App.zip` でデザイン・接続・`ModuleDataIO` を組み立ててジョブを走らせます。
@@ -16,18 +16,27 @@ Web から保存したときと同じ処理を通ります。独自フィール�
 
 ## ジョブの足し方
 
-このフォルダに `IJob` を実装したクラスを足します（引数なしの public コンストラクタ）。登録は要りません。
+このフォルダに `IJob` を実装したクラスを足します（引数なしの public コンストラクタ）。登録は要りません。次の 1 ファイルで動きます。
 
 ```csharp
-public class CloseOrdersJob : IJob
-{
-    public string Name => "CloseOrders";
+using Codeer.LowCode.Blazor.Repository.Match;
+using LowCodeApp.Server.Infrastructure;
 
-    public async Task<string?> RunAsync(DataService data, string[] args)
+namespace LowCodeApp.Server.Jobs
+{
+    /// <summary>
+    /// 例: dotnet LowCodeApp.Server.dll job CloseOrders
+    /// </summary>
+    public class CloseOrdersJob : IJob
     {
-        var page = await data.ModuleDataIO.GetListAsync(new SearchCondition("Order"), 0);
-        //...
-        return $"{page.TotalCount} 件を処理しました";
+        public string Name => "CloseOrders";
+
+        public async Task<string?> RunAsync(DataService data, string[] args)
+        {
+            var page = await data.ModuleDataIO.GetListAsync(new SearchCondition("Order"), 0);
+            //... 締めの処理。保存も data.ModuleDataIO で行う
+            return $"{page.TotalCount} 件を締めました";
+        }
     }
 }
 ```
@@ -36,7 +45,6 @@ public class CloseOrdersJob : IJob
 - 戻り値は成功したときの文言（画面のボタンから起動したときは成功の通知に出る。`null` なら既定の文言）。標準出力の最後に 1 行で書かれる
 - `data` は Web のリクエストと同じ `DataService`。`data.ModuleDataIO` で読み書きする（`GetListAsync` / `SubmitAsync` など）。`data.DbAccess` は同じ接続、`data.Design.DesignData` は読み込んだデザイン
 - 失敗は例外を投げる。終了コードが 1 になり、例外のメッセージが標準エラー（画面のボタンから起動したときは 1 行目が画面に出る文言）、例外の全文が標準出力に出る
-- 例は `SampleJob.cs`
 - ジョブの書き込みは `data.ModuleDataIO` で行う。生 SQL では編集履歴・意味検索の索引が付かない
 
 ## 画面のボタンから起動する（JobTriggerField）
@@ -45,15 +53,15 @@ public class CloseOrdersJob : IJob
 
 ### 仕組み（どこに何があるか）
 
-- クライアント: Extras の `JobTriggerField` が `JobTriggerField.EndPoint`（`Client.Shared/Services/ServiceInitializer.cs` で `/api/job/run`）に `JobRunRequest { ModuleName, FieldName, Arguments }` を POST し、`JobRunResponse { Succeeded, Error, Started, JobId, Message }` を受け取る（どちらも `Codeer.LowCode.Blazor.Extras.Jobs`）
-- サーバー: `Controllers/JobController.cs` が、そのモジュールとフィールドに書けるユーザーか（`AuthorizationChecker.CheckFieldUserWriteAsync`。`ExecuteSqlField` の実行と同じ軸）を確かめ、**デザインの `JobTriggerField`** の `JobName` のジョブを `IsAsynchronous` に従って起動する（クライアントからジョブ名や待つかどうかは受け取らない）。`AllowsConcurrentRuns` が `false`（既定）なら、同じ名前のジョブが実行中のときは起動せず `Error`（「ジョブ 'X' は実行中です」）を返す（`JobProcess` がジョブ名で判定する。同期・非同期とも）。起動の前に DB 接続をプールへ返す（同期で子プロセスを待つ間に接続を握らない）
+- クライアント: Extras の `JobTriggerField` が共通の API（`ExtrasTransport.EndPoint` = `/api/extras`。`Controllers/ExtrasController.cs`）に `JobRunRequest { ModuleName, FieldName, Arguments }` を送り（Feature `Job` / Action `Run`）、`JobRunResponse { Succeeded, Error, Started, JobId, Message }` を受け取る（どちらも `Codeer.LowCode.Blazor.Extras.Jobs`）
+- サーバー: `Extras/ExtrasApiTable.cs` に並べた Extras.Server の `JobApi` が、そのモジュールとフィールドに書けるユーザーか（`AuthorizationChecker.CheckFieldUserWriteAsync`。`ExecuteSqlField` の実行と同じ軸）を確かめ、**デザインの `JobTriggerField`** の `JobName` のジョブを `IsAsynchronous` に従って起動する（クライアントからジョブ名や待つかどうかは受け取らない）。`AllowsConcurrentRuns` が `false`（既定）なら、同じ名前のジョブが実行中のときは起動せず `Error`（「ジョブ 'X' は実行中です」）を返す（`JobProcess` がジョブ名で判定する。同期・非同期とも）。起動の前に DB 接続をプールへ返す（同期で子プロセスを待つ間に接続を握らない）
   - `JobName` のジョブが無ければ起動せず `Succeeded = false` と `Error`（「ジョブ 'X' がありません」）を返す（同期・非同期とも）
   - 同期: 終わるまで待ち、成功なら `Succeeded = true` と `Message`（`IJob.RunAsync` の戻り値。画面の成功の通知になる）、失敗なら `Error`（例外のメッセージ）を返す
-  - 非同期: 起動したら `Started = true` と `JobId` を返す（画面は「開始しました」を通知し、フィールドの `JobId` / `JobIds` に持つ）。状態はスクリプトがフィールドの `GetJobStatus()` で問い合わせ、`GET /api/job/run/{jobId}`（`JobController.StatusAsync`）が `JobStatusResponse { Status, Message, Error }` を返す。状態の置き場は `JobProcess.Cache`（`IDistributedCache`。`Program.cs` でつないでいる。テンプレートはメモリキャッシュなのでサーバーを再起動すると消える。複数インスタンスでは Redis 等の共有キャッシュに差し替える）。終わった結果は終了から 30 分（`JobProcess.FinishedRetention`）で消え、消えた後は 404（`GetJobStatus` は null）。状態を返すのは起動したユーザーにだけ
+  - 非同期: 起動したら `Started = true` と `JobId` を返す（画面は「開始しました」を通知し、フィールドの `JobId` / `JobIds` に持つ）。状態はスクリプトがフィールドの `GetJobStatus()` で問い合わせ、共通の API（Action `Status`）が `JobStatusResponse { Status, Message, Error }` を返す。状態の置き場は `JobProcess.Cache`（`IDistributedCache`。`Program.cs` でつないでいる。テンプレートはメモリキャッシュなのでサーバーを再起動すると消える。複数インスタンスでは Redis 等の共有キャッシュに差し替える）。終わった結果は終了から 30 分（`JobProcess.FinishedRetention`）で消え、消えた後は応答なし（`GetJobStatus` は null）。状態を返すのは起動したユーザーにだけ
 - 別プロセスの起動（親）とジョブモード（子）は Codeer.LowCode.Blazor.Extras.Server の `JobProcess` と `JobMode` が対で持つ（引数の並び `job <ジョブ名> --stdin`・画面の内容は標準入力・押したユーザーの Id は環境変数 `Jobs__UserId`・終了コード・UTF-8・結果の文言の取り出し）。このテンプレートにあるのは、ジョブの一覧と `DataService` の組み立て（`Jobs/JobRunner.cs`）と、`Program.cs` の `job` の分岐だけ。約束の詳細は Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`
 - 失敗（同期・非同期とも）はサーバーのログにも出る（`Program.cs` で `JobProcess.LoggerFactory` をつないでいる。標準エラーの全文と標準出力をまとめて出す）
 - 起動する実行ファイルは `LowCodeApp.Server.dll` の隣の `LowCodeApp.Server.exe`（apphost。IIS の下や PATH に `dotnet` が無いサーバーでも動く）、無ければ `dotnet LowCodeApp.Server.dll`。変えるときは `JobProcess.HostExecutable` / `EntryDll` / `DotnetPath`
-- 手で動かすときは `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job Sample --stdin`
+- 手で動かすときは `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job CloseOrders --stdin`
 
 ### ジョブに渡る JSON
 
@@ -75,12 +83,12 @@ if (json.RootElement.TryGetProperty("data", out var current))
 }
 ```
 
-`SampleJob` は受け取った JSON の長さを要約（画面の通知に出る文言）として返すだけです。
+コマンドラインから起動したときの `args` はジョブ名の後ろの引数です。両方から起動するジョブは、`args[0]` が `{` または `[` で始まるかで見分けます。
 
 ### 制限
 
 - JSON はクライアントが作ったもの。`data.ModuleDataIO` に渡す分（`SubmitWithTransactionAsync` 等）は権限で守られるが、それ以外（ファイルのパス・SQL・外部 API の引数など）に使うならジョブで検証する
-- 子プロセスの書き込みは属性ベースの監査ログ（`[Audit]`）に載らない。記録されるのは `JobController` の呼び出し 1 件（誰が・どのモジュールのどのジョブを・成否（非同期では起動の成否））だけ。ジョブの中で何をしたかの記録はジョブ本体で行う
+- 子プロセスの書き込みは属性ベースの監査ログ（`[Audit]`）に載らない。記録されるのは `JobApi` の呼び出し 1 件（誰が・どのモジュールのどのジョブを・成否（非同期では起動の成否））だけ。ジョブの中で何をしたかの記録はジョブ本体で行う
 - 同期では画面がジョブの終わりまで待つ。途中で通信が切れると結果は分からない（ジョブは動き続けている）。長い処理は非同期に（画面を待たせず、結果はスクリプトが `GetJobStatus` で問い合わせる）
 - `AllowsConcurrentRuns` が `false` のときの実行中の判定は 1 台のサーバーの中だけ（複数台では止まらない）。複数台で排他が要るならジョブが自分で取る。非同期の状態は共有キャッシュにすれば複数台でも問い合わせられる
 - ジョブが保存するときは `data.ModuleDataIO` で（編集履歴・意味検索の索引が付く）
@@ -139,7 +147,7 @@ Web と同じ `appsettings.json` / `appsettings.<環境>.json` / 環境変数を
 |---|---|
 | `Jobs:UserId` | ジョブを実行するユーザーの Id（ユーザーモジュールの Id）。権限の条件はこのユーザーで判定される。空なら匿名（アプリにログインが要るデザインでは読み書きできない） |
 
-Visual Studio からは起動プロファイル `job`（`Properties/launchSettings.json`。引数 `job Sample AppUser`）で実行できます。
+Visual Studio からは起動プロファイル `job`（`Properties/launchSettings.json`。引数 `job`。そのままではジョブの一覧が出るので、引数にジョブ名を足して実行します）で実行できます。
 
 ## Azure WebJobs から起動する
 

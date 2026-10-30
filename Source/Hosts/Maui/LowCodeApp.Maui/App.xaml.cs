@@ -10,7 +10,7 @@ namespace LowCodeApp.Maui
         protected override Window CreateWindow(IActivationState? activationState)
             => new Window(CreateMainPage());
 
-        //NavigationPage gives the Blazor page a native title bar with the Settings item and hosts SettingsPage.
+        //NavigationPage にして、設定 (SettingsPage) を開くタイトルバーを持たせる
         public static Page CreateMainPage() => new NavigationPage(new MainPage());
     }
 }

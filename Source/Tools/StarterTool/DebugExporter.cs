@@ -65,7 +65,9 @@ namespace StarterTool
 
         //Files that belong to the framework repository's own environment (test databases, deploy targets, ports).
         //They are kept as they are in the debug copy; only the first export seeds them from the Starter defaults.
-        static readonly string[] LocalFiles = { "appsettings.json", "appsettings.Development.json", @"Properties\launchSettings.json" };
+        //Jobs\SampleJob.cs is the job the framework repository's tests run (JobModeTest / Selenium JobTrigger). The Starter has no sample job,
+        //so it is never seeded here; it is tracked in the framework repository and only kept across exports.
+        static readonly string[] LocalFiles = { "appsettings.json", "appsettings.Development.json", @"Properties\launchSettings.json", @"Jobs\SampleJob.cs" };
         static readonly string[] LocalDirs = { @"Properties\PublishProfiles", @"Properties\ServiceDependencies" };
 
         static void Export(string src, string dst)

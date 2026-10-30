@@ -103,8 +103,7 @@ namespace LowCodeApp.Client.Shared.Services
             _config ??= await _http.GetFromJsonAsync<SystemConfigForFront>($"/api/module_data/config");
             if (_config?.UseHotReload != true || _hubConnection != null) return;
 
-            //The hub lives on the server the HttpClient talks to. In the browser that is also the page origin, but in a
-            //BlazorWebView (MAUI/WPF) the page origin is a local pseudo host, so NavigationManager cannot be used here.
+            //ハブの URL は HttpClient の接続先から作る (MAUI / WPF の WebView ではページの origin がサーバーではないため)
             var hubUrl = _httpClient.BaseAddress != null
                 ? new Uri(_httpClient.BaseAddress, "hot_reload_hub")
                 : _navigationManager.ToAbsoluteUri("/hot_reload_hub");
@@ -119,8 +118,7 @@ namespace LowCodeApp.Client.Shared.Services
             }
             catch (Exception)
             {
-                //Hot reload is a development convenience; the app must still start when the hub is unreachable
-                //(e.g. a native client that cannot validate the development certificate).
+                //ホットリロードは開発用。ハブに繋がらなくてもアプリは起動させる
                 _hubConnection = null;
             }
         }

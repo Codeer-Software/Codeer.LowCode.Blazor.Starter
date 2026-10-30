@@ -5,13 +5,16 @@ using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 
 namespace LowCodeApp.WinForms.Services
 {
+    /// <summary>
+    /// appsettings の設定 (トップレベルのセクションを同じ名前のプロパティに Bind する)。設定を足すときはここにプロパティを足す。使うものだけ書けばよい。
+    /// </summary>
     public class SystemConfig
     {
         public static SystemConfig Instance { get; set; } = new();
 
         public bool UseHotReload { get; set; }
         public DataSource[] DataSources { get; set; } = [];
-        //ファイル保存先 (使うものだけ書けばよい)。実体は Services/FileStorageTable が組み立てる
+        //ファイル保存先 (実体は Extras/FileStorageTable が組み立てる)
         public FileSystemStorageSettings[] FileSystemStorages { get; set; } = [];
         public AzureBlobStorageSettings[] AzureBlobStorages { get; set; } = [];
         public S3StorageSettings[] S3Storages { get; set; } = [];

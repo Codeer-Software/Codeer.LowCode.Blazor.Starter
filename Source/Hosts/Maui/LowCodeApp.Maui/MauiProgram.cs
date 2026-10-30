@@ -24,8 +24,7 @@ namespace LowCodeApp.Maui
             builder.Services.AddSharedServices();
             builder.Services.AddScoped<INavigationService, NavigationService>();
 
-            //All HTTP traffic goes to the server URL from ServerSettings (appsettings.json default, overridable
-            //from the native SettingsPage). ServerConnection keeps the authentication cookie and the antiforgery token.
+            //HTTP は ServerSettings のサーバー URL へ (既定は appsettings.json、設定画面で変更可)。ServerConnection が認証 Cookie と antiforgery トークンを持つ
             var baseUrl = builder.Configuration["Server:BaseUrl"];
             if (string.IsNullOrEmpty(baseUrl)) throw new InvalidOperationException("Server:BaseUrl is not set in appsettings.json.");
             ServerSettings.DefaultBaseUrl = baseUrl;
@@ -41,7 +40,7 @@ namespace LowCodeApp.Maui
             return builder.Build();
         }
 
-        //appsettings.json is bundled as a MauiAsset. appsettings.Development.json (optional) overrides it.
+        //appsettings.json は MauiAsset として同梱。appsettings.Development.json があれば上書きする
         static IConfiguration LoadAppSettings()
         {
             var config = new ConfigurationBuilder();

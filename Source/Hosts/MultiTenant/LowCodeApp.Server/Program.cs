@@ -3,26 +3,18 @@ using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.Extras;
 using Codeer.LowCode.Blazor.Json;
 using Codeer.LowCode.Blazor.License;
-using Codeer.LowCode.Blazor.SystemSettings;
-using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using PdfSharp.Fonts;
-using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
 using LowCodeApp.Client.Shared.Samples;
-using LowCodeApp.Server;
 using LowCodeApp.Server.Data;
-using LowCodeApp.Server.Services;
-using Codeer.LowCode.Blazor.Extras.Server.AI;
-using Codeer.LowCode.Blazor.Extras.Server.Mail;
+using LowCodeApp.Server.Infrastructure;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
-using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
 using Microsoft.AspNetCore.SignalR;
 
-//load dll.
 typeof(CodeBehindSample).ToString();
 ApexChartsServerInitializer.Initialize();
 ExtrasServerInitializer.Initialize();
@@ -33,33 +25,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 LicenseManager.DomainLicense = builder.Configuration.GetSection("DomainLicense").Get<string>() ?? string.Empty;
 LicenseManager.IsAutoUpdate = builder.Configuration.GetSection("IsLicenseAutoUpdate").Get<bool>();
-SystemConfig.Instance.UseHotReload = builder.Configuration.GetSection("UseHotReload").Get<bool>();
-SystemConfig.Instance.CanScriptDebug = builder.Configuration.GetSection("CanScriptDebug").Get<bool>();
-SystemConfig.Instance.DataSources = builder.Configuration.GetSection("DataSources").Get<DataSource[]>() ?? [];
-//ファイル保存先の設定 (種類ごとのセクション。実体は Services/FileStorageTable が組み立てる)
-SystemConfig.Instance.FileSystemStorages = builder.Configuration.GetSection("FileSystemStorages").Get<FileSystemStorageSettings[]>() ?? [];
-SystemConfig.Instance.AzureBlobStorages = builder.Configuration.GetSection("AzureBlobStorages").Get<AzureBlobStorageSettings[]>() ?? [];
-SystemConfig.Instance.S3Storages = builder.Configuration.GetSection("S3Storages").Get<S3StorageSettings[]>() ?? [];
-SystemConfig.Instance.FileStorages = builder.Configuration.GetSection("FileStorages").Get<FileStorage[]>() ?? [];
-//Azure Blob の接続文字列は ConnectionStrings:<Name> にも置ける
+//appsettings → SystemConfig (セクション名 = プロパティ名。設定を足すときは SystemConfig にプロパティを足す。使うものだけ書けばよい)
+builder.Configuration.Bind(SystemConfig.Instance);
+//接続文字列は ConnectionStrings:<Name> に置く (Azure Blob とファイル保存先の簡易形式は設定に直接書いてもよい)
+SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 foreach (var storage in SystemConfig.Instance.AzureBlobStorages) if (string.IsNullOrEmpty(storage.ConnectionString) && string.IsNullOrEmpty(storage.BlobServiceUri)) storage.ConnectionString = builder.Configuration.GetConnectionString(storage.Name) ?? string.Empty;
 foreach (var storage in SystemConfig.Instance.FileStorages) if (string.IsNullOrEmpty(storage.ConnectionString)) storage.ConnectionString = builder.Configuration.GetConnectionString(storage.Name) ?? string.Empty;
-SystemConfig.Instance.TemporaryFileTableInfo = builder.Configuration.GetSection("TemporaryFileTableInfo").Get<TemporaryFileTableInfo[]>() ?? [];
-SystemConfig.Instance.DesignFileDirectory = builder.Configuration["DesignFileDirectory"] ?? string.Empty;
-SystemConfig.Instance.FontFileDirectory = builder.Configuration["FontFileDirectory"] ?? string.Empty;
-SystemConfig.Instance.Mail = builder.Configuration.GetSection("Mail").Get<MailConfig>() ?? new();
-//メールのプロバイダ設定はそれぞれ独立したセクション (使うものだけ書けばよい)
-SystemConfig.Instance.Smtp = builder.Configuration.GetSection("Smtp").Get<SmtpSettings>() ?? new();
-SystemConfig.Instance.GraphApi = builder.Configuration.GetSection("GraphApi").Get<GraphApiSettings>() ?? new();
-SystemConfig.Instance.SendGrid = builder.Configuration.GetSection("SendGrid").Get<SendGridSettings>() ?? new();
-SystemConfig.Instance.Gmail = builder.Configuration.GetSection("Gmail").Get<GmailSettings>() ?? new();
-SystemConfig.Instance.AISettings = builder.Configuration.GetSection("AISettings").Get<AISettings>() ?? new();
-SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
 SystemConfig.Instance.DefaultConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
 
-// Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options
@@ -67,7 +42,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     .UseSnakeCaseNamingConvention());
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// Cookie authentication.
 builder.UseCookieAuthentication();
 
 builder.Services.AddControllersWithViews();
@@ -86,9 +60,7 @@ if (SystemConfig.Instance.UseHotReload)
     builder.Services.AddHostedService(sp => new FileWatcherService(sp.GetRequiredService<IHubContext<HotReloadHub>>(), SystemConfig.Instance.DesignFileDirectory));
 }
 
-// Compress dynamic responses (e.g. the design data fetched on every reload).
-// Brotli/Gzip are decoded by the browser's native network stack, so this adds
-// no decompression cost to the WASM runtime.
+//動的な応答を圧縮する (毎回読むデザインデータなど)
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -98,37 +70,14 @@ builder.Services.AddResponseCompression(options =>
         .Concat(["application/octet-stream"]);
 });
 
-//Localize
-builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
-builder.Services.Configure<RequestLocalizationOptions>(options =>
-{
-    var supportedCultures = new[]
-    {
-        new CultureInfo("ja-JP")
-    };
-    //set neutral as default
-    options.DefaultRequestCulture = new RequestCulture(string.Empty);
-    options.SupportedCultures = supportedCultures;
-    options.SupportedUICultures = supportedCultures;
-
-    options.RequestCultureProviders.Add(new CustomRequestCultureProvider(async context =>
-    {
-        //localization by the request header
-        var userLanguages = context.Request.Headers["Accept-Language"].ToString();
-        var firstLanguage = userLanguages.Split(',').FirstOrDefault();
-        if (firstLanguage == "ja") firstLanguage = "ja-JP";
-
-        return await Task.FromResult(new ProviderCultureResult(firstLanguage));
-    }));
-});
+//画面の言語 (ブラウザの Accept-Language で日本語 / 英語)
+builder.Services.AddLowCodeLocalization();
 
 builder.Services.AddScoped<DataService>();
 
 var app = builder.Build();
 
-//SQL debug log: dump executed SQL and parameters (enable via appsettings.Development.json or the SqlLog app setting).
-//ILogger output reaches the local console, Azure App Service Log Stream and Application Insights
-//(raw Console.WriteLine is discarded on Windows App Service).
+//SQL のデバッグログ (実行した SQL とパラメータ)。appsettings の SqlLog で有効化
 if (builder.Configuration.GetSection("SqlLog").Get<bool>())
 {
     var sqlLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SqlLog");
@@ -138,7 +87,6 @@ if (builder.Configuration.GetSection("SqlLog").Get<bool>())
 app.UseResponseCompression();
 app.UseRequestLocalization();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
@@ -146,7 +94,6 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -154,8 +101,7 @@ app.UseHttpsRedirection();
 
 app.UseBlazorFrameworkFiles();
 
-// Always revalidate .html entry pages so a deployed update takes effect
-// immediately instead of being served stale from the browser cache.
+//.html は常に再検証させる (配置した更新がブラウザキャッシュで古いまま見えないように)
 var htmlNoCache = new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
@@ -168,8 +114,7 @@ var htmlNoCache = new StaticFileOptions
 };
 app.UseStaticFiles(htmlNoCache);
 
-// API responses are never served from the browser cache unless the action set its own
-// Cache-Control (FileWithETag uses no-cache + ETag so downloads can still be revalidated).
+//API の応答はブラウザキャッシュしない (アクションが自分で Cache-Control を付けたときを除く)
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/api"))
@@ -193,14 +138,12 @@ if (SystemConfig.Instance.UseHotReload)
     app.MapHub<HotReloadHub>("/hot_reload_hub");
 }
 
-// Cookie authentication.
 app.UseCookieAuthentication();
 
 app.MapRazorPages();
 app.MapControllers();
 app.MapFallbackToFile("index.html", htmlNoCache);
 
-// Exception handling.
 app.UseExceptionHandlerSendToFront();
 
 app.Run();

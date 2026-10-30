@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using Codeer.LowCode.Blazor.Extras.Fields;
 using Codeer.LowCode.Blazor.Extras.Services;
+using LowCodeApp.Wpf.Extras;
 
 namespace LowCodeApp.Wpf.Services
 {
@@ -12,8 +13,8 @@ namespace LowCodeApp.Wpf.Services
     {
         public static void AddSharedServices(this IServiceCollection services)
         {
-            //デスクトップはフック(Excel.ConvertPdf / MailTransport.Handler / AITextAnalyzerField.XxxCoreAsync)で
-            //ローカル処理するためエンドポイント(static プロパティ)は未設定
+            //デスクトップはサーバーを介さずローカルで処理する (Excel.ConvertPdf / MailTransport.Handler / AITextAnalyzerField のフック)
+            Codeer.LowCode.Blazor.Extras.Api.ExtrasTransport.EndPoint = string.Empty;
             services.AddScoped<IAppInfoService, AppInfoService>();
             services.AddScoped<IModuleDataService, ModuleDataService>();
             services.AddScoped<IUIService, UIService>();

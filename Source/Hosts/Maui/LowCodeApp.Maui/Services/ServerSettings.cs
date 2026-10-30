@@ -1,14 +1,13 @@
 namespace LowCodeApp.Maui.Services
 {
     /// <summary>
-    /// Server URL setting. Stored with MAUI Preferences (plain app storage, outside Blazor) so it can be
-    /// changed from the native SettingsPage. The default comes from appsettings.json.
+    /// サーバー URL の設定。MAUI の Preferences に保存し、設定画面 (SettingsPage) から変えられる。既定は appsettings.json。
     /// </summary>
     public static class ServerSettings
     {
         const string BaseUrlKey = "Server.BaseUrl";
 
-        /// <summary>Set once at startup from appsettings.json (Server:BaseUrl).</summary>
+        /// <summary>起動時に appsettings.json (Server:BaseUrl) から設定する。</summary>
         public static string DefaultBaseUrl { get; set; } = string.Empty;
 
         /// <summary>

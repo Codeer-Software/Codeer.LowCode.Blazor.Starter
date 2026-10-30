@@ -1,3 +1,4 @@
+using LowCodeApp.Server.Extras;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.Repository.Data;
 using Codeer.LowCode.Blazor.Repository.Match;
@@ -8,7 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using LowCodeApp.Client.Shared.Services;
-using LowCodeApp.Server.Services;
+using LowCodeApp.Server.Infrastructure;
 using Codeer.LowCode.Blazor.Extras.Server.BulkFile;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
@@ -87,8 +88,7 @@ namespace LowCodeApp.Server.Controllers
             return await BulkFileTransfer.SubmitByFileAsync(DesignerService.GetDesignData(_dataService.TenantKey), _dataService.ModuleDataIO, moduleName, Request.Body);
         }
 
-        //スクリプトの一括ファイル出力 (BulkFileTransferService.Download(List<Module>)) 用。
-        //クライアントで加工済みのモジュールデータ列をそのままファイル化する
+        //スクリプトの一括ファイル出力 (BulkFileTransferService.Download) 用
         [HttpPost("list_file_by_data")]
         public async Task<IActionResult> GetListFileByDataAsync(string? moduleName)
         {
@@ -96,8 +96,7 @@ namespace LowCodeApp.Server.Controllers
             return Ok(await BulkFileTransfer.GetListFileByDataAsync(DesignerService.GetDesignData(_dataService.TenantKey), _dataService.ModuleDataIO, moduleName, Request.Body));
         }
 
-        //スクリプトの一括保存 (BulkFileTransferService.Submit(List<Module>)) 用。
-        //クライアントで加工済みのモジュールデータ列を一括保存する (ファイル取込と同じ追加/更新判定の経路)
+        //スクリプトの一括保存 (BulkFileTransferService.Submit) 用
         [HttpPost("bulk_submit")]
         public async Task<IActionResult> BulkSubmitAsync(string? moduleName)
         {
@@ -105,7 +104,7 @@ namespace LowCodeApp.Server.Controllers
             return Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
         }
 
-        //スクリプトの一括ファイル取込 (BulkFileReader) 用。ファイルを解析してモジュールデータ列を返す (DB には書き込まない)
+        //スクリプトの一括ファイル取込 (BulkFileReader) 用。DB には書き込まない
         [HttpPost("parse_file")]
         public async Task<IActionResult> ParseFileAsync(string? moduleName)
         {
@@ -123,7 +122,7 @@ namespace LowCodeApp.Server.Controllers
             return mem == null ? Ok() : this.FileWithETag(mem.ToArray(), "application/octet-stream");
         }
 
-        //FileField の動画再生 (<video>) もここを読む。ストレージから読みながら Range 要求に応じて返す (全部をメモリに置かない)
+        //FileField の動画再生 (<video>) もここを読む (Range 要求に対応)
         [HttpGet("download")]
         public async Task<IActionResult> DownloadFileAsync(string? moduleName, string? id, string? fieldName)
         {

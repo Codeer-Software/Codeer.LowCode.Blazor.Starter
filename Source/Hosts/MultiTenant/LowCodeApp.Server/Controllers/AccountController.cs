@@ -8,7 +8,7 @@ using Codeer.LowCode.Blazor.Utils;
 using Microsoft.AspNetCore.Authorization;
 using LowCodeApp.Client;
 using Codeer.LowCode.Blazor;
-using LowCodeApp.Server.Services;
+using LowCodeApp.Server.Infrastructure;
 
 namespace LowCodeApp.Server.Controllers
 {
@@ -35,8 +35,7 @@ namespace LowCodeApp.Server.Controllers
         public async Task<StringWrapper> GetCurrentUserAsync()
             => new((await DataService.GetCurrentUserInfoAsync(HttpContext, _context)).UserId);
 
-        //Sole issuer of the antiforgery token cookie. login.html fetches this before
-        //every login attempt, and the WASM client fetches it at startup.
+        //antiforgery トークンの Cookie を発行する (login.html とアプリの起動時に取る)
         [HttpGet("antiforgery")]
         public IActionResult Antiforgery()
         {
@@ -52,7 +51,7 @@ namespace LowCodeApp.Server.Controllers
             var user = await _userManager.FindByNameAsync(loginInfo.Id ?? string.Empty);
             if (user == null) return Unauthorized();
 
-            //Brute-force protection: ASP.NET Identity locks the user out after repeated failures (IdentityOptions.Lockout, default 5 failures / 5 minutes; concurrent failures may be under-counted)
+            //総当たり対策: ASP.NET Identity のロックアウト (IdentityOptions.Lockout。既定は 5 回失敗で 5 分)
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginInfo.Password ?? string.Empty, lockoutOnFailure: true);
             if (result.IsLockedOut) return StatusCode(StatusCodes.Status429TooManyRequests);
             if (result.Succeeded)
