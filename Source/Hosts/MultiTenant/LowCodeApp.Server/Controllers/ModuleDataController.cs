@@ -55,15 +55,10 @@ namespace LowCodeApp.Server.Controllers
         }
 
         [HttpPost]
-        public async Task<List<ModuleSubmitResult>> SubmitAsync()
+        public async Task<List<ModuleSubmitResult>> SubmitAsync(List<ModuleSubmitData> data)
         {
             await _dataService.InitializeAsync();
-            //FileFieldのDB列格納モードでファイル実体(byte[])を運ぶため、listの応答と同様にMessagePackで受ける
-            using var memory = new MemoryStream();
-            await Request.Body.CopyToAsync(memory);
-            memory.Position = 0;
-            var data = MessagePackSerializer.Typeless.Deserialize(memory) as List<ModuleSubmitData>;
-            return await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data!);
+            return await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data);
         }
 
         [HttpPost("aggregate")]
