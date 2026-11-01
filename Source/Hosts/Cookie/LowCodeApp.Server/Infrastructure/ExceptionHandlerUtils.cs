@@ -7,7 +7,7 @@ namespace LowCodeApp.Server.Infrastructure
 {
     /// <summary>
     /// 例外を利用者に返すときの方針。本体の例外 (LowCodeException。検証・楽観ロック・権限などの利用者向けの文言) はそのまま、
-    /// それ以外 (DB の例外など。表名や値を含む) は開発時だけ原文、本番は固定の文言 + リクエスト Id (原文はログで引く)。
+    /// 一意制約違反は利用者向けの文言に、それ以外 (DB の例外など。表名や値を含む) は開発時だけ原文、本番は固定の文言 + リクエスト Id (原文はログで引く)。
     /// </summary>
     public static class ExceptionHandlerUtils
     {
@@ -31,7 +31,7 @@ namespace LowCodeApp.Server.Infrastructure
         public static List<ModuleSubmitResult> ToClientMessage(this List<ModuleSubmitResult> results, HttpContext context)
         {
             var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(ExceptionHandlerUtils));
-            foreach (var ex in results.Select(e => e.Exception).OfType<Exception>().Distinct().Where(e => e is not LowCodeException))
+            foreach (var ex in results.Select(e => e.Exception).OfType<Exception>().Distinct().Where(e => !IsUserFacing(e)))
             {
                 logger.LogError(ex, "Submit failed. TraceIdentifier={TraceIdentifier}", context.TraceIdentifier);
             }
@@ -42,9 +42,13 @@ namespace LowCodeApp.Server.Infrastructure
             return results;
         }
 
+        //利用者の操作で普通に起きる失敗 (ログに残すものではない)
+        static bool IsUserFacing(Exception ex) => ex is LowCodeException || DbErrors.IsUniqueViolation(ex);
+
         static string ToClientMessage(Exception ex, HttpContext context)
         {
             if (ex is LowCodeException) return ex.Message;
+            if (DbErrors.IsUniqueViolation(ex)) return "同じ値のデータが既にあります。";
             if (context.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment()) return ex.GetMessages();
             return $"サーバーでエラーが発生しました。(Id: {context.TraceIdentifier})";
         }
