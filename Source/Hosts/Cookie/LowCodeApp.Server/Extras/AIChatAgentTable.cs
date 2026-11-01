@@ -11,9 +11,8 @@ namespace LowCodeApp.Server.Extras
 {
     /// <summary>
     /// AIChatField の Agent 名 → Agent の対応表。独自の Agent (<see cref="IAIChatAgent"/> 実装) を足すときは switch に 1 行足す。
+    /// "" / "RawDataAccess" = RawDataAccessAgent (アプリの DB を読んで答える。AISettings が設定されているときだけ使える)
     /// "ModuleDataAccess" = ModuleDataAccessAgent (ログインユーザーの権限でレコードを読んで答える。行の条件・項目の読み取り権限が画面と同じに効く)
-    /// "RawDataAccess" = RawDataAccessAgent (DB を SQL で直接読んで答える。appsettings の AIChat:RawDataAccessDataSources を書いたときだけ使える)
-    /// どちらも AISettings が設定されているときだけ使える
     /// </summary>
     public static class AIChatAgentTable
     {
@@ -28,21 +27,23 @@ namespace LowCodeApp.Server.Extras
 
         static IAIChatAgent? CreateCore(string name) => name switch
         {
-            "ModuleDataAccess" => CreateModuleDataAccess(),
+            "" => CreateRawDataAccess(),
             "RawDataAccess" => CreateRawDataAccess(),
+            "ModuleDataAccess" => CreateModuleDataAccess(),
             _ => null,
         };
 
-        //読むデータソースは appsettings の AIChat:RawDataAccessDataSources (空なら使えない)
+        //読むデータソースは appsettings の AIChat:RawDataAccessDataSources (空なら DataSources の全部)
         static IAIChatAgent? CreateRawDataAccess()
         {
             var config = SystemConfig.Instance;
-            if (config.AIChat.RawDataAccessDataSources.Length == 0) return null;
             //別のプロバイダ (OpenAI / Ollama 等) を使うなら IChatClient をここで作って渡す
             var chatClientFactory = AzureOpenAIClients.ChatClientFactory(config.AISettings);
             if (chatClientFactory == null) return null;
             var options = config.AIChat.RawDataAccess;
-            options.DataSourceNames = config.AIChat.RawDataAccessDataSources.ToList();
+            options.DataSourceNames = config.AIChat.RawDataAccessDataSources.Length == 0
+                ? config.DataSources.Select(e => e.Name).ToList()
+                : config.AIChat.RawDataAccessDataSources.ToList();
             return new RawDataAccessAgent(
                 chatClientFactory,
                 () => new DbAccessor(config.DataSources),

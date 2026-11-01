@@ -66,7 +66,6 @@ Entra ID / Google / AWS Cognito / 汎用 OIDC でのログインは `appsettings
 4. デザインプロジェクトを作ります。`LowCodeApp.Designer` を起動してテンプレートを選ぶか、GUI なしなら
    `LowCodeApp.Designer.exe template-create --name Empty --out-dir DesignProjects\<名前>\design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir <DesignFileDirectory>`（テンプレート一覧は `template-list`。サンプル集は `PatternShowcase`）。
    そのあとサーバーを起動します。`Source/Hosts/Maui/` は先に `Cookie` サーバーを起動し、アプリからその URL を指定します。
-5. 初回起動でユーザーが 0 件なら `admin` / `admin` が作られます。公開する前に AppUser 画面で admin のパスワードを変えるか、別の管理者を作って admin を消してください。
 
 リネーム: ソリューションとプロジェクトの名前は `LowCodeApp` です。ファイル名・フォルダ名・ファイル内容（名前空間、`x:Class`、`*.styles.css` のリンク）の
 `LowCodeApp` を一括置換すればリネームできます。
