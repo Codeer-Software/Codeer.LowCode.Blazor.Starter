@@ -61,7 +61,7 @@ namespace LowCodeApp.Server.Controllers
 
         [HttpPost, Audit(AuditCategory.DataWrite)]
         public async Task<List<ModuleSubmitResult>> SubmitAsync(List<ModuleSubmitData> data)
-            => await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data);
+            => (await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data)).ToClientMessage(HttpContext);
 
         [HttpPost("aggregate"), Audit(AuditCategory.DataRead)]
         public async Task<IActionResult> AggregateAsync(List<AggregateCondition> conditions)
@@ -89,7 +89,7 @@ namespace LowCodeApp.Server.Controllers
             var results = await BulkFileTransfer.SubmitByFileAsync(_dataService.Design.DesignData, _dataService.ModuleDataIO, moduleName, Request.Body);
             var error = results.FirstOrDefault(e => !string.IsNullOrEmpty(e.ExceptionMessage))?.ExceptionMessage;
             if (error != null) _audit.Fail(error);
-            return results;
+            return results.ToClientMessage(HttpContext);
         }
 
         //スクリプトの一括ファイル出力 (BulkFileTransferService.Download) 用
@@ -102,8 +102,8 @@ namespace LowCodeApp.Server.Controllers
 
         //スクリプトの一括保存 (BulkFileTransferService.Submit) 用
         [HttpPost("bulk_submit"), Audit(AuditCategory.DataWrite)]
-        public async Task<IActionResult> BulkSubmitAsync(string? moduleName)
-            => Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
+        public async Task<List<ModuleSubmitResult>> BulkSubmitAsync(string? moduleName)
+            => (await BulkFileTransfer.SubmitByDataAsync(_dataService.ModuleDataIO, moduleName, Request.Body)).ToClientMessage(HttpContext);
 
         //スクリプトの一括ファイル取込 (BulkFileReader) 用。DB には書き込まない
         [HttpPost("parse_file")]
