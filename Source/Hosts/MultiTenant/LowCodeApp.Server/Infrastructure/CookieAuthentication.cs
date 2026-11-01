@@ -50,6 +50,7 @@ namespace LowCodeApp.Server.Infrastructure
                 var dbContext = services.GetRequiredService<ApplicationDbContext>();
                 var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
+                //ユーザーが 0 件なら admin を作る。公開する前にパスワードを変えるか、別の管理者を作って admin を消す
                 if (!dbContext.Users.Any())
                 {
                     userManager.CreateAsync(new ApplicationUser

@@ -65,6 +65,7 @@ namespace LowCodeApp.Server.Infrastructure
         }
 
         //ユーザーが 0 件なら admin / admin を作る (表・列はユーザーモジュールのデザインから。パスワードログインがある構成だけ)。
+        //公開する前に admin のパスワードを変えるか、別の管理者を作って admin を消す
         static async Task CreateInitialUserAsync(WebApplication app)
         {
             await using var dbAccessor = new DbAccessor(SystemConfig.Instance.DataSources);

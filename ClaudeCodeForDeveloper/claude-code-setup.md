@@ -284,7 +284,7 @@ Start-Process -FilePath "<DESIGNER_EXE>" -ArgumentList @("<ROOT>\DesignProjects\
 （PowerShell 5.1 には `-SkipCertificateCheck` が無い。その場合は `http://localhost:<httpポート>` で確認する）。
 ブラウザが開かなければ `Start-Process "<URL>"` で開く。
 
-- ログイン画面が出る。`admin` / `admin`。ログイン後はホームと「AppUser」（ユーザー管理）だけの空のアプリ
+- ログイン画面が出る。`admin` / `admin`（初回起動でユーザーが 0 件のとき作られる初期ユーザー）。ログイン後はホームと「AppUser」（ユーザー管理）だけの空のアプリ
 - デザイナ右上に「トライアル」と表示されるのは正常（ライセンス登録は不要。試用できる）
 
 **起動がうまくいかないときはユーザーにやってもらってよい**: 「Visual Studio で `Source\Hosts\Cookie\LowCodeApp.sln` を開き、
@@ -305,7 +305,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 
 以下を短く伝える（この文書の URL や内部手順は説明しない）:
 
-- アプリの URL（`<URL>`）とログイン情報（`admin` / `admin`）
+- アプリの URL（`<URL>`）とログイン情報（`admin` / `admin`）。公開する前に AppUser 画面で admin のパスワードを変えること
 - デザインプロジェクトの場所（`<ROOT>\DesignProjects\Project\design`）と、今はログインとユーザー管理だけの空の状態であること。デザイナで編集 → メニューの「ファイル > デプロイ」（Ctrl+F5）でサーバーに反映されること（サーバーの再起動は不要。スクリプトを変えたときだけ再起動）
 - **次にできること**: 「Claude Code を再起動して、作りたいアプリの内容を教えてください。例:『商品マスタと受注入力の画面を作って』。デザインだけを扱うなら `DesignProjects\Project` フォルダで起動するとホストのソースが視界に入らず身軽です」
 - デザインプロジェクトのフォルダ名は `Project`。変えたければフォルダをリネームすればよい（`launch.json` の Designer 構成のパスも合わせる）こと

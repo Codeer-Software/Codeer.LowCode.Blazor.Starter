@@ -199,7 +199,6 @@
   function hideError() {
     el("ErrorMessage").style.display = "none";
   }
-  //open redirect 防止でアプリ内相対パスのみ。"/\\" はブラウザが "//" と読むので外部サイトになる・制御文字は不可
   function sanitizeReturnUrl(u) {
     if (!u || !u.startsWith("/") || u.startsWith("//") || u.startsWith("/\\")) return "/";
     if (/[\x00-\x1f\x7f]/.test(u)) return "/";
