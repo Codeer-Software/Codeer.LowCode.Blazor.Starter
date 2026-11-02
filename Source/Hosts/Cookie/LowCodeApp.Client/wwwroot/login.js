@@ -200,7 +200,8 @@
     el("ErrorMessage").style.display = "none";
   }
   function sanitizeReturnUrl(u) {
-    if (!u || !u.startsWith("/") || u.startsWith("//")) return "/";
+    if (!u || !u.startsWith("/") || u.startsWith("//") || u.startsWith("/\\")) return "/";
+    if (/[\x00-\x1f\x7f]/.test(u)) return "/";
     return u;
   }
 })();

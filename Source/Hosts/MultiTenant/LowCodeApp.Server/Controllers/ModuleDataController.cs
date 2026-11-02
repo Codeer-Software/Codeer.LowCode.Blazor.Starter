@@ -55,15 +55,10 @@ namespace LowCodeApp.Server.Controllers
         }
 
         [HttpPost]
-        public async Task<List<ModuleSubmitResult>> SubmitAsync()
+        public async Task<List<ModuleSubmitResult>> SubmitAsync(List<ModuleSubmitData> data)
         {
             await _dataService.InitializeAsync();
-            //FileFieldのDB列格納モードでファイル実体(byte[])を運ぶため、listの応答と同様にMessagePackで受ける
-            using var memory = new MemoryStream();
-            await Request.Body.CopyToAsync(memory);
-            memory.Position = 0;
-            var data = MessagePackSerializer.Typeless.Deserialize(memory) as List<ModuleSubmitData>;
-            return await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data!);
+            return (await _dataService.ModuleDataIO.SubmitWithTransactionAsync(data)).ToClientMessage(HttpContext);
         }
 
         [HttpPost("aggregate")]
@@ -85,7 +80,7 @@ namespace LowCodeApp.Server.Controllers
         public async Task<List<ModuleSubmitResult>> SubmitByFileAsync(string? moduleName)
         {
             await _dataService.InitializeAsync();
-            return await BulkFileTransfer.SubmitByFileAsync(DesignerService.GetDesignData(_dataService.TenantKey), _dataService.ModuleDataIO, moduleName, Request.Body);
+            return (await BulkFileTransfer.SubmitByFileAsync(DesignerService.GetDesignData(_dataService.TenantKey), _dataService.ModuleDataIO, moduleName, Request)).ToClientMessage(HttpContext);
         }
 
         //スクリプトの一括ファイル出力 (BulkFileTransferService.Download) 用
@@ -98,10 +93,10 @@ namespace LowCodeApp.Server.Controllers
 
         //スクリプトの一括保存 (BulkFileTransferService.Submit) 用
         [HttpPost("bulk_submit")]
-        public async Task<IActionResult> BulkSubmitAsync(string? moduleName)
+        public async Task<List<ModuleSubmitResult>> BulkSubmitAsync(string? moduleName)
         {
             await _dataService.InitializeAsync();
-            return Content(await BulkFileTransfer.BulkSubmitAsync(_dataService.ModuleDataIO, moduleName, Request.Body), "application/json");
+            return (await BulkFileTransfer.SubmitByDataAsync(_dataService.ModuleDataIO, moduleName, Request.Body)).ToClientMessage(HttpContext);
         }
 
         //スクリプトの一括ファイル取込 (BulkFileReader) 用。DB には書き込まない
