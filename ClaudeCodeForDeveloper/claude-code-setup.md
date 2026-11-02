@@ -20,6 +20,7 @@ AI の動作は決定的ではなく、ソフトウェアのインストール�
 - ユーザーへの応答はユーザーの言語で（日本語で話しかけられたら日本語）
 - **Windows 専用。** macOS / Linux では「デザイナが Windows 専用のため、このセットアップは Windows で行ってください」と伝えて終了する
 - 作業フォルダの外（`C:\` 直下や他のプロジェクト）には何も作らない
+- Claude Code はターミナル・デスクトップアプリ（Code タブ）・VS Code の拡張のどれで動いていてもよい。ユーザーに「〇〇で Claude Code を起動する」「再起動する」と伝えるときは、ターミナルなら「そのフォルダで `claude`（再起動は `/exit` して再度 `claude`）」、デスクトップアプリと VS Code なら「そのフォルダを選んで（開いて）新しいセッションを始める」の意味。どれを使っているか分からなければ両方の言い方を 1 行ずつ添える
 
 ### 聞いてよいこと（この 1 つだけ・既定値を提示して Yes/No で答えられる形で）
 
@@ -58,7 +59,7 @@ winget install --id Microsoft.VisualStudioCode -e --accept-source-agreements --a
 ```
 
 - インストール後は **PATH がこのシェルに反映されない**ことがある。`dotnet` が見つからなければ新しい PowerShell を起こす代わりに
-  `$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")` を実行してから再確認する
+  `$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")` を実行してから再確認する。それでも見つからなければ、ユーザーに Claude Code を一度終了して開き直してもらい（デスクトップアプリ・VS Code はアプリごと。開き直すまで新しい PATH が渡らない）、続きから再開する
 - **winget が無い環境**（`winget` コマンド自体が見つからない）では .NET SDK を公式スクリプトで入れる（管理者権限不要）:
   ```powershell
   Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile "$env:TEMP\dotnet-install.ps1"
@@ -158,7 +159,7 @@ Get-Content "<ROOT>\Local\developer-workspace.json"
 パッケージを更新したときは同じコマンドで作り直す。判定: JSON に `"error"` が無く `written` に `HostCustomization.md` が含まれる。
 
 > `.claude/settings.local.json` は **Claude Code が次のセッションから読む**。今のセッションでは反映されないので、完了メッセージで
-> 「一度 Claude Code を再起動（`/exit` して再度 `claude`）すると、デザイナのコマンドが許可済みになります」と伝える。
+> 「一度 Claude Code を再起動（ターミナルなら `/exit` して再度 `claude`、デスクトップアプリ・VS Code なら新しいセッションを始める）すると、デザイナのコマンドが許可済みになります」と伝える。
 
 ## Step 6. デザインプロジェクトをテンプレートから作る
 

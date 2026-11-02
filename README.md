@@ -5,7 +5,7 @@
 
 ## いちばん早い始め方: Claude Code に全部やらせる
 
-空のフォルダで [Claude Code](https://claude.com/claude-code) を起動し、こう伝えます:
+空のフォルダで [Claude Code](https://claude.com/claude-code) を起動し、こう伝えます（ターミナル・デスクトップアプリ・VS Code の拡張のどれでも構いません。デスクトップアプリと VS Code では、そのフォルダを選んで新しいセッションを始めます）:
 
 > このURLを見て指示に従って https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter
 
