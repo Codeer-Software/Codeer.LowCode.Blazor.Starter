@@ -12,7 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LowCodeApp.Client\LowCodeApp.Client.csproj" />
-    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.2.3" />
+    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.2.4" />
     <!-- Overrides vulnerable versions that the referenced packages pull in transitively. -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
   </ItemGroup>

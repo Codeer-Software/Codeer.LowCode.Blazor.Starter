@@ -34,7 +34,7 @@ namespace LowCodeApp.Server.Infrastructure
                     transferDesignData = _transferDataDictionary[tenantKey];
                     return;
                 }
-                DbAccessor.ClearTableDefinitionCache();
+                DbAccessor.ClearTableDefinitionCache(tenantKey);
                 transferDesignData = designData.CreateTransferDesignData();
                _transferDataDictionary[tenantKey] = transferDesignData;
             }
