@@ -23,7 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Common\LowCodeApp.Client.Shared\LowCodeApp.Client.Shared.csproj" />
-    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.2.3" />
+    <PackageReference Include="Codeer.LowCode.Blazor.DbAccess" Version="0.2.4" />
     <!-- Overrides vulnerable versions that the referenced packages pull in transitively. -->
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.13" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
@@ -34,4 +34,4 @@
       <Reference Remove="@(Reference)" Condition="'%(Filename)' == 'Microsoft.Web.WebView2.Wpf'" />
     </ItemGroup>
   </Target>
-</Project>
+</Project>
