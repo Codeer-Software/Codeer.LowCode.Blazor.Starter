@@ -51,10 +51,26 @@ namespace LowCodeApp.Client.Shared.Services
             return (MemoryStream)await result.Content.ReadAsStreamAsync();
         }
 
+        //レコードのコピー (CopyModule) の添付: サーバーで実体を複製した新しい一時ファイルを受け取る
+        public async Task<Codeer.LowCode.Blazor.DataIO.FileInfo?> CopyFile(string moduleName, string fieldName, string id)
+            => await _http.PostContentAsJsonAsync<Codeer.LowCode.Blazor.DataIO.FileInfo>($"/api/module_data/copy_file?moduleName={Uri.EscapeDataString(moduleName)}&fieldName={Uri.EscapeDataString(fieldName)}&id={Uri.EscapeDataString(id)}", null);
+
         //ブラウザが直接読む URL (FileField の動画再生とダウンロードのリンク)。<base href> 相対で返す。MAUI / WPF の WebView は要素の要求に認証が付かないので null
         public string? GetFileUrl(string moduleName, string fieldName, string id)
             => OperatingSystem.IsBrowser()
                 ? $"api/module_data/download?moduleName={Uri.EscapeDataString(moduleName)}&fieldName={Uri.EscapeDataString(fieldName)}&id={Uri.EscapeDataString(id)}"
+                : null;
+
+        public async Task<MemoryStream?> DownloadTemporaryFile(string moduleName, string fieldName, Guid guid, string? fileName)
+        {
+            var result = await _http.GetAsync($"/api/module_data/download_temporary?moduleName={Uri.EscapeDataString(moduleName)}&fieldName={Uri.EscapeDataString(fieldName)}&guid={guid}&fileName={Uri.EscapeDataString(fileName ?? string.Empty)}", false);
+            if (result == null) return null;
+            return (MemoryStream)await result.Content.ReadAsStreamAsync();
+        }
+
+        public string? GetTemporaryFileUrl(string moduleName, string fieldName, Guid guid, string? fileName)
+            => OperatingSystem.IsBrowser()
+                ? $"api/module_data/download_temporary?moduleName={Uri.EscapeDataString(moduleName)}&fieldName={Uri.EscapeDataString(fieldName)}&guid={guid}&fileName={Uri.EscapeDataString(fileName ?? string.Empty)}"
                 : null;
 
         public async Task<MemoryStream?> GetListFileAsync(SearchCondition condition)

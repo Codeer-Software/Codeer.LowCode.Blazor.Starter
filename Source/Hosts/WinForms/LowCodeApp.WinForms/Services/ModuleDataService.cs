@@ -44,6 +44,10 @@ namespace LowCodeApp.WinForms.Services
                 }
             }, null);
 
+        //レコードのコピー (CopyModule) の添付: 元の行の添付をダウンロードと同じ権限で読み、実体を複製した新しい一時ファイルにする
+        public async Task<Codeer.LowCode.Blazor.DataIO.FileInfo?> CopyFile(string moduleName, string fieldName, string id)
+            => await CheckoutException(async dataIO => await dataIO.FileFieldDataIO.CopyFileAsync(moduleName ?? string.Empty, id ?? string.Empty, fieldName ?? string.Empty), null);
+
         public async Task<MemoryStream?> DownloadFile(string moduleName, string fieldName, string id)
         {
             MemoryStream? mem = null;
@@ -57,6 +61,33 @@ namespace LowCodeApp.WinForms.Services
                     var moduleDataIO = new CustomizedModuleDataIO(AppDesign.Store.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
 
                     var location = moduleDataIO.FileFieldDataIO.GetFileLocation(moduleName!, id!, fieldName!).Result;
+                    moduleDataIO.DbAccess.ClearAsync().AsTask().Wait();
+                    mem = StorageAccess.ReadFileAsync(FileStorageTable.Storages, location).Result;
+                }
+                catch (Exception e)
+                {
+                    exp = e;
+                }
+            });
+            thread.Start();
+            while (thread.IsAlive) Application.DoEvents();
+            if (exp != null) await _logger.Error(exp.Message);
+            return mem;
+        }
+
+        public async Task<MemoryStream?> DownloadTemporaryFile(string moduleName, string fieldName, Guid guid, string? fileName)
+        {
+            MemoryStream? mem = null;
+            Exception? exp = null;
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    using var dbAccess = new DbAccessor(SystemConfig.Instance.DataSources);
+                    var temporaryFileManager = new TemporaryFileManager(dbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
+                    var moduleDataIO = new CustomizedModuleDataIO(AppDesign.Store.GetDesignData(), new AuthenticationContext(), dbAccess, temporaryFileManager);
+
+                    var location = moduleDataIO.FileFieldDataIO.GetTemporaryFileLocation(moduleName, fieldName, guid, fileName).Result;
                     moduleDataIO.DbAccess.ClearAsync().AsTask().Wait();
                     mem = StorageAccess.ReadFileAsync(FileStorageTable.Storages, location).Result;
                 }
