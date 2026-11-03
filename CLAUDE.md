@@ -134,7 +134,7 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net10.0-windows/LowCodeApp.Des
 | `FontFileDirectory` | string | PDF 出力用フォント。`Local/Font` に Noto Sans JP（`NotoSansJP.ttf` = 通常 / `NotoSansJP#b.ttf` = 太字。SIL Open Font License、`OFL.txt` 同梱）が入っている。他のフォントを足すときも `<名前>.ttf` / `<名前>#b.ttf` の組で置く |
 | `FileSystemStorages[]` | `{ Name, Directory }` | FileField の保存先（ローカルフォルダ）。`designer.settings.json` の `FileStorageNames` と `Name` を一致させる |
 | `AzureBlobStorages[]` / `S3Storages[]` / `FileStorages[]` | | 保存先の他方式。項目は `api --type Codeer.LowCode.Blazor.Extras.Server.FileManagement.AzureBlobStorageSettings --assembly <Server の bin にある Codeer.LowCode.Blazor.Extras.Server.dll のパス>` で確認 |
-| `TemporaryFileTableInfo[]` | `{ DataSourceName, Table, GuidColumn, CreatedDateTimeColumn }` | アップロード一時ファイルの管理テーブル（データソースごと） |
+| `TemporaryFileTableInfo[]` | `{ DataSourceName, Table, GuidColumn, CreatedDateTimeColumn, OwnerColumn? }` | アップロード一時ファイルの管理テーブル（データソースごと）。`OwnerColumn` は任意。指定するとアップロードした人を記録し、その一時ファイルを保存・プレビューできるのを同じ人に限る (列を足して設定に書く) |
 | `UseHotReload` | bool | デザイン変更を SignalR でブラウザに即反映（開発時 true） |
 | `CanScriptDebug` | bool | ブラウザでスクリプトのデバッグ情報を出す（開発時 true） |
 | `SqlLog` | bool | 実行 SQL をログに出す |

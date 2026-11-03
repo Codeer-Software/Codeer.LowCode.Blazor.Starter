@@ -43,7 +43,7 @@ namespace LowCodeApp.Server.Infrastructure
             if (dataSources.Length != 1) throw new ApplicationException("DataSource must be one.");
 
             DbAccess = new DbAccessor(dataSources, TenantKey);
-            TemporaryFileManager = new TemporaryFileManager(DbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages);
+            TemporaryFileManager = new TemporaryFileManager(DbAccess, SystemConfig.Instance.TemporaryFileTableInfo, FileStorageTable.Storages, this);
             ModuleDataIO = new CustomizedModuleDataIO(DesignerService.GetDesignData(TenantKey), this, DbAccess, TemporaryFileManager);
         }
 
