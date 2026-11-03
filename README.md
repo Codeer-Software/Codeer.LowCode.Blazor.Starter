@@ -67,7 +67,29 @@ Entra ID / Google / AWS Cognito / 汎用 OIDC でのログインは `appsettings
 4. デザインプロジェクトを作ります。`LowCodeApp.Designer` を起動してテンプレートを選ぶか、GUI なしなら
    `LowCodeApp.Designer.exe template-create --name Empty --out-dir DesignProjects\<名前>\design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir <DesignFileDirectory>`（テンプレート一覧は `template-list`。サンプル集は `PatternShowcase`）。
    そのあとサーバーを起動します。`Source/Hosts/Maui/` は先に `Cookie` サーバーを起動し、アプリからその URL を指定します。
-5. 初回起動でユーザーが 0 件なら `admin` / `admin` が作られます。公開する前に AppUser 画面で admin のパスワードを変えるか、別の管理者を作って admin を消してください。
+5. テンプレートから作ったデザインの SQLite には最初の管理者 `admin` / `admin` が入っています。ログインしたら AppUser 画面でパスワードを変えるか、別の管理者を作って admin を消してください。
+
+### 本番の DB に最初の管理者を入れる
+
+サーバーはユーザーを自動では作りません。自分で用意した DB にはユーザー表に 1 行入れてから公開します。
+
+- 表と列の名前は AppUser モジュールのデザイン（`DbTable` と各フィールドの `DbColumn`）に従います。標準テンプレートは `app_users`（`user_name` / `name` / `hash` / `salt` / `session_stamp`。PatternShowcase はさらに `role` / `is_active`）です
+- `admin` / `admin` で入れるなら次の 1 行です。ハッシュとソルトはテンプレートの SQLite と同じ値（パスワード `admin`）です。有効フラグの列があれば真、ロールの列があれば管理者の値も入れます
+
+  ```sql
+  INSERT INTO app_users (user_name, name, hash, salt)
+  VALUES ('admin', '管理者', 'pUNVPHEWYngAim7aUFjf6kWtIROxrpzJPprcipyPujw=', 'CPYn8K+ecURogSHP5KTZ04lEbiAjZoq9wvwk5aIAQQg=');
+  ```
+
+  テンプレートの SQLite（`C:\Codeer.LowCode.Blazor.Local\Data\*.db`）の `app_users` の行をそのままコピーしても同じです
+- 別のパスワードで入れるなら、ハッシュは PBKDF2-HMAC-SHA256・反復 100,000 回・32 バイトのランダムソルト・32 バイト出力で、ハッシュとソルトをそれぞれ Base64 にします。PowerShell 7 なら:
+
+  ```powershell
+  $salt = [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32)
+  $hash = [System.Security.Cryptography.Rfc2898DeriveBytes]::Pbkdf2("パスワード", $salt, 100000, [System.Security.Cryptography.HashAlgorithmName]::SHA256, 32)
+  "hash=" + [Convert]::ToBase64String($hash); "salt=" + [Convert]::ToBase64String($salt)
+  ```
+- 公開したらすぐにその管理者でログインしてパスワードを変えます（画面から変えればハッシュはサーバーが作ります）
 
 リネーム: ソリューションとプロジェクトの名前は `LowCodeApp` です。ファイル名・フォルダ名・ファイル内容（名前空間、`x:Class`、`*.styles.css` のリンク）の
 `LowCodeApp` を一括置換すればリネームできます。

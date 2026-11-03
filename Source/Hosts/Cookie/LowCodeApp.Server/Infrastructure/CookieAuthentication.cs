@@ -1,8 +1,6 @@
 using LowCodeApp.Server.Extras;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Codeer.LowCode.Blazor.DbAccess;
-using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
 
 namespace LowCodeApp.Server.Infrastructure
@@ -60,8 +58,6 @@ namespace LowCodeApp.Server.Infrastructure
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseAntiforgery();
-
-            _ = CreateInitialUserAsync(app);
         }
 
         public static void AppendAntiforgeryTokenCookie(HttpContext ctx)
@@ -78,30 +74,6 @@ namespace LowCodeApp.Server.Infrastructure
                     Secure = ctx.Request.IsHttps,
                     SameSite = SameSiteMode.Lax
                 });
-        }
-
-        //ユーザーが 0 件なら admin / admin を作る (表・列はユーザーモジュールのデザインから。パスワードログインがある構成だけ)。
-        //公開する前に admin のパスワードを変えるか、別の管理者を作って admin を消す
-        static async Task CreateInitialUserAsync(WebApplication app)
-        {
-            await using var dbAccessor = new DbAccessor(SystemConfig.Instance.DataSources);
-            var designData = AppDesign.Store.GetDesignData();
-            var accounts = LoginAccountStore.Create(designData, dbAccessor);
-            if (accounts == null || !accounts.HasPassword || await accounts.AnyAsync()) return;
-            var userId = await accounts.AddAsync("admin", "admin");
-            try
-            {
-                await app.Services.GetRequiredService<AuditLogger>().WriteAsync(new AuditEvent
-                {
-                    Category = AuditCategory.System,
-                    Action = "Account.InitialUserCreated",
-                    Targets = { new AuditTarget { Module = designData.AppSettings.CurrentUserModuleDesignName, Id = userId, Operation = "Add" } },
-                    Detail = "LoginName=admin",
-                });
-            }
-            catch (AuditLogException)
-            {
-            }
         }
     }
 }
