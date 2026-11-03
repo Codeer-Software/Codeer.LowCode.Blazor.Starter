@@ -39,6 +39,7 @@ C# のホスト側を変えたいときはリポジトリのルートで起動�
 | `Source/Hosts/WinForms/` | 単体で動くデスクトップアプリ（WinForms + BlazorWebView。サーバー機能を同一プロセスに内包） | `Codeer.LowCode.Blazor.WinForms` |
 
 Entra ID / Google / AWS Cognito / 汎用 OIDC でのログインは `appsettings` の `ExternalLogins` セクションに書くだけで足せます（Codeer.LowCode.Blazor.Extras の `docs/ExternalLogin.md`）。TOTP など他の認証を組む場合も `Cookie` を土台にします（cookie 認証の枝葉を差し替えるだけで済みます）。
+ユーザーモジュールのログインアカウント契約にセッションの印の列（`DbColumnSessionStamp`）を足すと、発行済みの Cookie をパスワード変更・停止・管理者の失効ボタン（`SessionRevokeButtonField`）でサーバー側から失効できます（Codeer.LowCode.Blazor.Extras の `docs/Authentication.md`）。
 認証なしの構成が必要なら `Cookie` から認証を外します（手順は `CLAUDE.md` の「認証を外す」）。
 `Source/Hosts/` にはほかに `MultiTenant`（マルチテナント）も保守用に置いてありますが、テンプレートとしては提供していません。
 

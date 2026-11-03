@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using LowCodeApp.Client;
@@ -13,7 +14,8 @@ builder.Services.AddSharedServices();
 builder.Services.AddScoped<INavigationService, NavigationService>();
 
 builder.Services.AddScoped(sp => {
-    var httpClient = new HttpClient
+    //API が 401 を返したら (Cookie の期限切れ・失効) ログイン画面へ抜ける
+    var httpClient = new HttpClient(new UnauthorizedToLoginHandler(sp.GetRequiredService<NavigationManager>()) { InnerHandler = new HttpClientHandler() })
     {
         BaseAddress = new Uri(builder.HostEnvironment.BaseAddress),
         //大きな添付 (動画など) のアップロードが既定の 100 秒で切れないようにする

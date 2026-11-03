@@ -1,8 +1,42 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @using Codeer.LowCode.Blazor.Components.AppParts.PageFrame
+@using LowCodeApp.Maui.Services
+@using Microsoft.AspNetCore.Components.Routing
 @using Sotsera.Blazor.Toaster
+@inject ServerConnection Server
+@inject NavigationManager NavigationManager
 
 <MainLayoutCore>
   <ToastContainer />
   @Body
 </MainLayoutCore>
+
+@code {
+  bool _toLogin;   //ログイン画面へ遷移中 (同時に返った複数の 401 で何度も遷移しない)
+
+  protected override void OnInitialized()
+  {
+    Server.Unauthorized += OnUnauthorized;
+    NavigationManager.LocationChanged += OnLocationChanged;
+  }
+
+  public void Dispose()
+  {
+    Server.Unauthorized -= OnUnauthorized;
+    NavigationManager.LocationChanged -= OnLocationChanged;
+  }
+
+  void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _toLogin = false;
+
+  //API が 401 を返した (Cookie の期限切れ・失効) → ログイン画面へ。元の画面は returnUrl で戻る
+  void OnUnauthorized() => _ = InvokeAsync(() =>
+  {
+    if (_toLogin) return;
+    var returnUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+    if (returnUrl.Split('?', '#')[0] == "login") return;
+    _toLogin = true;
+    Server.ResetAntiforgeryToken();
+    NavigationManager.NavigateTo("/login" + (string.IsNullOrEmpty(returnUrl) ? "" : "?returnUrl=" + Uri.EscapeDataString(returnUrl)));
+  });
+}

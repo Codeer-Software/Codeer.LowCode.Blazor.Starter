@@ -59,8 +59,7 @@ else
     if (!string.IsNullOrEmpty(Services.AppInfoService.CurrentUserId)) return;
     _toLoginPage = true;
     //ログイン画面は Blazor の外 (login.html) なので、フルナビゲーションでアプリを抜ける
-    var returnUrl = "/" + NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
-    NavigationManager.NavigateTo(returnUrl == "/" ? "login.html" : "login.html?returnUrl=" + Uri.EscapeDataString(returnUrl), forceLoad: true);
+    UnauthorizedToLoginHandler.NavigateToLogin(NavigationManager);
   }
 
   protected override async Task OnParametersSetAsync()

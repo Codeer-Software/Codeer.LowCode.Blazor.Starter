@@ -15,6 +15,12 @@ namespace LowCodeApp.Maui.Services
         /// <summary>現在のサーバー URL (ServerSettings)。HttpClient を作るときに読む。</summary>
         public Uri BaseAddress => new(ServerSettings.BaseUrl);
 
+        /// <summary>
+        /// 開いている画面からの API 呼び出しが 401 を返した (Cookie の期限切れ・パスワード変更・停止・全端末ログアウトで失効した)。
+        /// MainLayout がログイン画面へ戻す。ログインの API (api/account/*) の 401 は含めない (パスワード不一致などは画面が扱う)。
+        /// </summary>
+        public event Action? Unauthorized;
+
         public HttpClient CreateHttpClient()
         {
             //HttpClient は BlazorWebView ごとに作るので、サーバー URL の変更はページの再起動後に効く
@@ -76,6 +82,10 @@ namespace LowCodeApp.Maui.Services
 
                 var response = await base.SendAsync(request, cancellationToken);
                 _connection.CaptureAntiforgeryToken(response);
+                if (response.StatusCode == HttpStatusCode.Unauthorized && request.RequestUri?.AbsolutePath.Contains("/api/account/", StringComparison.OrdinalIgnoreCase) != true)
+                {
+                    _connection.Unauthorized?.Invoke();
+                }
                 return response;
             }
 

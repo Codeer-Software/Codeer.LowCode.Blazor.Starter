@@ -25,7 +25,7 @@ namespace LowCodeApp.Server.Infrastructure
         {
             var accounts = LoginAccountStore.Create(_dataService.Design.DesignData, _dataService.DbAccess);
             var account = accounts == null ? null : await accounts.FindByExternalLoginNameAsync(identity.LoginName);
-            return account == null ? null : new ExternalLoginUser(account.UserId, account.DisplayName);
+            return account == null ? null : new ExternalLoginUser(account.UserId, account.DisplayName, account.SessionStamp);
         }
     }
 }

@@ -18,6 +18,15 @@ namespace LowCodeApp.Server.Infrastructure
             builder.Services
                 .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options => {
+                    //Cookie の有効期間。操作が続く間は半分を過ぎた時点で延長される (スライディング)。
+                    //「ログイン状態を保持する」(IsPersistent。ネイティブアプリと外部 IdP の persistent も同じ) は 14 日、それ以外 (ブラウザを閉じると消える) は 8 時間
+                    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+                    options.SlidingExpiration = true;
+                    options.Events.OnSigningIn = context =>
+                    {
+                        if (context.Properties.IsPersistent) context.Properties.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14);
+                        return Task.CompletedTask;
+                    };
                     options.Events.OnRedirectToLogin = context =>
                     {
                         context.Response.StatusCode = 401;
@@ -27,6 +36,13 @@ namespace LowCodeApp.Server.Infrastructure
                     {
                         context.Response.StatusCode = 403;
                         return Task.CompletedTask;
+                    };
+                    //ログイン済み Cookie の照合。ユーザーモジュールの LoginAccountContractField に DbColumnSessionStamp があれば、Cookie の印をリクエストごとにユーザー行と突き合わせ、
+                    //パスワード変更・停止 (IsActive 偽)・管理者による失効 (SessionRevokeButtonField) の後の Cookie を 401 にする。列が無ければ何もしない
+                    options.Events.OnValidatePrincipal = async context =>
+                    {
+                        var dataService = context.HttpContext.RequestServices.GetRequiredService<DataService>();
+                        await LoginSessionValidation.ValidatePrincipalAsync(context, LoginAccountStore.Create(dataService.Design.DesignData, dataService.DbAccess));
                     };
                 })
                 //外部 IdP (Entra ID / Google / AWS Cognito / OIDC)。並べるプロバイダは Extras/ExternalLoginTable が組み立てる

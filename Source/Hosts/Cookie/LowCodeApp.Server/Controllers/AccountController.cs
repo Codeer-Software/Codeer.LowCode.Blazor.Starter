@@ -83,7 +83,7 @@ namespace LowCodeApp.Server.Controllers
 
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
-                LoginPrincipal.Create(account.UserId, account.DisplayName),
+                LoginPrincipal.Create(account.UserId, account.DisplayName, sessionStamp: account.SessionStamp),
                 new AuthenticationProperties { IsPersistent = loginInfo.IsPersistent });
 
             return Ok(result.Response);
@@ -106,7 +106,7 @@ namespace LowCodeApp.Server.Controllers
 
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
-                LoginPrincipal.Create(redeemed.Value.User.UserId, redeemed.Value.User.UserName, redeemed.Value.Provider),
+                LoginPrincipal.Create(redeemed.Value.User.UserId, redeemed.Value.User.UserName, redeemed.Value.Provider, redeemed.Value.User.SessionStamp),
                 new AuthenticationProperties { IsPersistent = true });
 
             return Ok();

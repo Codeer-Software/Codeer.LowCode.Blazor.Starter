@@ -56,6 +56,7 @@ enter the URL and press *Save*. The value is stored with MAUI `Preferences` and 
 - `Services/ServerConnection.cs` keeps the authentication cookie and the antiforgery token (`X-ANTIFORGERY-TOKEN`)
   that the browser normally handles by itself.
 - `Pages/Login.razor` signs in through `api/account/login`; `Pages/LowCodePage.razor` hosts the low-code pages.
+  When an API call returns 401 (the cookie expired or was revoked on the server: for example after a password change), `Shared/MainLayout.razor` goes back to `/login`.
 - The design files are loaded once per WebView. After deploying a new design press *Reload* in the title bar
   (it recreates the WebView). Server-side hot reload (`UseHotReload`) needs a SignalR connection the device can
   trust; with the development certificate it silently stays off.
