@@ -129,7 +129,10 @@ namespace LowCodeApp.Server.Controllers
 
         //Cookie を破棄し IdP のセッションも終わらせてログイン画面へ戻る (GET: ブラウザ遷移)
         [HttpGet("logout/{provider}"), Audit(AuditCategory.Authentication)]
-        public Task<IActionResult> ExternalLogout(string provider)
-            => _externalLogins.SignOutAsync(this, provider, LoginPage);
+        public async Task<IActionResult> ExternalLogout(string provider)
+        {
+            if (Request.Headers["Sec-Fetch-Site"] == "cross-site") return Redirect("/");
+            return await _externalLogins.SignOutAsync(this, provider, LoginPage);
+        }
     }
 }
