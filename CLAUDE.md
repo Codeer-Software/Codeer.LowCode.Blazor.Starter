@@ -1,4 +1,7 @@
-# Codeer.LowCode.Blazor.Starter - Claude Code 向けガイド
+# Codeer.LowCode.Blazor.Starter - AI エージェント向けガイド
+
+この文書は AI エージェント（Claude Code / Codex / GitHub Copilot）に共通の説明と作業ルール。エージェントごとに違うのは許可・フックの設定ファイルと
+ツールの名前だけで、Claude Code の分は末尾の「Claude Code 固有」、Codex / GitHub Copilot の分は `AGENTS.md` にある。
 
 このリポジトリは Codeer.LowCode.Blazor（Blazor 向けローコードフレームワーク、NuGet 配布の商用製品）で
 アプリケーションを始めるための**ビルド可能な完成形**。<!-- maintainer-only -->リポジトリでは `Source/Hosts/` 配下のフォルダ 1 つ＝ホストアプリ 1 種類（セットアップで顧客の作業フォルダに書き出されるのは Cookie ホスト 1 つで、`Source/` 直下にプロジェクトが並ぶ）。<!-- /maintainer-only -->
@@ -11,27 +14,30 @@
 
 ユーザーが「この URL（リポジトリ）を見て指示に従って」「セットアップして」と言ってきて、まだビルドも起動もしていない状態なら、
 **[ClaudeCodeForDeveloper/claude-code-setup.md](ClaudeCodeForDeveloper/claude-code-setup.md) を読んで、その手順を上から実行する**（環境確認 → 取得 → ビルド →
-デザインプロジェクト作成 → Claude Code ワークスペース展開 → サーバーとデザイナの起動）。質問は最小限、既定値で一本道。
+デザインプロジェクト作成 → AI 用ワークスペース展開 → サーバーとデザイナの起動）。質問は最小限、既定値で一本道。
 
-## このフォルダで Claude Code ができること（優先順）
+## このフォルダで AI エージェントができること（優先順）
 
-セットアップ後のフォルダ構成。**ホストを触る人はリポジトリのルートで、デザインを作る人は `DesignProjects/<デザイン名>/` で** Claude Code を起動する。
-ルートで起動してもデザインは編集できる（`.claude/settings.local.json` に同じ許可があり、フックが各デザインワークスペースの自動更新を代行する）。
+セットアップ後のフォルダ構成。**ホストを触る人はリポジトリのルートで、デザインを作る人は `DesignProjects/<デザイン名>/` で** エージェントを起動する。
+ルートで起動してもデザインは編集できる（ルートの許可・フックの設定（Claude Code / Copilot は `.claude/settings.local.json`、Codex は `.codex/`）に同じ許可があり、フックが各デザインワークスペースの自動更新を代行する）。
 
 ```
 <ROOT>/
-├── CLAUDE.md                        ← この文書 (ホスト側の説明・作業ルール)
-├── .claude/                         ← Claude Code の設定。settings.json (共通・コミット済み) と settings.local.json (デザイナ exe パス入りの許可・フック。developer-workspace が生成。gitignore)
-├── ClaudeCodeForDeveloper/          ← ホスト (C#) を触る Claude Code 向けの文書
-│   ├── claude-code-setup.md         ←   セットアップ手順 (コミット済み・Claude Code が実行する)
+├── CLAUDE.md                        ← この文書 (ホスト側の説明・作業ルール。全エージェント共通)
+├── AGENTS.md                        ← Codex / GitHub Copilot の入口 (この文書を読ませ、差分だけを書く)
+├── .claude/                         ← Claude Code の設定。settings.json (共通・コミット済み) と settings.local.json (デザイナ exe パス入りの許可・フック。developer-workspace が生成。gitignore。Copilot もフックを読む)
+├── .codex/                          ← Codex の設定。hooks.json と rules/codeer-lowcode.rules (settings.local.json と同じ許可・フック。developer-workspace が生成。gitignore)
+├── ClaudeCodeForDeveloper/          ← ホスト (C#) を触る AI エージェント向けの文書
+│   ├── claude-code-setup.md         ←   セットアップ手順 (コミット済み・AI が実行する)
 │   ├── claude-code-update.md        ←   最新化の手順 (同上)
 │   ├── starter-origin.json          ←   書き出し元のテンプレートの版 (最新化で比べる元。コミットする)
 │   ├── _specs/                      ←   ライブラリの拡張点リファレンス (デザイナの developer-workspace が生成。gitignore)
 │   └── _hooks/                      ←   ルート用フック (DesignProjects/*/ のワークスペースを巡回して最新化。同上)
 ├── Source/                          ← ホストのソース (C#: LowCodeApp.sln / Server / Client / Client.Shared / Designer / LicenseRegisterCli)。最後の手段
 ├── DesignProjects/                  ← デザインプロジェクト (画面・データ・スクリプト)。1 フォルダ = 1 デザイン
-│   └── <デザイン名>/                ←   Claude Code ワークスペース (デザイン担当者はここで起動)
-│       ├── CLAUDE.md                ←     デザイン作業の規約 (デザイナが生成)
+│   └── <デザイン名>/                ←   AI 用ワークスペース (デザイン担当者はここで起動)
+│       ├── CLAUDE.md                ←     デザイン作業の規約 (デザイナが生成。全エージェント共通)
+│       ├── AGENTS.md                ←     Codex / GitHub Copilot の入口 (デザイナが生成)
 │       ├── ClaudeCodeForDesigner/   ←     デザインの作り方・仕様・カタログ (デザイナが自動生成。手で編集しない)
 │       ├── Project.md               ←     このデザイン固有のルール (ユーザー所有。守る)
 │       ├── ddl/  docs/              ←     テーブル定義 SQL / このデザイン固有の文書
@@ -41,7 +47,7 @@
 ```
 
 1. **画面・データ構造・業務ルールの追加変更 → `DesignProjects/<デザイン名>/design/` を編集する（ローコード）。** やり方は
-   そのフォルダの `CLAUDE.md` と `ClaudeCodeForDesigner/CLAUDE.md`（**着手前に必ず読む**。ルートで起動した Claude Code がデザインを触るときも同じ）。
+   そのフォルダの `CLAUDE.md` と `ClaudeCodeForDesigner/CLAUDE.md`（**着手前に必ず読む**。ルートで起動したエージェントがデザインを触るときも同じ）。
    デザインの変更に C# の再ビルドは要らない。反映はデザイナの「送信」か CLI の `deploy`
 2. **設定で表せないことだけスクリプト（`*.mod.cs`）。最小限に。** スクリプトを書く前に「既存フィールド／プロパティで代替できないか」を必ず問う
 3. **C#（このリポジトリの `Source/`）を触るのは最後の手段。** フィールド型そのものが無い・性能をコードで改善したい・独自 API / 外部連携が要る、
@@ -173,7 +179,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
    （テンプレートはすべて Cookie 認証向けで AppUser と admin/admin を含む。`template-list` で一覧。テンプレート付属の SQLite が `C:\Codeer.LowCode.Blazor.Local\Data` に置かれ（デザイナの GUI がテンプレートから作るときと同じ場所。サーバーの `ConnectionStrings` もここを指したままにしてある）、`design/designer.settings.Development.json` の接続文字列がそこを指し、`Local/Designs/App.zip` が**この新しいデザインで上書き**される）
 2. ワークスペースを展開: `claude-workspace DesignProjects/<アプリ名> --project design --out Local/cw.json`（`CLAUDE.md` / `ClaudeCodeForDesigner/` / `Project.md` / `ddl/` / `docs/` ができる）
 3. サーバーの `appsettings.Development.json` の `ConnectionStrings` を確認する。標準テンプレートのデータソース名（`SampleSQLite` / `PatternsSQLite` / `Inventory` / `Sfa` / `ProjectManagement`）と DB ファイル名は既に入っているので、標準テンプレートから作ったデザインなら変更不要。ユーザーのアプリ本体（セットアップの `DesignProjects/Project`）だけは、このアプリ固有の DB を持つためデータソース `Main`（`Local/Data/main.db`）に付け替えてある（手順は `ClaudeCodeForDeveloper/claude-code-setup.md` Step 6）。自前のデータソース名や DB にしたときだけ、`DataSources[]`（`appsettings.json`）と接続文字列を足す。サーバーを再起動
-4. 以後のデザイン作業は `DesignProjects/<アプリ名>/` で Claude Code を起動して行う。`.vscode/launch.json` の Designer 構成のフォルダも差し替える
+4. 以後のデザイン作業は `DesignProjects/<アプリ名>/` でエージェントを起動して行う。`.vscode/launch.json` の Designer 構成のフォルダも差し替える
 
 
 ## ホストのカスタマイズ（C#・最後の手段）
@@ -194,7 +200,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 | 意味検索の埋め込みモデルを差し替える | `IEmbeddingProvider` を実装して `Server/Extras/SemanticSearchTable.cs` の `CreateEmbeddingProvider` に 1 行。appsettings の `SemanticSearch.EmbeddingProvider` にその名前を書く |
 | デザイナのメニュー・チェック・テンプレート | `Designer/App.xaml.cs`（`DesignerEnvironment.AddMainMenu` / `AddCustomDesignCheckHandler` / `ProjectCatalog.Add`）。テンプレート・headless verb の登録は `base.OnStartup(e)` より前 |
 
-## Claude Code が作業するときの原則
+## AI エージェントが作業するときの原則
 
 - **テンプレのソースは自由に書き換えてよい。** 接着コードであり、ユーザーの所有物。守るべき境界は「NuGet パッケージの中」だけ
 - **ライブラリで済むことを自前実装しない。** メール・承認・Excel/PDF・ファイル保存（S3/Azure）・AI 連携などは
@@ -204,7 +210,7 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
 - **ビルドが通る状態で止める。** C# を触ったら `dotnet build Source/Hosts/Cookie/LowCodeApp.sln` を最後に実行する
 - リネームは `LowCodeApp` の一括置換（ファイル名・フォルダ名・中身）。`x:Class`、`*.styles.css` のリンクも対象
 
-## 初回セットアップの手順（手動で行う場合の要約。Claude Code は ClaudeCodeForDeveloper/claude-code-setup.md）
+## 初回セットアップの手順（手動で行う場合の要約。AI は ClaudeCodeForDeveloper/claude-code-setup.md）
 
 1. サーバープロジェクトの `appsettings.Development.json`: 接続文字列、`DesignFileDirectory`、`FileSystemStorages`。
    既定は `C:\Codeer.LowCode.Blazor.Local\...` を指す。テンプレート用の接続文字列はデザイナのテンプレートが DB を置く場所と同じなのでそのまま使い、
@@ -213,6 +219,14 @@ Tools メニュー（DDL 生成）か CCFD の `sql` CLI で作る。DB プロ�
    `LowCodeApp.Designer.exe template-create --name <テンプレ> --out-dir DesignProjects\<デザイン名>\design --data-dir C:\Codeer.LowCode.Blazor.Local\Data --deploy-dir <DesignFileDirectory>`
 3. サーバーを起動。テンプレートの SQLite には `admin`/`admin` が入っている（サーバーは初期ユーザーを作らない。本番 DB は `README.md`「本番の DB に最初の管理者を入れる」）
 <!-- maintainer-only -->4. `Source/Hosts/Maui/` はサーバーを先に起動してからアプリを起動（`LowCodeApp.Maui/README.md`）<!-- /maintainer-only -->
+
+## Claude Code 固有
+
+Claude Code で使うときだけの話。Codex / GitHub Copilot はこの節を読み飛ばし、`AGENTS.md` に従う。
+
+- 許可とフックは `.claude/settings.json`（共通の許可。`appsettings.Development.json` / `designer.settings.Development.json` の読み書きは ask）と `.claude/settings.local.json`（このマシンのデザイナ exe パス入りの許可リストとフック。`developer-workspace` が生成）にある
+- デザイナ exe の場所が変わったら、`.claude/settings.local.json` と `.codex/` を消して `developer-workspace` を実行し直す（既存のファイルは触らないため）
+- `.claude/settings.local.json` は次のセッションから効く。作り直したら、ターミナルなら `/exit` して `claude`、デスクトップアプリ・VS Code なら新しいセッションを始めるよう案内する
 
 <!-- maintainer-only -->
 ## このリポジトリの性質（保守者向け）

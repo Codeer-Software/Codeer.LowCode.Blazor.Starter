@@ -1,13 +1,13 @@
-# Claude Code 向け: Codeer.LowCode.Blazor を動かすまでの実行手順
+# AI エージェント向け: Codeer.LowCode.Blazor を動かすまでの実行手順
 
-**この文書は Claude Code（AI）が読んで実行するための手順書です。**（利用者向けの注意: この手順は AI が実行します。
+**この文書は AI エージェント（Claude Code / Codex / GitHub Copilot）が読んで実行するための手順書です。**（利用者向けの注意: この手順は AI が実行します。
 AI の動作は決定的ではなく、ソフトウェアのインストール・ファイルの変更・コマンド実行を伴います。内容を確認のうえ自己責任でご利用ください。
 本リポジトリは LICENSE のとおり AS IS で提供され、AI の操作に起因する損害について Codeer は責任を負いません。） ユーザーが「この URL を見て指示に従って」と言って
 渡してきたら、上から順に実行してください。<!-- maintainer-only -->人間向けの説明は [README.md](../README.md) にあります。<!-- /maintainer-only -->
 
 ゴール: ユーザーの作業フォルダに、Codeer.LowCode.Blazor のアプリ（サーバー / クライアント / デザイナ）がビルド済みで、
 **ユーザーのアプリ用の空のデザインプロジェクト**（ログインとユーザー管理だけが入った状態）ができていて、**サーバーがブラウザで開き、デザイナも起動している**状態にする。
-そのあと Claude Code が画面（デザイン）を追加・変更できるようにする（デザインの作業場は `<ROOT>\DesignProjects\Project\`、ホストの C# の作業場は ROOT）。
+そのあと AI が画面（デザイン）を追加・変更できるようにする（デザインの作業場は `<ROOT>\DesignProjects\Project\`、ホストの C# の作業場は ROOT）。
 **頼まれていないサンプル画面を作らない。** サンプル集（`PatternShowcase`）は、ユーザーが希望したときだけ別のデザインプロジェクトとして追加する。
 
 ## 進め方の原則
@@ -20,7 +20,7 @@ AI の動作は決定的ではなく、ソフトウェアのインストール�
 - ユーザーへの応答はユーザーの言語で（日本語で話しかけられたら日本語）
 - **Windows 専用。** macOS / Linux では「デザイナが Windows 専用のため、このセットアップは Windows で行ってください」と伝えて終了する
 - 作業フォルダの外（`C:\` 直下や他のプロジェクト）には何も作らない
-- Claude Code はターミナル・デスクトップアプリ（Code タブ）・VS Code の拡張のどれで動いていてもよい。ユーザーに「〇〇で Claude Code を起動する」「再起動する」と伝えるときは、ターミナルなら「そのフォルダで `claude`（再起動は `/exit` して再度 `claude`）」、デスクトップアプリと VS Code なら「そのフォルダを選んで（開いて）新しいセッションを始める」の意味。どれを使っているか分からなければ両方の言い方を 1 行ずつ添える
+- エージェントは Claude Code（ターミナル・デスクトップアプリの Code タブ・VS Code の拡張）、Codex、GitHub Copilot（VS Code のエージェント・Copilot CLI）のどれでもよい。ユーザーに「〇〇で起動する」「再起動する」と伝えるときは、いま動いているエージェントの言い方にする: Claude Code のターミナルなら「そのフォルダで `claude`（再起動は `/exit` して再度 `claude`）」、Codex の CLI なら「そのフォルダで `codex`（再起動は終了して再度 `codex`）」、Copilot CLI なら「そのフォルダで `copilot`（再起動は終了して再度 `copilot`）」、デスクトップアプリ・VS Code なら「そのフォルダを選んで（開いて）新しいセッション（チャット）を始める」の意味。ターミナルかアプリか分からなければ両方の言い方を 1 行ずつ添える
 
 ### 聞いてよいこと（この 1 つだけ・既定値を提示して Yes/No で答えられる形で）
 
@@ -43,7 +43,7 @@ PowerShell で確認する。すべて非対話で判定できる。
 | .NET SDK 10 | `dotnet --list-sdks` | `10.` で始まる行があれば OK |
 | Visual Studio 2026 | `& "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationVersion` | `18.` 以上なら「VS あり」。vswhere 自体が無い／エラーなら「VS なし」 |
 | VS Code | `code --version` | VS なしのときだけ気にする |
-| Claude Code の作業フォルダ | `Get-ChildItem -Force` | **空でなければ** サブフォルダ `LowCodeApp` を作ってそこを作業フォルダにする |
+| エージェントの作業フォルダ | `Get-ChildItem -Force` | **空でなければ** サブフォルダ `LowCodeApp` を作ってそこを作業フォルダにする |
 
 以降、作業フォルダの絶対パスを **ROOT** と呼ぶ（例: `C:\Users\taro\work\LowCodeApp`）。パスに日本語や空白が入っていても動くが、
 すべてのコマンドでパスは `"` で囲む。
@@ -59,7 +59,7 @@ winget install --id Microsoft.VisualStudioCode -e --accept-source-agreements --a
 ```
 
 - インストール後は **PATH がこのシェルに反映されない**ことがある。`dotnet` が見つからなければ新しい PowerShell を起こす代わりに
-  `$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")` を実行してから再確認する。それでも見つからなければ、ユーザーに Claude Code を一度終了して開き直してもらい（デスクトップアプリ・VS Code はアプリごと。開き直すまで新しい PATH が渡らない）、続きから再開する
+  `$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")` を実行してから再確認する。それでも見つからなければ、ユーザーにエージェントを一度終了して開き直してもらい（デスクトップアプリ・VS Code はアプリごと。開き直すまで新しい PATH が渡らない）、続きから再開する
 - **winget が無い環境**（`winget` コマンド自体が見つからない）では .NET SDK を公式スクリプトで入れる（管理者権限不要）:
   ```powershell
   Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile "$env:TEMP\dotnet-install.ps1"
@@ -74,28 +74,33 @@ winget install --id Microsoft.VisualStudioCode -e --accept-source-agreements --a
 
 このリポジトリ (Starter) は Codeer が保守するテンプレート群の正本で、ユーザーのアプリに要るのはそのうち **Cookie ホスト 1 つ**だけ。
 そのため **リポジトリを ROOT に clone しない**。zip を一時フォルダに展開し、付属ツールの `export-app` で ROOT にアプリの形（`Source\LowCodeApp.sln` と 5 プロジェクト、
-Claude Code 用の文書と設定）だけを書き出す。他のホスト・保守ツール・`.git` は ROOT に残さない。
+AI 用の文書と設定）だけを書き出す。他のホスト・保守ツール・`.git` は ROOT に残さない。
 
 ```powershell
-$tmp = Join-Path $env:TEMP ("starter_" + [Guid]::NewGuid().ToString("N"))
+$tmp = Join-Path $env:TEMP ("clb_" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
 $commit = (Invoke-RestMethod https://api.github.com/repos/Codeer-Software/Codeer.LowCode.Blazor.Starter/commits/main).sha
 Invoke-WebRequest "https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter/archive/$commit.zip" -OutFile "$tmp.zip"
-Expand-Archive "$tmp.zip" -DestinationPath $tmp -Force
-$repo = Join-Path $tmp "Codeer.LowCode.Blazor.Starter-$commit"
+New-Item -ItemType Directory $tmp | Out-Null
+& "$env:SystemRoot\System32\tar.exe" -xf "$tmp.zip" -C $tmp --strip-components=1   # zip の最上位フォルダ (Codeer.LowCode.Blazor.Starter-<コミット>) を省いて展開
+if ($LASTEXITCODE -ne 0) { throw "zip の展開に失敗" }
+$repo = $tmp
 dotnet run --project "$repo\Source\Tools\StarterTool" -- export-app "<ROOT>" --starter-commit $commit      # スマホアプリ (Android/iOS) も要るなら末尾に --maui
 Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 ```
 
+展開は `Expand-Archive` ではなく Windows 標準の `tar.exe` で、zip の最上位フォルダを省く（`--strip-components=1`）。最上位フォルダ名にはコミットの値（40 文字）が入るため、
+そのまま展開すると一時フォルダの深さしだいでパスが Windows の上限（260 文字）を超えて失敗する。`tar` を名前だけで呼ぶと Git for Windows の tar（zip を読めない）を拾うことがあるので、場所を指定して呼ぶ。
+
 `--starter-commit` は書き出し元の版を `<ROOT>\ClaudeCodeForDeveloper\starter-origin.json` に残す（後で最新化するとき、その版と比べて
 ユーザーが変えた箇所とテンプレートが変わった箇所を見分ける。[claude-code-update.md](claude-code-update.md)）。
-`api.github.com` に届かないとき（社内プロキシ等）は `$commit` を取らずに `archive/refs/heads/main.zip`（展開先は `...-main`）を使い、`--starter-commit` を付けない。
+`api.github.com` に届かないとき（社内プロキシ等）は `$commit` を取らずに `archive/refs/heads/main.zip` を使い、`--starter-commit` を付けない。
 
 書き出し後、`<ROOT>\Source\LowCodeApp.sln`、`<ROOT>\CLAUDE.md`、`<ROOT>\ClaudeCodeForDeveloper\claude-code-setup.md` があることを確認する。
 **以降はこの手順書の ROOT にあるコピーを読んで続ける**（パスがアプリの配置に書き換わっている。Web 上の原本は Step 2 までの案内）。
-**このフォルダが以後の作業場所。** Claude Code の知識源は 3 つ: ROOT の `CLAUDE.md`（ホスト側の説明）、`ClaudeCodeForDeveloper/`（この手順書と、Step 5 で
+**このフォルダが以後の作業場所。** AI の知識源は 3 つ: ROOT の `CLAUDE.md`（ホスト側の説明）、`ClaudeCodeForDeveloper/`（この手順書と、Step 5 で
 生成するホスト開発のリファレンス）、Step 7 で展開される `DesignProjects\Project\ClaudeCodeForDesigner/`（デザインの作り方）。
 
-> ユーザー自身のリポジトリにしたい場合は `.git` を削除して `git init` すればよい（聞かれたときだけ案内する。聞かない）。
+> ユーザー自身のリポジトリにしたい場合は `git init` すればよい（zip から書き出すので `.git` は無い。聞かれたときだけ案内する。聞かない）。
 
 ## Step 3. 使う値を固定する（質問はしない）
 
@@ -145,7 +150,7 @@ dotnet build "<ROOT>\Source\Hosts\Cookie\LowCodeApp.sln"
 - 警告（`warning`）は無視してよい
 - 成功すると、デザイナの exe が `<ROOT>\Source\Hosts\Common\LowCodeApp.Designer\bin\Debug\net10.0-windows\LowCodeApp.Designer.exe` にできる。以降 **DESIGNER_EXE** と呼ぶ
 
-続けて、ホスト（C#）を触るときに Claude Code が読むリファレンスを生成する。デザイナ exe には GUI を出さない CLI（headless）があり、
+続けて、ホスト（C#）を触るときに AI が読むリファレンスを生成する。デザイナ exe には GUI を出さない CLI（headless）があり、
 **GUI サブシステムの exe なので PowerShell の `&` では待たない。必ず `Start-Process -Wait` で呼び、結果は `--out` の JSON ファイルで受け取る**（以降の Step も同じ）:
 
 ```powershell
@@ -155,11 +160,14 @@ Get-Content "<ROOT>\Local\developer-workspace.json"
 ```
 
 `<ROOT>\ClaudeCodeForDeveloper\_specs\HostCustomization.md` などができる（`_` で始まるものは生成物・gitignore 済み。この手順書などコミット済みの文書には触らない）。
-同時に `<ROOT>\.claude\settings.local.json`（デザイナ exe のパスを焼き込んだ許可リストと、`DesignProjects\*\` の各ワークスペースを最新化するフック。既存なら触らない）ができる。
+同時に `<ROOT>\.claude\settings.local.json`（デザイナ exe のパスを焼き込んだ許可リストと、`DesignProjects\*\` の各ワークスペースを最新化するフック。既存なら触らない。GitHub Copilot もこのフックを読む）と、
+同じ内容の Codex 用 `<ROOT>\.codex\hooks.json`・`<ROOT>\.codex\rules\codeer-lowcode.rules`（既存なら触らない）ができる。
+デザイナ exe の場所が変わったとき（ビルド構成の変更・フォルダの移動）は、この 3 ファイルを消して同じコマンドを実行し直す。
 パッケージを更新したときは同じコマンドで作り直す。判定: JSON に `"error"` が無く `written` に `HostCustomization.md` が含まれる。
 
-> `.claude/settings.local.json` は **Claude Code が次のセッションから読む**。今のセッションでは反映されないので、完了メッセージで
-> 「一度 Claude Code を再起動（ターミナルなら `/exit` して再度 `claude`、デスクトップアプリ・VS Code なら新しいセッションを始める）すると、デザイナのコマンドが許可済みになります」と伝える。
+> 許可とフックの設定は **次のセッションから効く**。今のセッションでは反映されないので、完了メッセージで
+> 「一度再起動（この手順書の冒頭の言い方）すると、デザイナのコマンドが許可済みになります」と伝える。
+> Codex なら加えて「このフォルダを信頼済みのプロジェクトにしてください（`.codex\` の設定は信頼済みのときだけ読まれる）。フックは `/hooks` で内容を確認して信頼すると動きます」と伝える。
 
 ## Step 6. デザインプロジェクトをテンプレートから作る
 
@@ -237,7 +245,7 @@ Get-Content "<ROOT>\Local\deploy.json"
 `"error"` が無く、`deploy.json` の `success` が `true`、`<ROOT>\Local\Designs\App.zip` が存在する。
 以後このアプリのモジュールはデータソース `Main`（`<ROOT>\Local\Data\main.db`）に作る。
 
-## Step 7. Claude Code 用ワークスペースを展開する（デザインを AI で編集できるようにする）
+## Step 7. AI 用ワークスペースを展開する（デザインを AI で編集できるようにする）
 
 ワークスペース＝デザインプロジェクト 1 つ分のフォルダ `<ROOT>\DesignProjects\Project`。その中の `design` がデザイン本体:
 
@@ -248,13 +256,14 @@ Get-Content "<ROOT>\Local\claude-workspace.json"
 ```
 
 `<ROOT>\DesignProjects\Project\` に `CLAUDE.md`（デザイン作業の規約）、`ClaudeCodeForDesigner/`（デザインの作り方・仕様・カタログ。**自動生成、手で編集しない**）、
-`Project.md`（このデザイン固有のメモ）、`ddl/`、`docs/`、`LocalEnvironment.md`、`.claude/settings.local.json`（デザイナ exe のパスを焼き込んだ許可リストとフック）ができる。
+`Project.md`（このデザイン固有のメモ）、`ddl/`、`docs/`、`LocalEnvironment.md`、`.claude/settings.local.json`（デザイナ exe のパスを焼き込んだ許可リストとフック）、
+`AGENTS.md`（Codex / GitHub Copilot の入口）、`.codex/`（Codex 用の同じ許可とフック）ができる。
 ROOT の `CLAUDE.md`（このリポジトリのもの）には触らない。
 
 判定: JSON の `aiRefresh` が `ok`。`<ROOT>\DesignProjects\Project\ClaudeCodeForDesigner\CLAUDE.md` と `_field_catalog.md` が存在する。
 
-> デザインだけを扱う人は **`<ROOT>\DesignProjects\Project` で Claude Code を起動**する（ホストのソースが視界に入らない）。ROOT で起動した Claude Code は
-> ホスト（C#）とデザインの両方を扱える（Step 5 の `settings.local.json` に同じ許可とフックがある）。完了メッセージでこの使い分けを伝える。
+> デザインだけを扱う人は **`<ROOT>\DesignProjects\Project` でエージェントを起動**する（ホストのソースが視界に入らない）。ROOT で起動したエージェントは
+> ホスト（C#）とデザインの両方を扱える（Step 5 の許可・フックの設定に同じものがある）。完了メッセージでこの使い分けを伝える。
 
 ## Step 8. HTTPS 開発証明書
 
@@ -308,10 +317,10 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 
 - アプリの URL（`<URL>`）とログイン情報（`admin` / `admin`）。公開する前に AppUser 画面で admin のパスワードを変えること
 - デザインプロジェクトの場所（`<ROOT>\DesignProjects\Project\design`）と、今はログインとユーザー管理だけの空の状態であること。デザイナで編集 → メニューの「ファイル > デプロイ」（Ctrl+F5）でサーバーに反映されること（サーバーの再起動は不要。スクリプトを変えたときだけ再起動）
-- **次にできること**: 「Claude Code を再起動して、作りたいアプリの内容を教えてください。例:『商品マスタと受注入力の画面を作って』。デザインだけを扱うなら `DesignProjects\Project` フォルダで起動するとホストのソースが視界に入らず身軽です」
+- **次にできること**: 「エージェントを再起動して、作りたいアプリの内容を教えてください。例:『商品マスタと受注入力の画面を作って』。デザインだけを扱うなら `DesignProjects\Project` フォルダで起動するとホストのソースが視界に入らず身軽です」
 - デザインプロジェクトのフォルダ名は `Project`。変えたければフォルダをリネームすればよい（`launch.json` の Designer 構成のパスも合わせる）こと
-- 参考実装は Claude Code が `ClaudeCodeForDesigner\_samples\` から読めるので、サンプル集を画面で見たくなったら「サンプル集を展開して」と言えばよいこと
-- ソースコード（C#）も同じフォルダ（ROOT）にあり、必要なら ROOT で Claude Code を起動して変更できるが、**ふつうの画面追加はデザインだけで済む**こと
+- 参考実装は AI が `ClaudeCodeForDesigner\_samples\` から読めるので、サンプル集を画面で見たくなったら「サンプル集を展開して」と言えばよいこと
+- ソースコード（C#）も同じフォルダ（ROOT）にあり、必要なら ROOT でエージェントを起動して変更できるが、**ふつうの画面追加はデザインだけで済む**こと
 
 ---
 

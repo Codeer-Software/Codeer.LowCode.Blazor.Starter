@@ -52,7 +52,7 @@ Entra ID / Google / AWS Cognito / 汎用 OIDC でのログインは `appsettings
 
 - `Source/Hosts/` のバリアントから新しいアプリケーションを始める（リポジトリをクローンするか、Visual Studio 拡張機能をインストール）
 - タグ間の `git diff`（例: `git diff v1.3.20 v1.3.23 -- Source/Hosts/Cookie`）でフレームワークのバージョン間の差分を確認し、自分のアプリケーションに反映する
-- Claude Code の入口としてこのリポジトリを使う（`CLAUDE.md` と `ClaudeCodeForDeveloper/claude-code-setup.md` を参照）
+- AI エージェント（Claude Code / Codex / GitHub Copilot）の入口としてこのリポジトリを使う（`CLAUDE.md`（Codex / Copilot は `AGENTS.md`）と `ClaudeCodeForDeveloper/claude-code-setup.md` を参照）
 
 ## 手動で始める
 

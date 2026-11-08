@@ -9,7 +9,7 @@ namespace StarterTool
     /// after downloading the repository, so that the user's folder holds only their application, not this repository.
     ///
     ///   &lt;dest&gt;/
-    ///     CLAUDE.md                      (maintainer-only blocks removed, paths rewritten)
+    ///     CLAUDE.md  AGENTS.md            (maintainer-only blocks removed, paths rewritten)
     ///     ClaudeCodeForDeveloper/claude-code-setup.md  claude-code-update.md
     ///     ClaudeCodeForDeveloper/starter-origin.json   (the exported Starter commit; the base of an update)
     ///     .vscode/  .gitignore  LICENSE
@@ -68,14 +68,14 @@ namespace StarterTool
             Console.WriteLine($"created Source/{Repository.AppName}.sln");
 
             //Documents and settings that belong to the application folder (not to this repository).
-            foreach (var relative in new[] { "CLAUDE.md", Path.Combine("ClaudeCodeForDeveloper", "claude-code-setup.md"), Path.Combine("ClaudeCodeForDeveloper", "claude-code-update.md"), ".gitignore", "LICENSE" })
+            foreach (var relative in new[] { "CLAUDE.md", "AGENTS.md", Path.Combine("ClaudeCodeForDeveloper", "claude-code-setup.md"), Path.Combine("ClaudeCodeForDeveloper", "claude-code-update.md"), ".gitignore", "LICENSE" })
                 CopyText(relative, dest);
             foreach (var file in Directory.EnumerateFiles(Path.Combine(_root, ".vscode"), "*.json"))
                 CopyText(Path.Combine(".vscode", Path.GetFileName(file)), dest);
             var origin = new { starterCommit, maui = withMaui };
             File.WriteAllText(Path.Combine(dest, UpdateDiff.OriginFile),
                 System.Text.Json.JsonSerializer.Serialize(origin, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }) + "\n", new UTF8Encoding(false));
-            Console.WriteLine("exported CLAUDE.md, ClaudeCodeForDeveloper/, .vscode/, .gitignore, LICENSE");
+            Console.WriteLine("exported CLAUDE.md, AGENTS.md, ClaudeCodeForDeveloper/, .vscode/, .gitignore, LICENSE");
 
             //Fonts for PDF output (FontFileDirectory): Noto Sans JP (SIL Open Font License 1.1; OFL.txt goes with them).
             var fontSrc = Path.Combine(Repository.Hosts(_root), Repository.CommonDir, "Font");
