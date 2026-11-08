@@ -1,6 +1,6 @@
-# Claude Code 向け: アプリを最新のパッケージとテンプレートに更新する手順
+# AI エージェント向け: アプリを最新のパッケージとテンプレートに更新する手順
 
-**この文書は Claude Code（AI）が読んで実行するための手順書です。**（利用者向けの注意: この手順は AI が実行します。
+**この文書は AI エージェント（Claude Code / Codex / GitHub Copilot）が読んで実行するための手順書です。**（利用者向けの注意: この手順は AI が実行します。
 AI の動作は決定的ではなく、ファイルの変更・コマンド実行を伴います。内容を確認のうえ自己責任でご利用ください。
 本リポジトリは LICENSE のとおり AS IS で提供され、AI の操作に起因する損害について Codeer は責任を負いません。）
 ユーザーが「最新化して」「パッケージを最新にして」「この URL を見て最新化して」などと言ったら、上から順に実行してください。
@@ -8,7 +8,7 @@ AI の動作は決定的ではなく、ファイルの変更・コマンド実�
 対象: [claude-code-setup.md](claude-code-setup.md) で作ったアプリのフォルダ（以下 **ROOT**。`Source\LowCodeApp.sln` と `CLAUDE.md` があるフォルダ）。
 
 ゴール: Codeer.LowCode.Blazor 系の NuGet パッケージを最新にし、**ユーザーが望む範囲で**ホストのコード（`Source\` の C#・設定）を
-最新のテンプレートに揃え、ビルドが通り、Claude Code 用の文書・ワークスペースも新しい版になっている状態にする。
+最新のテンプレートに揃え、ビルドが通り、AI 用の文書・ワークスペースも新しい版になっている状態にする。
 
 ## 進め方の原則
 
@@ -37,8 +37,7 @@ AI の動作は決定的ではなく、ファイルの変更・コマンド実�
 $latest = (Invoke-RestMethod https://api.github.com/repos/Codeer-Software/Codeer.LowCode.Blazor.Starter/commits/main).sha
 ```
 
-`api.github.com` に届かないとき（社内プロキシ・回数制限）は `$latest = "refs/heads/main"` として続ける（zip の展開先は `Codeer.LowCode.Blazor.Starter-main`。
-Step 2 の `$repo` をそれに読み替え、`--starter-commit` は付けない）。この場合は次の最新化でも元の版が分からない（2 者比較になる）。
+`api.github.com` に届かないとき（社内プロキシ・回数制限）は `$latest = "refs/heads/main"` として続ける（Step 2 の `--starter-commit` は付けない）。この場合は次の最新化でも元の版が分からない（2 者比較になる）。
 
 `starterCommit` と `$latest` が同じなら、テンプレートは変わっていない。Step 6（ビルド）以降のパッケージの確認だけ行う
 （`dotnet list "<ROOT>\Source\LowCodeApp.sln" package --outdated` で Codeer 系に新しい版が無ければ「最新です」と伝えて終わる）。
@@ -53,10 +52,14 @@ if (Test-Path $work) { Rename-Item $work ("Update_" + (Get-Date -Format "yyyyMMd
 New-Item -ItemType Directory $work | Out-Null
 $maui = @()   # starter-origin.json の maui が true なら @("--maui")
 function Export-Starter($commit, $dest) {
-  Invoke-WebRequest "https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter/archive/$commit.zip" -OutFile "$work\$commit.zip"
-  Expand-Archive "$work\$commit.zip" -DestinationPath "$work\zip" -Force
-  $repo = "$work\zip\Codeer.LowCode.Blazor.Starter-$commit"
-  dotnet run --project "$repo\Source\Tools\StarterTool" -- export-app $dest @maui --starter-commit $commit | Out-Host   # 出力を戻り値に混ぜない
+  $name = if ($commit.Length -eq 40) { $commit.Substring(0, 12) } else { $commit -replace '[^0-9A-Za-z]', '_' }   # refs/heads/main → refs_heads_main
+  Invoke-WebRequest "https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter/archive/$commit.zip" -OutFile "$work\$name.zip"
+  $repo = "$work\src_$name"
+  New-Item -ItemType Directory $repo | Out-Null
+  & "$env:SystemRoot\System32\tar.exe" -xf "$work\$name.zip" -C $repo --strip-components=1   # 最上位フォルダ (コミット 40 文字入り) を省く。パスの上限 260 文字対策
+  if ($LASTEXITCODE -ne 0) { throw "zip の展開に失敗: $commit" }
+  $origin = if ($commit.Length -eq 40) { @("--starter-commit", $commit) } else { @() }   # refs/heads/main のときは元の版を記録しない
+  dotnet run --project "$repo\Source\Tools\StarterTool" -- export-app $dest @maui @origin | Out-Host   # 出力を戻り値に混ぜない
   if ($LASTEXITCODE -ne 0) { throw "export-app failed: $commit" }
   return $repo
 }
@@ -89,7 +92,7 @@ dotnet run --project "$newRepo\Source\Tools\StarterTool" -- update-diff "<ROOT>"
 | `differs` | （元の版が無いとき）今のアプリと最新の版が違う | 誰の変更か分からない。差分を見せてユーザーに聞く。元の版が無いときの `add` は、ユーザーが消したファイルのこともある。テンプレートから消えたファイルは元の版が無いと分からないので一覧に出ない（ビルドエラーの原因になっていたら疑う） |
 
 `area` はファイルの種類: `package`（`.csproj`。パッケージの版・ターゲットフレームワーク）/ `settings`（`appsettings*.json`・`launchSettings.json`）/
-`docs`（`Source\` の外: `CLAUDE.md`・`ClaudeCodeForDeveloper\*.md`・`.vscode\`・`.gitignore`・`LICENSE`）/ `code`（それ以外。C#・Razor・sln など）。`Local\`（フォント）は比べない。
+`docs`（`Source\` の外: `CLAUDE.md`・`AGENTS.md`・`ClaudeCodeForDeveloper\*.md`・`.vscode\`・`.gitignore`・`LICENSE`）/ `code`（それ以外。C#・Razor・sln など）。`Local\`（フォント）は比べない。
 
 前回「パッケージだけ」にしていると、`.csproj` はこの手順が版を上げたせいで `merge` になる。元の版との違いが Codeer 系パッケージの `Version` だけなら、ユーザーの変更ではないので `update` と同じに扱ってよい。
 
@@ -117,7 +120,7 @@ dotnet run --project "$newRepo\Source\Tools\StarterTool" -- update-diff "<ROOT>"
 3. **取り込むものを選ぶ** — 一覧から選んでもらう
 
 補足として 1 行添える: 「テンプレートのコードの変更を取り込まないと、新しい版で増えた機能（例: 上の ExtrasApiTable に載る機能）の一部が使えないことがあります。あとから取り込むこともできます」。
-`docs`（Codeer が配る文書）は、ユーザーが変えていなければ（`update` / `add`）聞かずに最新にする（Claude Code の知識を新しい版に合わせるため）。
+`docs`（Codeer が配る文書）は、ユーザーが変えていなければ（`update` / `add`）聞かずに最新にする（AI の知識を新しい版に合わせるため）。
 ユーザーが変えていた `docs`（`merge`）は、コードと同じく確認する。
 
 ## Step 5. 退避して反映する
@@ -131,7 +134,7 @@ dotnet run --project "$newRepo\Source\Tools\StarterTool" -- update-diff "<ROOT>"
 - **コードも取り込む**（選択 2・3）: `update` / `add` は `$work\new\<path>` をコピーする。`delete` は消す。
   `merge` は base → new の差分をユーザーのファイルに手で当てる（ユーザーの変更は残す）。確認したもの以外は変えない。
   `appsettings*.json` は**上書きしない**: 最新の版で増えたキーだけを足す（接続文字列・パス・ユーザーが足したデータソースはそのまま）
-- `.claude\settings.local.json`・`Local\`・`DesignProjects\` はこの手順では触らない（下の Step 7 で各コマンドが更新する）
+- `.claude\settings.local.json`・`.codex\`・`Local\`・`DesignProjects\` はこの手順では触らない（下の Step 7 で各コマンドが更新する）
 
 ## Step 6. ビルドする
 
@@ -146,7 +149,7 @@ dotnet build "<ROOT>\Source\LowCodeApp.sln"
 - `Obsolete` の警告は止めずに報告だけする（動作する。テンプレートの新しい書き方は最新の版を見れば分かる）
 - 直せないときは退避（`Local\Update\backup`）から戻して、何が起きたかを伝える
 
-## Step 7. Claude Code 用の文書・ワークスペースを作り直す
+## Step 7. AI 用の文書・ワークスペースを作り直す
 
 デザイナ exe（`<ROOT>\Source\LowCodeApp.Designer\bin\Debug\<ターゲット>\LowCodeApp.Designer.exe`。以降 **DESIGNER_EXE**）は新しい版になっている。
 GUI サブシステムの exe なので必ず `Start-Process -Wait` で呼び、結果は `--out` の JSON で受ける。
