@@ -17,6 +17,9 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# 相対パスはホストのルート (このスクリプトのフォルダ AIForDeveloper/hooks の 2 つ上) を基準にする。呼び出し元の作業フォルダには依存しない
+Set-Location -LiteralPath (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+
 if (-not (Test-Path -LiteralPath $Exe)) { exit 0 }
 if (-not (Test-Path -LiteralPath $DesignProjectsDir)) { exit 0 }
 

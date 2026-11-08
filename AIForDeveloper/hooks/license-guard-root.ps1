@@ -13,6 +13,11 @@ param(
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# 入力に cwd が無いときに渡す基準は呼び出し元の作業フォルダ。それ以外の相対パスはホストのルート
+# (このスクリプトのフォルダ AIForDeveloper/hooks の 2 つ上) を基準にする
+$callerDir = (Get-Location).Path
+Set-Location -LiteralPath (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+
 # 入出力は UTF-8 (既定の OEM コードページ / ASCII だと日本語のパスが化けて判定が素通りする)
 [Console]::InputEncoding = New-Object System.Text.UTF8Encoding $false
 $OutputEncoding = New-Object System.Text.UTF8Encoding $false
@@ -25,7 +30,7 @@ if (-not (Test-Path -LiteralPath $DesignProjectsDir)) { exit 0 }
 
 # 委ねた先は各ワークスペースで動くので、相対パスの基準 (cwd) が入力に無ければルートを入れて渡す
 if (-not ($hook.cwd -is [string] -and $hook.cwd -ne '')) {
-    $hook | Add-Member -NotePropertyName cwd -NotePropertyValue (Get-Location).Path -Force
+    $hook | Add-Member -NotePropertyName cwd -NotePropertyValue $callerDir -Force
     $raw = $hook | ConvertTo-Json -Compress -Depth 20
 }
 
