@@ -135,7 +135,7 @@ public class CloseOrdersJob : IJob
 ```
 
 - `GetListAsync<T>` は条件に当たる行を全部返す（`SearchCondition<T>` に `Take(n)` を付けたときは先頭 n 件）。並び・件数・ページ分け・集計（`AggregateCondition<T>`）は
-  `ClaudeCodeForDeveloper/_specs/HostCustomization.md` の「C# からデータを読み書きする」
+  `AIForDeveloper/_specs/HostCustomization.md` の「C# からデータを読み書きする」
 - 書き込みは `SubmitWithTransactionAsync` 1 回が 1 トランザクション。失敗は結果の `ExceptionMessage` に入る（例外にはならない）ので、上のように確かめて投げる
 
 ## 設定

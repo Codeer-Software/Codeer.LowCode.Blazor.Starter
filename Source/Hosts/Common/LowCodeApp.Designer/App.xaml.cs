@@ -32,7 +32,7 @@ public partial class App : DesignerApp
     {
         typeof(LowCodeApp.Client.Shared.Services.AppInfoService).ToString();
 
-        //プロジェクトテンプレートと claude-workspace は headless CLI でも使うので base.OnStartup より前に登録する
+        //プロジェクトテンプレートと ai-workspace は headless CLI でも使うので base.OnStartup より前に登録する
         DesignerStandard.SetupHeadless();
         ApexChartsDesignerInitializer.Initialize(BlazorRuntime);
         ExtrasDesignerInitializer.Initialize(BlazorRuntime);

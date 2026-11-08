@@ -3,18 +3,18 @@
 ## まず CLAUDE.md を読む
 
 **説明と作業ルールの本体は同じフォルダの `CLAUDE.md`。着手前に全文を読み、それに従う**（名前は Claude だが、どのエージェントにも共通。
-`ClaudeCodeForDeveloper/` と `DesignProjects/<デザイン名>/` の文書も同じ）。末尾の「Claude Code 固有」の節だけは読み飛ばし、代わりにこのファイルに従う。
+`AIForDeveloper/` と `DesignProjects/<デザイン名>/` の文書も同じ）。末尾の「Claude Code 固有」の節だけは読み飛ばし、代わりにこのファイルに従う。
 
-- セットアップ（「この URL を見て指示に従って」「セットアップして」）は `ClaudeCodeForDeveloper/claude-code-setup.md`、最新化は `ClaudeCodeForDeveloper/claude-code-update.md` を上から実行する
-- デザインを触るときは `DesignProjects/<デザイン名>/CLAUDE.md` と `ClaudeCodeForDesigner/CLAUDE.md` も読む（ルートで起動したときは自動では読み込まれない）
+- セットアップ（「この URL を見て指示に従って」「セットアップして」）は `AIForDeveloper/claude-code-setup.md`、最新化は `AIForDeveloper/claude-code-update.md` を上から実行する
+- デザインを触るときは `DesignProjects/<デザイン名>/CLAUDE.md` と `AIForDesigner/CLAUDE.md` も読む（ルートで起動したときは自動では読み込まれない）
 
 ## Codex
 
 - 許可とフックはデザイナの `developer-workspace`（セットアップの Step 5）が、このマシンの exe パス入りで生成する。手で編集しない
   - `.codex/hooks.json` — セッション開始と各プロンプトで `DesignProjects/*/` の各ワークスペースを最新化する。ファイル編集の前に、デザインを編集できないライセンスならデザインの編集を止める
   - `.codex/rules/codeer-lowcode.rules` — デザイナ exe の CLI・`dotnet build` / `test` / `run`・`node`・`npm install`・`npx playwright` を確認なしで実行する
-- この 2 つは既存なら触らないので、デザイナ exe の場所が変わったら `.claude/settings.local.json` と一緒に消して `developer-workspace` を実行し直す（セットアップの Step 5）
-- この 2 つは **Codex がこのフォルダ（プロジェクト）を信頼済みにしたときだけ読まれる**。フックはさらに `/hooks` で中身を確認して信頼するまで動かない。CLI のたびに確認が出る・デザインの `ClaudeCodeForDesigner/` が古いなら、この 2 点をユーザーに案内する
+- デザイナ exe の場所が変わったら `developer-workspace` を実行し直す（この 2 つと `.claude/settings.local.json` の hooks 節・CLI 許可が新しい exe に合わせて更新される。セットアップの Step 5）
+- この 2 つは **Codex がこのフォルダ（プロジェクト）を信頼済みにしたときだけ読まれる**。フックはさらに `/hooks` で中身を確認して信頼するまで動かない。CLI のたびに確認が出る・デザインの `AIForDesigner/` が古いなら、この 2 点をユーザーに案内する
 - ファイルの作成・編集は apply_patch、読み込み・検索はシェル（`rg` 等）で行う
 
 ## GitHub Copilot
