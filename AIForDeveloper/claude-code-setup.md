@@ -91,14 +91,14 @@ Remove-Item $tmp -Recurse -Force; Remove-Item "$tmp.zip" -Force
 展開は `Expand-Archive` ではなく Windows 標準の `tar.exe` で、zip の最上位フォルダを省く（`--strip-components=1`）。最上位フォルダ名にはコミットの値（40 文字）が入るため、
 そのまま展開すると一時フォルダの深さしだいでパスが Windows の上限（260 文字）を超えて失敗する。`tar` を名前だけで呼ぶと Git for Windows の tar（zip を読めない）を拾うことがあるので、場所を指定して呼ぶ。
 
-`--starter-commit` は書き出し元の版を `<ROOT>\ClaudeCodeForDeveloper\starter-origin.json` に残す（後で最新化するとき、その版と比べて
+`--starter-commit` は書き出し元の版を `<ROOT>\AIForDeveloper\starter-origin.json` に残す（後で最新化するとき、その版と比べて
 ユーザーが変えた箇所とテンプレートが変わった箇所を見分ける。[claude-code-update.md](claude-code-update.md)）。
 `api.github.com` に届かないとき（社内プロキシ等）は `$commit` を取らずに `archive/refs/heads/main.zip` を使い、`--starter-commit` を付けない。
 
-書き出し後、`<ROOT>\Source\LowCodeApp.sln`、`<ROOT>\CLAUDE.md`、`<ROOT>\ClaudeCodeForDeveloper\claude-code-setup.md` があることを確認する。
+書き出し後、`<ROOT>\Source\LowCodeApp.sln`、`<ROOT>\CLAUDE.md`、`<ROOT>\AIForDeveloper\claude-code-setup.md` があることを確認する。
 **以降はこの手順書の ROOT にあるコピーを読んで続ける**（パスがアプリの配置に書き換わっている。Web 上の原本は Step 2 までの案内）。
-**このフォルダが以後の作業場所。** AI の知識源は 3 つ: ROOT の `CLAUDE.md`（ホスト側の説明）、`ClaudeCodeForDeveloper/`（この手順書と、Step 5 で
-生成するホスト開発のリファレンス）、Step 7 で展開される `DesignProjects\Project\ClaudeCodeForDesigner/`（デザインの作り方）。
+**このフォルダが以後の作業場所。** AI の知識源は 3 つ: ROOT の `CLAUDE.md`（ホスト側の説明）、`AIForDeveloper/`（この手順書と、Step 5 で
+生成するホスト開発のリファレンス）、Step 7 で展開される `DesignProjects\Project\AIForDesigner/`（デザインの作り方）。
 
 > ユーザー自身のリポジトリにしたい場合は `git init` すればよい（zip から書き出すので `.git` は無い。聞かれたときだけ案内する。聞かない）。
 
@@ -159,11 +159,10 @@ Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
 Get-Content "<ROOT>\Local\developer-workspace.json"
 ```
 
-`<ROOT>\ClaudeCodeForDeveloper\_specs\HostCustomization.md` などができる（`_` で始まるものは生成物・gitignore 済み。この手順書などコミット済みの文書には触らない）。
-同時に `<ROOT>\.claude\settings.local.json`（デザイナ exe のパスを焼き込んだ許可リストと、`DesignProjects\*\` の各ワークスペースを最新化するフック。既存なら触らない。GitHub Copilot もこのフックを読む）と、
-同じ内容の Codex 用 `<ROOT>\.codex\hooks.json`・`<ROOT>\.codex\rules\codeer-lowcode.rules`（既存なら触らない）ができる。
-デザイナ exe の場所が変わったとき（ビルド構成の変更・フォルダの移動）は、この 3 ファイルを消して同じコマンドを実行し直す。
-パッケージを更新したときは同じコマンドで作り直す。判定: JSON に `"error"` が無く `written` に `HostCustomization.md` が含まれる。
+`<ROOT>\AIForDeveloper\_specs\HostCustomization.md` などができる（`_` で始まるものは生成物・gitignore 済み。この手順書などコミット済みの文書には触らない）。
+同時に、雛形 `<ROOT>\AIForDeveloper\settings.local.json.sample` にデザイナ exe のパスを入れた `<ROOT>\.claude\settings.local.json`（許可リストと、`DesignProjects\*\` の各ワークスペースを最新化するフック。GitHub Copilot もこのフックを読む）と、
+同じ内容の Codex 用 `<ROOT>\.codex\hooks.json`・`<ROOT>\.codex\rules\codeer-lowcode.rules` ができる。フックのスクリプトは `<ROOT>\AIForDeveloper\hooks\` にある（コミット済み）。
+デザイナ exe の場所が変わったとき（ビルド構成の変更・フォルダの移動）や、パッケージを更新したときは同じコマンドを実行し直す（既存の `settings.local.json` は hooks 節と CLI 許可だけが更新され、ユーザーが足した許可は残る）。判定: JSON に `"error"` が無く `written` に `HostCustomization.md` が含まれる。
 
 > 許可とフックの設定は **次のセッションから効く**。今のセッションでは反映されないので、完了メッセージで
 > 「一度再起動（この手順書の冒頭の言い方）すると、デザイナのコマンドが許可済みになります」と伝える。
@@ -251,16 +250,16 @@ Get-Content "<ROOT>\Local\deploy.json"
 
 ```powershell
 Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
-  "claude-workspace", "<ROOT>\DesignProjects\Project", "--project", "design", "--out", "<ROOT>\Local\claude-workspace.json")
-Get-Content "<ROOT>\Local\claude-workspace.json"
+  "ai-workspace", "<ROOT>\DesignProjects\Project", "--project", "design", "--out", "<ROOT>\Local\ai-workspace.json")
+Get-Content "<ROOT>\Local\ai-workspace.json"
 ```
 
-`<ROOT>\DesignProjects\Project\` に `CLAUDE.md`（デザイン作業の規約）、`ClaudeCodeForDesigner/`（デザインの作り方・仕様・カタログ。**自動生成、手で編集しない**）、
+`<ROOT>\DesignProjects\Project\` に `CLAUDE.md`（デザイン作業の規約）、`AIForDesigner/`（デザインの作り方・仕様・カタログ。**自動生成、手で編集しない**）、
 `Project.md`（このデザイン固有のメモ）、`ddl/`、`docs/`、`LocalEnvironment.md`、`.claude/settings.local.json`（デザイナ exe のパスを焼き込んだ許可リストとフック）、
 `AGENTS.md`（Codex / GitHub Copilot の入口）、`.codex/`（Codex 用の同じ許可とフック）ができる。
 ROOT の `CLAUDE.md`（このリポジトリのもの）には触らない。
 
-判定: JSON の `aiRefresh` が `ok`。`<ROOT>\DesignProjects\Project\ClaudeCodeForDesigner\CLAUDE.md` と `_field_catalog.md` が存在する。
+判定: JSON の `aiRefresh` が `ok`。`<ROOT>\DesignProjects\Project\AIForDesigner\CLAUDE.md` と `_field_catalog.md` が存在する。
 
 > デザインだけを扱う人は **`<ROOT>\DesignProjects\Project` でエージェントを起動**する（ホストのソースが視界に入らない）。ROOT で起動したエージェントは
 > ホスト（C#）とデザインの両方を扱える（Step 5 の許可・フックの設定に同じものがある）。完了メッセージでこの使い分けを伝える。
@@ -319,7 +318,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 - デザインプロジェクトの場所（`<ROOT>\DesignProjects\Project\design`）と、今はログインとユーザー管理だけの空の状態であること。デザイナで編集 → メニューの「ファイル > デプロイ」（Ctrl+F5）でサーバーに反映されること（サーバーの再起動は不要。スクリプトを変えたときだけ再起動）
 - **次にできること**: 「エージェントを再起動して、作りたいアプリの内容を教えてください。例:『商品マスタと受注入力の画面を作って』。デザインだけを扱うなら `DesignProjects\Project` フォルダで起動するとホストのソースが視界に入らず身軽です」
 - デザインプロジェクトのフォルダ名は `Project`。変えたければフォルダをリネームすればよい（`launch.json` の Designer 構成のパスも合わせる）こと
-- 参考実装は AI が `ClaudeCodeForDesigner\_samples\` から読めるので、サンプル集を画面で見たくなったら「サンプル集を展開して」と言えばよいこと
+- 参考実装は AI が `AIForDesigner\_samples\` から読めるので、サンプル集を画面で見たくなったら「サンプル集を展開して」と言えばよいこと
 - ソースコード（C#）も同じフォルダ（ROOT）にあり、必要なら ROOT でエージェントを起動して変更できるが、**ふつうの画面追加はデザインだけで済む**こと
 
 ---
@@ -334,10 +333,10 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 | `template-create` の JSON に `template not found` | `Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("template-list","--out","<ROOT>\Local\tl.json")` で一覧を出し `folderName` を確認する |
 | `template-create` の JSON に `--out-dir must be empty` | `<ROOT>\DesignProjects\Project\design` に既にファイルがある。中身を確認し、ユーザーの物でなければ削除して再実行 |
 | 頼まれていないサンプル（PatternShowcase 等）を作ってしまった | デザイナを終了 → `DesignProjects\PatternShowcase` を削除 → `C:\Codeer.LowCode.Blazor.Local\Data\sqlite_patterns_v*.db` を削除 → ユーザーのアプリを `deploy "<ROOT>\DesignProjects\Project\design"` でデプロイし直す（App.zip が上書きされる）。ユーザーに何を消したか報告する |
-| `template-create` や `claude-workspace` を実行するとデザイナの **ウィンドウが開いて** JSON ができない | デザイナのパッケージが古い（`template-create` は Codeer.LowCode.Blazor.Designer 1.3.24 以降）。`Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj` の `Codeer.LowCode.Blazor.Designer` の版を確認する。このリポジトリを最新から取得していれば起きない |
+| `template-create` や `ai-workspace` を実行するとデザイナの **ウィンドウが開いて** JSON ができない | デザイナのパッケージが古い（`template-create` は Codeer.LowCode.Blazor.Designer 1.3.24 以降）。`Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj` の `Codeer.LowCode.Blazor.Designer` の版を確認する。このリポジトリを最新から取得していれば起きない |
 | サーバー起動で `address already in use` | ポートが使用中。`launchSettings.json` の `applicationUrl` のポート番号を空いている番号に変えて再起動し、完了メッセージの URL も合わせる |
 | ブラウザで開くと真っ白／`design not found` | `<ROOT>\Local\Designs\App.zip` が無い。Step 6 のデプロイが失敗している。`Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("deploy","<ROOT>\DesignProjects\Project\design","--out","<ROOT>\Local\deploy.json")` で作り直す |
-| `developer-workspace` / `claude-workspace` で `--out` の JSON ができない（ウィンドウが開く） | デザイナのパッケージが古い（`developer-workspace` は Codeer.LowCode.Blazor.Designer.Standard 0.8.3 以降）。このリポジトリを最新から取得していれば起きない |
+| `developer-workspace` / `ai-workspace` で `--out` の JSON ができない（ウィンドウが開く） | デザイナのパッケージが古い（`developer-workspace` は Codeer.LowCode.Blazor.Designer.Standard 0.8.3 以降）。このリポジトリを最新から取得していれば起きない |
 | ログインできない（Cookie） | サンプル DB に `admin` がいるはず。`appsettings.Development.json` の `ConnectionStrings.Main` が `<ROOT>\Local\Data\main.db` を指しているか、そのファイルが存在するか、デザインの `designer.settings.Development.json` も同じパスかを確認 |
 | `winget` が見つからない | Step 1 の dotnet-install.ps1 経路 |
 | PowerShell で `&` でデザイナ exe を呼ぶと即戻って何も起きない | 正常（GUI サブシステム）。必ず `Start-Process -Wait` + `--out` |

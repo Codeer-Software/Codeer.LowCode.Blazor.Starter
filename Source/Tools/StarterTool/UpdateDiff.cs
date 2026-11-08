@@ -6,7 +6,7 @@ namespace StarterTool
 {
     /// <summary>
     /// Compares an application folder written by export-app (and changed by its owner since) with two fresh exports:
-    /// the Starter commit it was exported from (base) and the latest one (new). Used by ClaudeCodeForDeveloper/claude-code-update.md.
+    /// the Starter commit it was exported from (base) and the latest one (new). Used by AIForDeveloper/claude-code-update.md.
     /// Only the files export-app writes are compared; files the owner added are not listed.
     /// Local/ (fonts) is not compared. Text files are compared ignoring line endings and BOM (Visual Studio rewrites them).
     /// Without a base, files the template removed are not listed (nothing tells that they came from the template).
@@ -24,13 +24,16 @@ namespace StarterTool
     public class UpdateDiff
     {
         /// <summary>Written by export-app; the comparison skips it (it is rewritten at the end of the update).</summary>
-        public static readonly string OriginFile = Path.Combine("ClaudeCodeForDeveloper", "starter-origin.json");
+        public static readonly string OriginFile = Path.Combine("AIForDeveloper", "starter-origin.json");
+        /// <summary>The same file under the folder's former name (ClaudeCodeForDeveloper, up to Designer.Standard 0.8.25); a base exported from such a commit has it there.</summary>
+        public static readonly string OldOriginFile = Path.Combine("ClaudeCodeForDeveloper", "starter-origin.json");
 
         public static int Run(string app, string? baseDir, string newDir, string outPath)
         {
             var paths = Enumerate(newDir).Concat(baseDir == null ? [] : Enumerate(baseDir))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Where(p => !p.Equals(OriginFile, StringComparison.OrdinalIgnoreCase) && !p.StartsWith("Local" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                .Where(p => !p.Equals(OriginFile, StringComparison.OrdinalIgnoreCase) && !p.Equals(OldOriginFile, StringComparison.OrdinalIgnoreCase)
+                    && !p.StartsWith("Local" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -69,7 +72,7 @@ namespace StarterTool
         }
 
         /// <summary>package = csproj (package versions, target framework) / settings = appsettings, launchSettings /
-        /// docs = everything outside Source/ (CLAUDE.md, ClaudeCodeForDeveloper, .vscode, .gitignore, LICENSE) / code = the rest.</summary>
+        /// docs = everything outside Source/ (CLAUDE.md, AIForDeveloper, .vscode, .gitignore, LICENSE) / code = the rest.</summary>
         static string Area(string path)
         {
             var name = Path.GetFileName(path);

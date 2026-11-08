@@ -9,7 +9,7 @@
 
 > このURLを見て指示に従って https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter
 
-Claude Code が [ClaudeCodeForDeveloper/claude-code-setup.md](ClaudeCodeForDeveloper/claude-code-setup.md) を読んで、残りを実行します。
+Claude Code が [AIForDeveloper/claude-code-setup.md](AIForDeveloper/claude-code-setup.md) を読んで、残りを実行します。
 .NET 10 SDK の確認（無ければ承諾のうえ winget でインストール）、このリポジトリからアプリのフォルダ（Cookie ホスト 1 つと Claude Code 用の文書だけ。リポジトリ全体は置かない）の書き出し、ソリューションのビルド、あなたのアプリ用の空のデザインプロジェクト（ログインとユーザー管理だけ）の作成、
 デザイン編集用のワークスペース展開、サーバー起動（ブラウザが開く）とデザイナの起動まで通ります。聞かれるのは不足ソフトのインストール可否だけです（デザインプロジェクトは `DesignProjects/Project/` に作られ、あとでリネームできます）。
 Windows 専用です（デザイナが WPF アプリケーション）。Visual Studio は必須ではなく、VS Code 用の起動設定を同梱しています。
@@ -18,9 +18,9 @@ Windows 専用です（デザイナが WPF アプリケーション）。Visual 
 そのあとは Claude Code に作りたいアプリの内容を伝えます（「商品マスタと受注入力の画面を作って」など）。起動する場所は `DesignProjects/Project/`
 （デザインプロジェクトごとの作業場。サンプル集を展開した場合は `DesignProjects/PatternShowcase/` が隣にできます）です。
 C# のホスト側を変えたいときはリポジトリのルートで起動します。配置は、`DesignProjects/<名前>/design/` がデザインプロジェクト本体で、隣に `Project.md`・`ddl/`・`docs/` が並びます。
-`ClaudeCodeForDeveloper/` にはセットアップ手順と、ホスト開発向けに生成されるリファレンスが入ります。
+`AIForDeveloper/` にはセットアップ手順と、ホスト開発向けに生成されるリファレンスが入ります。
 
-あとでパッケージを新しい版にしたいときは、アプリのフォルダで Claude Code に「最新化して」と伝えます（[ClaudeCodeForDeveloper/claude-code-update.md](ClaudeCodeForDeveloper/claude-code-update.md)）。
+あとでパッケージを新しい版にしたいときは、アプリのフォルダで Claude Code に「最新化して」と伝えます（[AIForDeveloper/claude-code-update.md](AIForDeveloper/claude-code-update.md)）。
 パッケージの版を上げたうえで、テンプレートのコードの変更も取り込むかどうかを確認してから進めます（あなたが書き換えたファイルは差分を見せて確認します）。
 
 > **免責事項**: このリポジトリのセットアップ手順とワークスペースの文書は、AI（Claude Code）が実行する指示書です。AI はソフトウェアのインストール、
@@ -52,7 +52,7 @@ Entra ID / Google / AWS Cognito / 汎用 OIDC でのログインは `appsettings
 
 - `Source/Hosts/` のバリアントから新しいアプリケーションを始める（リポジトリをクローンするか、Visual Studio 拡張機能をインストール）
 - タグ間の `git diff`（例: `git diff v1.3.20 v1.3.23 -- Source/Hosts/Cookie`）でフレームワークのバージョン間の差分を確認し、自分のアプリケーションに反映する
-- AI エージェント（Claude Code / Codex / GitHub Copilot）の入口としてこのリポジトリを使う（`CLAUDE.md`（Codex / Copilot は `AGENTS.md`）と `ClaudeCodeForDeveloper/claude-code-setup.md` を参照）
+- AI エージェント（Claude Code / Codex / GitHub Copilot）の入口としてこのリポジトリを使う（`CLAUDE.md`（Codex / Copilot は `AGENTS.md`）と `AIForDeveloper/claude-code-setup.md` を参照）
 
 ## 手動で始める
 

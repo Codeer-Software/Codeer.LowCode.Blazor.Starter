@@ -22,7 +22,8 @@ AI の動作は決定的ではなく、ファイルの変更・コマンド実�
 
 ## Step 1. 元の版と最新の版を確かめる
 
-`<ROOT>\ClaudeCodeForDeveloper\starter-origin.json` を読む（セットアップの `export-app` が書いたもの）:
+`<ROOT>\AIForDeveloper\starter-origin.json` を読む（セットアップの `export-app` が書いたもの。無ければ旧名のフォルダ `<ROOT>\ClaudeCodeForDeveloper\starter-origin.json` を見る。
+Designer.Standard 0.8.25 までのテンプレートで作ったアプリはフォルダ名が旧名で、この最新化で `AIForDeveloper\` に置き換わる）:
 
 ```json
 { "starterCommit": "<書き出し元の Starter のコミット>", "maui": false }
@@ -92,7 +93,7 @@ dotnet run --project "$newRepo\Source\Tools\StarterTool" -- update-diff "<ROOT>"
 | `differs` | （元の版が無いとき）今のアプリと最新の版が違う | 誰の変更か分からない。差分を見せてユーザーに聞く。元の版が無いときの `add` は、ユーザーが消したファイルのこともある。テンプレートから消えたファイルは元の版が無いと分からないので一覧に出ない（ビルドエラーの原因になっていたら疑う） |
 
 `area` はファイルの種類: `package`（`.csproj`。パッケージの版・ターゲットフレームワーク）/ `settings`（`appsettings*.json`・`launchSettings.json`）/
-`docs`（`Source\` の外: `CLAUDE.md`・`AGENTS.md`・`ClaudeCodeForDeveloper\*.md`・`.vscode\`・`.gitignore`・`LICENSE`）/ `code`（それ以外。C#・Razor・sln など）。`Local\`（フォント）は比べない。
+`docs`（`Source\` の外: `CLAUDE.md`・`AGENTS.md`・`AIForDeveloper\*.md`・`.vscode\`・`.gitignore`・`LICENSE`）/ `code`（それ以外。C#・Razor・sln など）。`Local\`（フォント）は比べない。
 
 前回「パッケージだけ」にしていると、`.csproj` はこの手順が版を上げたせいで `merge` になる。元の版との違いが Codeer 系パッケージの `Version` だけなら、ユーザーの変更ではないので `update` と同じに扱ってよい。
 
@@ -159,17 +160,22 @@ Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
   "developer-workspace", "<ROOT>", "--out", "<ROOT>\Local\developer-workspace.json")
 # DesignProjects の下のフォルダそれぞれについて
 Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
-  "claude-workspace", "<ROOT>\DesignProjects\<名前>", "--project", "design", "--out", "<ROOT>\Local\claude-workspace.json")
+  "ai-workspace", "<ROOT>\DesignProjects\<名前>", "--project", "design", "--out", "<ROOT>\Local\ai-workspace.json")
 Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @(
   "designcheck", "<ROOT>\DesignProjects\<名前>\design", "--out", "<ROOT>\Local\designcheck.json")
 ```
 
-判定: `developer-workspace.json` に `"error"` が無い。`claude-workspace.json` の `aiRefresh` が `ok`。
+判定: `developer-workspace.json` に `"error"` が無い。`ai-workspace.json` の `aiRefresh` が `ok`。
+`developer-workspace` は `.claude\settings.local.json` と `.codex\` を新しい雛形（`AIForDeveloper\settings.local.json.sample`。Step 5 で最新になっている）に合わせて更新し、
+旧版が生成していた `_hooks\` を片付ける。旧名のフォルダ `ClaudeCodeForDeveloper\` が残っていれば、生成物を消し、`starter-origin.json` など `AIForDeveloper\` に無いファイルを移し、空になれば消す
+（旧い文書が残ったときは結果の `preserved` に出る。`AIForDeveloper\` に同じものがあるので消す）。`ai-workspace` は旧名の `ClaudeCodeForDesigner\` を `AIForDesigner\` に置き換える
+（Designer.Standard 0.8.26 以降。どちらも自動で、ユーザーの作業は無い）。
+`developer-workspace.json` に「`settings.local.json.sample` が見つからない」と出たら、Step 5 で `docs` の変更を取り込んでいない。`$work\new\AIForDeveloper\` の `settings.local.json.sample` と `hooks\` を ROOT にコピーして実行し直す。
 `designcheck.json` にエラーがあれば一覧をユーザーに伝える（新しい版で増えた検査で見つかった設計の問題。直すかはユーザーに聞く）。
 
 ## Step 8. 元の版の記録を更新する
 
-- コードの変更を取り込んだ（選択 2・3）: `<ROOT>\ClaudeCodeForDeveloper\starter-origin.json` を `$work\new\ClaudeCodeForDeveloper\starter-origin.json` で置き換える
+- コードの変更を取り込んだ（選択 2・3）: `<ROOT>\AIForDeveloper\starter-origin.json` を `$work\new\AIForDeveloper\starter-origin.json` で置き換える
   （次の最新化は今回の版から比べる。取り込まなかった変更は、ユーザーが変えたものとして扱われ、次回は提案されない）
 - パッケージだけ（選択 1）: `starter-origin.json` は変えない（次回も今回と同じテンプレートの変更を提案できる）
 

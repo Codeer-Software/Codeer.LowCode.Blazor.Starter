@@ -5,13 +5,14 @@ namespace StarterTool
 {
     /// <summary>
     /// Writes the customer-shaped application folder: what a user gets from the Visual Studio template, plus the
-    /// documents Claude Code works with. Used by the Claude Code setup procedure (ClaudeCodeForDeveloper/claude-code-setup.md)
+    /// documents Claude Code works with. Used by the Claude Code setup procedure (AIForDeveloper/claude-code-setup.md)
     /// after downloading the repository, so that the user's folder holds only their application, not this repository.
     ///
     ///   &lt;dest&gt;/
     ///     CLAUDE.md  AGENTS.md            (maintainer-only blocks removed, paths rewritten)
-    ///     ClaudeCodeForDeveloper/claude-code-setup.md  claude-code-update.md
-    ///     ClaudeCodeForDeveloper/starter-origin.json   (the exported Starter commit; the base of an update)
+    ///     AIForDeveloper/claude-code-setup.md  claude-code-update.md
+    ///     AIForDeveloper/settings.local.json.sample  hooks/*.ps1   (root-level hooks; the designer's developer-workspace fills in the exe path)
+    ///     AIForDeveloper/starter-origin.json   (the exported Starter commit; the base of an update)
     ///     .vscode/  .gitignore  LICENSE
     ///     Source/LowCodeApp.sln
     ///     Source/LowCodeApp.Server  LowCodeApp.Client  LowCodeApp.Client.Shared  LowCodeApp.Designer  LowCodeApp.LicenseRegisterCli
@@ -34,7 +35,7 @@ namespace StarterTool
         }
 
         /// <param name="starterCommit">The Starter commit being exported (the setup downloads the zip of that commit). Recorded in
-        /// ClaudeCodeForDeveloper/starter-origin.json so that an update can export the same commit again as the base of a 3-way comparison.</param>
+        /// AIForDeveloper/starter-origin.json so that an update can export the same commit again as the base of a 3-way comparison.</param>
         public void Run(string dest, bool withMaui, string? starterCommit)
         {
             var sourceDir = Path.Combine(dest, Repository.SourceDir);
@@ -68,14 +69,24 @@ namespace StarterTool
             Console.WriteLine($"created Source/{Repository.AppName}.sln");
 
             //Documents and settings that belong to the application folder (not to this repository).
-            foreach (var relative in new[] { "CLAUDE.md", "AGENTS.md", Path.Combine("ClaudeCodeForDeveloper", "claude-code-setup.md"), Path.Combine("ClaudeCodeForDeveloper", "claude-code-update.md"), ".gitignore", "LICENSE" })
+            foreach (var relative in new[]
+            {
+                "CLAUDE.md", "AGENTS.md",
+                Path.Combine("AIForDeveloper", "claude-code-setup.md"),
+                Path.Combine("AIForDeveloper", "claude-code-update.md"),
+                //the root-level hook scripts and the permissions/hooks template the designer's developer-workspace fills in
+                Path.Combine("AIForDeveloper", "settings.local.json.sample"),
+                Path.Combine("AIForDeveloper", "hooks", "refresh-design-workspaces.ps1"),
+                Path.Combine("AIForDeveloper", "hooks", "license-guard-root.ps1"),
+                ".gitignore", "LICENSE",
+            })
                 CopyText(relative, dest);
             foreach (var file in Directory.EnumerateFiles(Path.Combine(_root, ".vscode"), "*.json"))
                 CopyText(Path.Combine(".vscode", Path.GetFileName(file)), dest);
             var origin = new { starterCommit, maui = withMaui };
             File.WriteAllText(Path.Combine(dest, UpdateDiff.OriginFile),
                 System.Text.Json.JsonSerializer.Serialize(origin, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }) + "\n", new UTF8Encoding(false));
-            Console.WriteLine("exported CLAUDE.md, AGENTS.md, ClaudeCodeForDeveloper/, .vscode/, .gitignore, LICENSE");
+            Console.WriteLine("exported CLAUDE.md, AGENTS.md, AIForDeveloper/, .vscode/, .gitignore, LICENSE");
 
             //Fonts for PDF output (FontFileDirectory): Noto Sans JP (SIL Open Font License 1.1; OFL.txt goes with them).
             var fontSrc = Path.Combine(Repository.Hosts(_root), Repository.CommonDir, "Font");

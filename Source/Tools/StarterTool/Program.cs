@@ -5,7 +5,7 @@ using StarterTool;
 //   dotnet run --project Source/Tools/StarterTool -- pack-vsix
 //   dotnet run --project Source/Tools/StarterTool -- export-debug <path to Codeer.LowCode.Blazor/Source>
 //   dotnet run --project Source/Tools/StarterTool -- export-app <destination folder> [--maui] [--starter-commit <sha>]   (customer-shaped application folder = Cookie host + Claude Code documents)
-//   dotnet run --project Source/Tools/StarterTool -- update-diff <application folder> --new <export of the latest> [--base <export of starter-origin.json's commit>] --out <json>   (ClaudeCodeForDeveloper/claude-code-update.md)
+//   dotnet run --project Source/Tools/StarterTool -- update-diff <application folder> --new <export of the latest> [--base <export of starter-origin.json's commit>] --out <json>   (AIForDeveloper/claude-code-update.md)
 //
 // Every project exists once:
 //   Source/Hosts/Common/*                        projects shared by every variant
