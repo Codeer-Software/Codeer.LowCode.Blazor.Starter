@@ -3,27 +3,32 @@
 [Codeer.LowCode.Blazor](https://www.nuget.org/packages/Codeer.LowCode.Blazor) でアプリケーションを始めるための、すぐビルドできるスターターソリューション集です。
 `Source/Hosts/` 配下のフォルダ 1 つがアプリケーションのバリアント 1 種類で、それぞれ `LowCodeApp` という名前の完全なソリューションになっています（フレームワークは NuGet パッケージ参照）。
 
-## いちばん早い始め方: Claude Code に全部やらせる
+## いちばん早い始め方: AI エージェントに全部やらせる
 
-空のフォルダで [Claude Code](https://claude.com/claude-code) を起動し、こう伝えます（ターミナル・デスクトップアプリ・VS Code の拡張のどれでも構いません。デスクトップアプリと VS Code では、そのフォルダを選んで新しいセッションを始めます）:
+使える AI エージェントは [Claude Code](https://claude.com/claude-code)・[Codex](https://openai.com/codex/)・[GitHub Copilot](https://github.com/features/copilot)（VS Code のエージェントモード・Copilot CLI）です。
+空のフォルダでエージェントを起動し、こう伝えます（ターミナル・デスクトップアプリ・VS Code の拡張のどれでも構いません。デスクトップアプリと VS Code では、そのフォルダを選んで新しいセッションを始めます）:
 
 > このURLを見て指示に従って https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Starter
 
-Claude Code が [AIForDeveloper/claude-code-setup.md](AIForDeveloper/claude-code-setup.md) を読んで、残りを実行します。
-.NET 10 SDK の確認（無ければ承諾のうえ winget でインストール）、このリポジトリからアプリのフォルダ（Cookie ホスト 1 つと Claude Code 用の文書だけ。リポジトリ全体は置かない）の書き出し、ソリューションのビルド、あなたのアプリ用の空のデザインプロジェクト（ログインとユーザー管理だけ）の作成、
+エージェントが [AIForDeveloper/claude-code-setup.md](AIForDeveloper/claude-code-setup.md) を読んで、残りを実行します（Codex と Copilot は `AGENTS.md` から同じ手順に進みます）。
+.NET 10 SDK の確認（無ければ承諾のうえ winget でインストール）、このリポジトリからアプリのフォルダ（Cookie ホスト 1 つと AI エージェント用の文書だけ。リポジトリ全体は置かない）の書き出し、ソリューションのビルド、あなたのアプリ用の空のデザインプロジェクト（ログインとユーザー管理だけ）の作成、
 デザイン編集用のワークスペース展開、サーバー起動（ブラウザが開く）とデザイナの起動まで通ります。聞かれるのは不足ソフトのインストール可否だけです（デザインプロジェクトは `DesignProjects/Project/` に作られ、あとでリネームできます）。
 Windows 専用です（デザイナが WPF アプリケーション）。Visual Studio は必須ではなく、VS Code 用の起動設定を同梱しています。
 試用にライセンス登録は不要で、デザイナはトライアルとして動作します。
 
-そのあとは Claude Code に作りたいアプリの内容を伝えます（「商品マスタと受注入力の画面を作って」など）。起動する場所は `DesignProjects/Project/`
+Codex と Copilot は、書き込みできるフォルダやネットワークを制限して動くことがあります。途中で許可を求められたら、作業フォルダへの書き込みと
+GitHub・nuget.org への通信を許可してください。Codex では、セットアップ後に起動し直したら、そのフォルダ（プロジェクト）を信頼し、`/hooks` でフックを
+信頼してください（デザイナのコマンドを確認なしで実行し、AI 用の資料を自動で最新にするための設定が有効になります）。
+
+そのあとはエージェントに作りたいアプリの内容を伝えます（「商品マスタと受注入力の画面を作って」など）。起動する場所は `DesignProjects/Project/`
 （デザインプロジェクトごとの作業場。サンプル集を展開した場合は `DesignProjects/PatternShowcase/` が隣にできます）です。
 C# のホスト側を変えたいときはリポジトリのルートで起動します。配置は、`DesignProjects/<名前>/design/` がデザインプロジェクト本体で、隣に `Project.md`・`ddl/`・`docs/` が並びます。
 `AIForDeveloper/` にはセットアップ手順と、ホスト開発向けに生成されるリファレンスが入ります。
 
-あとでパッケージを新しい版にしたいときは、アプリのフォルダで Claude Code に「最新化して」と伝えます（[AIForDeveloper/claude-code-update.md](AIForDeveloper/claude-code-update.md)）。
+あとでパッケージを新しい版にしたいときは、アプリのフォルダでエージェントに「最新化して」と伝えます（[AIForDeveloper/claude-code-update.md](AIForDeveloper/claude-code-update.md)）。
 パッケージの版を上げたうえで、テンプレートのコードの変更も取り込むかどうかを確認してから進めます（あなたが書き換えたファイルは差分を見せて確認します）。
 
-> **免責事項**: このリポジトリのセットアップ手順とワークスペースの文書は、AI（Claude Code）が実行する指示書です。AI はソフトウェアのインストール、
+> **免責事項**: このリポジトリのセットアップ手順とワークスペースの文書は、AI エージェント（Claude Code / Codex / GitHub Copilot）が実行する指示書です。AI はソフトウェアのインストール、
 > ファイルの変更、コマンドの実行をあなたのマシン上で行い、その動作は決定的ではありません。提案内容を確認のうえ、自己責任でご利用ください。
 > ここにあるものはすべて現状有姿（AS IS）で提供され、いかなる保証もありません（LICENSE を参照）。AI の操作に起因する損害について Codeer は責任を負いません。
 
@@ -57,7 +62,7 @@ Entra ID / Google / AWS Cognito / 汎用 OIDC でのログインは `appsettings
 ## 手動で始める
 
 1. リポジトリをクローンします（バリアントのフォルダ単体では不足です。ソリューションが `Source/Hosts/Common/` を参照しています）。
-   自分のアプリ用に自己完結したフォルダが欲しいときは `dotnet run --project Source/Tools/StarterTool -- export-app <出力先> [--maui]`（Claude Code のセットアップが使うのもこれ）か、Visual Studio 拡張機能のテンプレートを使います。
+   自分のアプリ用に自己完結したフォルダが欲しいときは `dotnet run --project Source/Tools/StarterTool -- export-app <出力先> [--maui]`（AI エージェントのセットアップが使うのもこれ）か、Visual Studio 拡張機能のテンプレートを使います。
 2. `LowCodeApp.sln` を開きます。必要なもの: .NET 10 SDK（Visual Studio 2026 に同梱）、`Source/Hosts/Maui/` はさらに `maui-android` / `maui-ios` ワークロード。
    Visual Studio が無い場合は `dotnet build Source/Hosts/Cookie/LowCodeApp.sln`。`.vscode/` に VS Code（C# Dev Kit）用の起動設定があります。
 3. サーバープロジェクト（`LowCodeApp.Server`）の `appsettings.Development.json` を確認します:

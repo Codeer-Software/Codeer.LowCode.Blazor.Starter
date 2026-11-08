@@ -20,6 +20,11 @@ AI の動作は決定的ではなく、ソフトウェアのインストール�
 - ユーザーへの応答はユーザーの言語で（日本語で話しかけられたら日本語）
 - **Windows 専用。** macOS / Linux では「デザイナが Windows 専用のため、このセットアップは Windows で行ってください」と伝えて終了する
 - 作業フォルダの外（`C:\` 直下や他のプロジェクト）には何も作らない
+- **許可は最初にまとめて取る。** 書き込みできる範囲やネットワークを制限して動くエージェント（Codex など）では、Step 0 で ROOT が決まったら
+  ROOT・一時フォルダ（`$env:TEMP`）・NuGet のキャッシュ（`%USERPROFILE%\.nuget`）への書き込みと、github.com（api / raw を含む）・nuget.org への通信
+  （.NET SDK が無ければ winget と dot.net も）の許可を一度に求める（途中で 1 つずつ止まらないため）
+- **起動するものは 1 コマンドに 1 つ。** サーバー・デザイナ・ブラウザの起動は別々のコマンドで実行する（承認で止まったものが分かり、他は進められる）。
+  起動が拒否されたら、そのものだけ起動をユーザーに頼み、残りの手順は続ける
 - エージェントは Claude Code（ターミナル・デスクトップアプリの Code タブ・VS Code の拡張）、Codex、GitHub Copilot（VS Code のエージェント・Copilot CLI）のどれでもよい。ユーザーに「〇〇で起動する」「再起動する」と伝えるときは、いま動いているエージェントの言い方にする: Claude Code のターミナルなら「そのフォルダで `claude`（再起動は `/exit` して再度 `claude`）」、Codex の CLI なら「そのフォルダで `codex`（再起動は終了して再度 `codex`）」、Copilot CLI なら「そのフォルダで `copilot`（再起動は終了して再度 `copilot`）」、デスクトップアプリ・VS Code なら「そのフォルダを選んで（開いて）新しいセッション（チャット）を始める」の意味。ターミナルかアプリか分からなければ両方の言い方を 1 行ずつ添える
 
 ### 聞いてよいこと（この 1 つだけ・既定値を提示して Yes/No で答えられる形で）
@@ -43,7 +48,7 @@ PowerShell で確認する。すべて非対話で判定できる。
 | .NET SDK 10 | `dotnet --list-sdks` | `10.` で始まる行があれば OK |
 | Visual Studio 2026 | `& "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationVersion` | `18.` 以上なら「VS あり」。vswhere 自体が無い／エラーなら「VS なし」 |
 | VS Code | `code --version` | VS なしのときだけ気にする |
-| エージェントの作業フォルダ | `Get-ChildItem -Force` | **空でなければ** サブフォルダ `LowCodeApp` を作ってそこを作業フォルダにする |
+| エージェントの作業フォルダ | `Get-ChildItem -Force` | ユーザーがフォルダを指定したらそこ。**空でなければ** サブフォルダ `LowCodeApp` を作ってそこを作業フォルダにする |
 
 以降、作業フォルダの絶対パスを **ROOT** と呼ぶ（例: `C:\Users\taro\work\LowCodeApp`）。パスに日本語や空白が入っていても動くが、
 すべてのコマンドでパスは `"` で囲む。
@@ -320,6 +325,9 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 - デザインプロジェクトのフォルダ名は `Project`。変えたければフォルダをリネームすればよい（`launch.json` の Designer 構成のパスも合わせる）こと
 - 参考実装は AI が `AIForDesigner\_samples\` から読めるので、サンプル集を画面で見たくなったら「サンプル集を展開して」と言えばよいこと
 - ソースコード（C#）も同じフォルダ（ROOT）にあり、必要なら ROOT でエージェントを起動して変更できるが、**ふつうの画面追加はデザインだけで済む**こと
+- どこまで確かめたか: ビルド・サーバーの応答・デザイナの起動のうち確認できたもの、できなかったもの（ユーザーに起動を頼んだもの、HTTPS の証明書を信頼できず HTTP で確認したもの等）を 1 行ずつ
+- Codex で動いているときだけ: 再起動したら、このフォルダ（プロジェクト）を信頼し、`/hooks` でフックの中身を確認して信頼すること（しないとデザイナの CLI のたびに確認が出て、`AIForDesigner\` も自動で最新にならない）
+- GitHub Copilot で動いているときだけ: デザイナの CLI のたびに承認が出るので、減らしたければ VS Code のユーザー設定に自動承認を足せること。足す中身は `DesignProjects\<デザイン名>\AGENTS.md` の「GitHub Copilot」の JSON（exe のパスを埋めたものを見せる。埋め方の注意もそこにある）
 
 ---
 
@@ -330,14 +338,15 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 | `dotnet build` で `NU1101` / `Unable to find package Codeer.LowCode.Blazor...` | nuget.org に到達できていない。プロキシ環境なら `$env:HTTPS_PROXY` を確認。社内 NuGet フィードしか使えない環境はユーザーに nuget.org のミラーがあるか聞く |
 | `dotnet build` で `NETSDK1045`（必要な SDK が無い） | .NET SDK 10 が入っていない。Step 1 をやり直す |
 | ビルドは通るが `LowCodeApp.Designer.exe` が無い | `Source\Hosts\Common\LowCodeApp.Designer\bin\Debug\net10.0-windows\` を再確認。無ければ `dotnet build "<ROOT>\Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj"` |
-| `template-create` の JSON に `template not found` | `Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("template-list","--out","<ROOT>\Local\tl.json")` で一覧を出し `folderName` を確認する |
+| `template-create` の JSON に `template not found` | `Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @("template-list","--out","<ROOT>\Local\tl.json")` で一覧を出し `folderName` を確認する |
 | `template-create` の JSON に `--out-dir must be empty` | `<ROOT>\DesignProjects\Project\design` に既にファイルがある。中身を確認し、ユーザーの物でなければ削除して再実行 |
 | 頼まれていないサンプル（PatternShowcase 等）を作ってしまった | デザイナを終了 → `DesignProjects\PatternShowcase` を削除 → `C:\Codeer.LowCode.Blazor.Local\Data\sqlite_patterns_v*.db` を削除 → ユーザーのアプリを `deploy "<ROOT>\DesignProjects\Project\design"` でデプロイし直す（App.zip が上書きされる）。ユーザーに何を消したか報告する |
 | `template-create` や `ai-workspace` を実行するとデザイナの **ウィンドウが開いて** JSON ができない | デザイナのパッケージが古い（`template-create` は Codeer.LowCode.Blazor.Designer 1.3.24 以降）。`Source\Hosts\Common\LowCodeApp.Designer\LowCodeApp.Designer.csproj` の `Codeer.LowCode.Blazor.Designer` の版を確認する。このリポジトリを最新から取得していれば起きない |
 | サーバー起動で `address already in use` | ポートが使用中。`launchSettings.json` の `applicationUrl` のポート番号を空いている番号に変えて再起動し、完了メッセージの URL も合わせる |
-| ブラウザで開くと真っ白／`design not found` | `<ROOT>\Local\Designs\App.zip` が無い。Step 6 のデプロイが失敗している。`Start-Process "<DESIGNER_EXE>" -Wait -ArgumentList @("deploy","<ROOT>\DesignProjects\Project\design","--out","<ROOT>\Local\deploy.json")` で作り直す |
+| ブラウザで開くと真っ白／`design not found` | `<ROOT>\Local\Designs\App.zip` が無い。Step 6 のデプロイが失敗している。`Start-Process -FilePath "<DESIGNER_EXE>" -Wait -ArgumentList @("deploy","<ROOT>\DesignProjects\Project\design","--out","<ROOT>\Local\deploy.json")` で作り直す |
 | `developer-workspace` / `ai-workspace` で `--out` の JSON ができない（ウィンドウが開く） | デザイナのパッケージが古い（`developer-workspace` は Codeer.LowCode.Blazor.Designer.Standard 0.8.3 以降）。このリポジトリを最新から取得していれば起きない |
 | ログインできない（Cookie） | サンプル DB に `admin` がいるはず。`appsettings.Development.json` の `ConnectionStrings.Main` が `<ROOT>\Local\Data\main.db` を指しているか、そのファイルが存在するか、デザインの `designer.settings.Development.json` も同じパスかを確認 |
+| `dotnet build` が `MSB4166`（子ノードが途中で終了）や、はっきりしたエラー無しで失敗する | 並列ビルドを止めて再実行する: `dotnet build "<ROOT>\Source\Hosts\Cookie\LowCodeApp.sln" -m:1 -nodeReuse:false`（以降のビルドも同じオプションで） |
 | `winget` が見つからない | Step 1 の dotnet-install.ps1 経路 |
 | PowerShell で `&` でデザイナ exe を呼ぶと即戻って何も起きない | 正常（GUI サブシステム）。必ず `Start-Process -Wait` + `--out` |
 | Excel / PDF 出力でフォントのエラー | サーバーの `appsettings.Development.json` の `FontFileDirectory` が指すフォルダ（Step 4 で `<ROOT>\Local\Font` にしている）に、PDF 出力で使うフォント（export-app が置く Noto Sans JP の `.ttf`）があるか確認する。無ければ Step 2 の zip をもう一度展開し、その中の Common ホストの `Font` フォルダからコピーする（ROOT にはテンプレートの元のフォルダは無い） |

@@ -20,8 +20,10 @@
 ## GitHub Copilot
 
 - フックは Claude Code と同じ `.claude/settings.local.json` のものを Copilot（VS Code のエージェント・Copilot CLI）が読んで動かす。ただしフックの出力は Copilot には届かないので、デザインを触るときは `DesignProjects/<デザイン名>/AGENTS.md` の手順で最新化とライセンスを自分で確かめる
-- デザイナ exe の CLI は PowerShell から `Start-Process -Wait` で呼ぶ（`& "<exe>" ...` では終了を待てない）
-- コマンドの許可は Copilot の承認で行う（Copilot 用の許可設定は生成しない）。デザイナ exe の CLI を毎回確認したくないなら、ユーザーに Copilot の自動承認の設定（VS Code なら `chat.tools.terminal.autoApprove`）へ足してもらう
+- デザイナ exe の CLI は PowerShell から `Start-Process -FilePath "<exe>" -Wait -ArgumentList ...` の形で呼ぶ（`& "<exe>" ...` では終了を待てない）
+- **`.claude/settings.local.json` の許可リストは Copilot では効かない。** コマンドの許可は Copilot の承認で行う（Copilot 用の許可設定は生成しない）。承認を減らす設定（VS Code のユーザー設定の `chat.tools.terminal.autoApprove`）の中身と案内の仕方は `DesignProjects/<デザイン名>/AGENTS.md` の「GitHub Copilot」にある。セットアップの完了メッセージでも案内する
+- ファイルの作成・編集は Copilot の作成・編集ツールで行う（手順書の `[IO.File]::WriteAllText` は、シェルの中で作る小さなファイル用）。作ったファイルを使うコマンドは、作成が終わってから実行する（同じ並列の呼び出しに入れない）
+- 作業物（`--out` の JSON・検証スクリプト等）は `<ROOT>\Local\scratch\` に置く（Copilot にはセッションの一時領域が無い。`Local/` は gitignore 済みで、作業フォルダの外に書くより承認が少ない）
 
 ## 共通の注意
 
