@@ -1,5 +1,7 @@
 # Codeer.LowCode.Blazor.Starter
 
+> **セキュリティのお知らせ (2026-11):** 旧版の問題を修正した版を公開しています。更新が必要なパッケージとホストコードは [GHSA-xc7q-chrv-mc7m](https://github.com/Codeer-Software/Codeer.LowCode.Blazor.Manual/security/advisories/GHSA-xc7q-chrv-mc7m) を参照してください。
+
 [Codeer.LowCode.Blazor](https://www.nuget.org/packages/Codeer.LowCode.Blazor) でアプリケーションを始めるための、すぐビルドできるスターターソリューション集です。
 `Source/Hosts/` 配下のフォルダ 1 つがアプリケーションのバリアント 1 種類で、それぞれ `LowCodeApp` という名前の完全なソリューションになっています（フレームワークは NuGet パッケージ参照）。
 
