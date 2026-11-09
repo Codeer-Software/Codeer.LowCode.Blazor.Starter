@@ -227,7 +227,7 @@ Claude Code で使うときだけの話。Codex / GitHub Copilot はこの節を
 
 - 許可とフックは `.claude/settings.json`（共通の許可。`appsettings.Development.json` / `designer.settings.Development.json` の読み書きは ask）と `.claude/settings.local.json`（このマシンのデザイナ exe パス入りの許可リストとフック。`developer-workspace` が生成）にある
 - デザイナ exe の場所が変わったら `developer-workspace` を実行し直す（`.claude/settings.local.json` の hooks 節と CLI 許可、`.codex/` を新しい exe に合わせて更新する。ユーザーが足した許可は残る）
-- `.claude/settings.local.json` は次のセッションから効く。作り直したら、ターミナルなら `/exit` して `claude`、デスクトップアプリ・VS Code なら新しいセッションを始めるよう案内する
+- `.claude/settings.local.json` は次のセッションから効く。同じセッションではデザイナの CLI のたびに確認が出るだけなので、そのまま続けてよい（再起動の案内は要らない）
 
 <!-- maintainer-only -->
 ## このリポジトリの性質（保守者向け）
