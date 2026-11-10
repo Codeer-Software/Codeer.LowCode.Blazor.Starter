@@ -13,6 +13,7 @@ using LowCodeApp.Server.Data;
 using LowCodeApp.Server.Infrastructure;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Web;
+using Codeer.LowCode.Blazor.Extras.Server.WebApi;
 using Microsoft.AspNetCore.SignalR;
 
 typeof(CodeBehindSample).ToString();
@@ -31,6 +32,7 @@ builder.Configuration.Bind(SystemConfig.Instance);
 SystemConfig.Instance.DataSources.ToList().ForEach(e => e.ConnectionString = builder.Configuration.GetConnectionString(e.Name) ?? string.Empty);
 foreach (var storage in SystemConfig.Instance.AzureBlobStorages) if (string.IsNullOrEmpty(storage.ConnectionString) && string.IsNullOrEmpty(storage.BlobServiceUri)) storage.ConnectionString = builder.Configuration.GetConnectionString(storage.Name) ?? string.Empty;
 foreach (var storage in SystemConfig.Instance.FileStorages) if (string.IsNullOrEmpty(storage.ConnectionString)) storage.ConnectionString = builder.Configuration.GetConnectionString(storage.Name) ?? string.Empty;
+SystemConfig.Instance.WebApi = WebApiSettings.Load(builder.Configuration.GetSection("WebApi"));
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
 SystemConfig.Instance.DefaultConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;

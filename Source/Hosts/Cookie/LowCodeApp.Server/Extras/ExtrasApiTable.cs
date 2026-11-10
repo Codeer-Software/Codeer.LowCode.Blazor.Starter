@@ -7,6 +7,7 @@ using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
+using Codeer.LowCode.Blazor.Extras.Server.WebApi;
 using LowCodeApp.Server.Infrastructure;
 using LowCodeApp.Server.Jobs;
 
@@ -26,6 +27,8 @@ namespace LowCodeApp.Server.Extras
                 new MailApi(SystemConfig.Instance.Mail, MailSenderTable.Create),
                 //ジョブ (JobTriggerField)。動かせるジョブは Jobs/JobRunner
                 new JobApi(JobRunner.Names),
+                //外部 Web API (WebApiField)。接続先は appsettings の WebApi
+                new WebApiApi(SystemConfig.Instance.WebApi),
                 //承認フロー (ApprovalFlowField)
                 new ApprovalApi(SystemConfig.Instance.Mail, MailSenderTable.Create),
                 //AI チャット (AIChatField)。Agent は Extras/AIChatAgentTable で選ばれる

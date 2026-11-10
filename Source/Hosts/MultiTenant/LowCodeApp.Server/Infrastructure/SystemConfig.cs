@@ -3,6 +3,7 @@ using LowCodeApp.Client.Shared.Services;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
+using Codeer.LowCode.Blazor.Extras.Server.WebApi;
 
 namespace LowCodeApp.Server.Infrastructure
 {
@@ -33,6 +34,8 @@ namespace LowCodeApp.Server.Infrastructure
         public SendGridSettings SendGrid { get; set; } = new();
         public GmailSettings Gmail { get; set; } = new();
         public AISettings AISettings { get; set; } = new();
+        //外部 Web API (WebApiField) の接続先
+        public WebApiSettings WebApi { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }
 }

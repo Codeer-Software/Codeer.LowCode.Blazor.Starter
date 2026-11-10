@@ -7,6 +7,7 @@ using Codeer.LowCode.Blazor.Extras.Server.Mail;
 using Codeer.LowCode.Blazor.Extras.Server.FileManagement;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Codeer.LowCode.Blazor.Extras.Server.AuditLog;
+using Codeer.LowCode.Blazor.Extras.Server.WebApi;
 
 namespace LowCodeApp.Server.Infrastructure
 {
@@ -58,6 +59,8 @@ namespace LowCodeApp.Server.Infrastructure
         public EmailOtpLoginSettings EmailOtpLogin { get; set; } = new();
         //監査ログ。出力先は Extras/AuditSinkTable
         public AuditLogSettings AuditLog { get; set; } = new();
+        //外部 Web API (WebApiField) の接続先
+        public WebApiSettings WebApi { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
     }
 }

@@ -3,6 +3,7 @@ using Codeer.LowCode.Blazor.Extras.Server.Api;
 using Codeer.LowCode.Blazor.Extras.Server.Approval;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
+using Codeer.LowCode.Blazor.Extras.Server.WebApi;
 
 using LowCodeApp.Server.Infrastructure;
 
@@ -20,6 +21,8 @@ namespace LowCodeApp.Server.Extras
             {
                 //メール (MailField / BulkMailField / Mail スクリプトオブジェクト)。送信インフラの対応表は MailSenderTable
                 new MailApi(SystemConfig.Instance.Mail, MailSenderTable.Create),
+                //外部 Web API (WebApiField)。接続先は appsettings の WebApi
+                new WebApiApi(SystemConfig.Instance.WebApi),
                 //承認フロー (ApprovalFlowField)
                 new ApprovalApi(SystemConfig.Instance.Mail, MailSenderTable.Create),
                 //Excel → PDF (Excel スクリプトオブジェクトの DownloadPdf)
