@@ -86,6 +86,7 @@ string Run(JobArguments args)
 - 書き込みはジョブの 1 回の実行全体が 1 つのトランザクション。正常に終われば確定し、失敗すれば取り消す。`DBService.Commit()` でそこまでを確定できる（その後に失敗しても確定した分は残る）。`Execute()` が失敗したときは、最後の確定（無ければ実行の始め）以降の書き込みが、前の `Execute()` で成功した分も含めて取り消される
 - `JobTriggerField` から起動したときは、ジョブに渡る JSON（下の「ジョブに渡る JSON」）が解かれて `args.Data`（画面の現在値）と `args.Submit`（保存ボタンが送るのと同じ内容）に入る。無ければ `null`
 - コマンドラインの引数（ジョブ名の後ろ）は `args.Options`（`string[]`）
+- メールの送信（`MailService.Send`）と Excel（テンプレートへの書き込み・xlsx / PDF の添付）、デザインのリソース（`Resources`）が使える。メールの設定（送信インフラ・`DebugRedirectAllTo`・送信履歴）は画面のメールと同じ `appsettings` の `Mail`。使えるようにしているのは `Jobs/JobRunner.cs` の `JobScripts.UseMail` / `UseExcel`。送ったメールはジョブが後で失敗しても取り消せないので、書き込みを `DBService.Commit()` で確定してから送る
 - スクリプトの書き方（使える型・データの読み書き・`Fail`・他のスクリプトの呼び出し）は、デザイナの AI ワークスペースの `AIForDesigner/_specs/Jobs.md`
 
 ## 画面のボタンから起動する（JobTriggerField）

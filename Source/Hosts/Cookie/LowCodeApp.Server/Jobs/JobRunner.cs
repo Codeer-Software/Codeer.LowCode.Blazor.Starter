@@ -12,6 +12,13 @@ namespace LowCodeApp.Server.Jobs
     /// </summary>
     public static class JobRunner
     {
+        //Job スクリプトから MailService (メール) と Excel を使えるようにする。メールの設定は画面のメールと同じ (appsettings の Mail と MailSenderTable)
+        static JobRunner()
+        {
+            JobScripts.UseMail(SystemConfig.Instance.Mail, MailSenderTable.Create);
+            JobScripts.UseExcel();
+        }
+
         /// <summary>動かせるジョブの名前 (IJob とデザインの Job スクリプト)。</summary>
         public static IReadOnlyList<string> Names
             => CreateJobs().Select(e => e.Name)
@@ -46,8 +53,8 @@ namespace LowCodeApp.Server.Jobs
             var job = CreateJobs().FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
             if (job != null) return await job.RunAsync(data, args);
 
-            //IJob に無い名前はデザインの Job スクリプト。読み書きは IJob と同じ data.ModuleDataIO を通る
-            return await JobScripts.RunAsync(data.ModuleDataIO, data.Design.DesignData, name, args);
+            //IJob に無い名前はデザインの Job スクリプト。読み書きは IJob と同じ data.ModuleDataIO を通る。スクリプトの Resources はデザインのリソースを読む
+            return await JobScripts.RunAsync(data.ModuleDataIO, data.Design.DesignData, name, args, AppDesign.Store.GetResource);
         }
 
         static IEnumerable<IJob> CreateJobs()
