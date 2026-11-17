@@ -1,4 +1,5 @@
 using Codeer.LowCode.Blazor.DbAccess;
+using Codeer.LowCode.Blazor.Extras.Designs;
 using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
@@ -12,7 +13,7 @@ namespace LowCodeApp.Server.Jobs
 {
     /// <summary>
     /// このアプリのジョブの一覧と実行。dotnet LowCodeApp.Server.dll job &lt;ジョブ名&gt; [引数...] で呼ばれる (別プロセス)。
-    /// 画面のボタンから起動するジョブは、appsettings の JobRuntimes で JobTriggerProcessType が InProcess のランタイムに入れると Web サーバーのプロセスの中で動く (プロセス内実行)。
+    /// 画面のボタンから起動するジョブは、JobTriggerField の ProcessType が InProcess なら Web サーバーのプロセスの中で動く (プロセス内実行)。
     /// ジョブは 2 種類: このアセンブリの IJob (C#) と、デザイナで作った Job (Jobs/名前.job.cs)。同じ名前なら IJob を動かす。
     /// </summary>
     public static class JobRunner
@@ -39,17 +40,17 @@ namespace LowCodeApp.Server.Jobs
             if (config.GetSection("SqlLog").Get<bool>()) DbAccessor.SqlLog = Console.WriteLine;
 
             //起動したユーザー。画面のボタンから別プロセスで起動されたときは、押したユーザーの Id が環境変数 Jobs__UserId (= 設定の Jobs:UserId) で渡ってくる。
-            //コマンドラインからは空 (匿名)。User を書いたランタイム (JobRuntimes) に入っていないジョブは、このユーザーの権限で動く
+            //コマンドラインからは空 (匿名)。サービスアカウントを指していないジョブは、このユーザーの権限で動く
             //スクリプトの Logger は標準出力に出す
             return await RunAsync(name, args, config["Jobs:UserId"] ?? string.Empty, new ScriptLogger(null));
         }
 
         /// <summary>
-        /// 画面のボタンから起動されたジョブを動かす。そのジョブのランタイム (appsettings の JobRuntimes) の JobTriggerProcessType が InProcess ならこのプロセスの中で (プロセス内実行)、それ以外は別プロセスで動かす。
+        /// 画面のボタンから起動されたジョブを動かす。processType (デザインの JobTriggerField の ProcessType) が InProcess ならこのプロセスの中で (プロセス内実行)、それ以外は別プロセスで動かす。
         /// input は画面の内容 (ジョブの args[0])、userId はボタンを押したユーザー。プロセス内実行では、スクリプトの Logger はアプリのログに出す。
         /// </summary>
-        public static Task<string?> RunFromScreenAsync(string name, string input, string userId)
-            => GetRuntime(name).JobTriggerProcessType == JobTriggerProcessType.InProcess
+        public static Task<string?> RunFromScreenAsync(string name, string input, string userId, JobTriggerProcessType processType)
+            => processType == JobTriggerProcessType.InProcess
                 ? RunAsync(name, [input], userId, new ScriptLogger(JobProcess.LoggerFactory?.CreateLogger(typeof(JobRunner)) ?? NullLogger.Instance))
                 : JobProcess.RunInNewProcessAsync(name, input, userId);
 
@@ -61,10 +62,10 @@ namespace LowCodeApp.Server.Jobs
                 throw new FileNotFoundException($"DesignFileDirectory に App.zip がありません: {SystemConfig.Instance.DesignFileDirectory}");
             }
 
-            //ランタイム (appsettings の JobRuntimes) に User (ログイン ID) が書いてあるジョブは、起動したユーザーによらず、そのユーザーの権限で読み書きする
-            var user = GetRuntime(name).User;
-            await using var data = new DataService(string.IsNullOrEmpty(user) ? userId : await FindUserIdAsync(user));
+            //サービスアカウントを指しているジョブ (IJob は ServiceAccount、デザイナで作った Job はデザイナの Job のプロパティ) は、起動したユーザーによらず、そのユーザーの権限で読み書きする
             var job = CreateJobs().FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+            var account = job != null ? job.ServiceAccount : JobExecutor.GetJobDesign(AppDesign.Store.GetDesignData(), name)?.ServiceAccount;
+            await using var data = new DataService(string.IsNullOrEmpty(account) ? userId : await FindUserIdAsync(account));
             if (job != null) return await job.RunAsync(data, args);
 
             //IJob に無い名前はデザイナで作った Job。読み書きは IJob と同じ data.ModuleDataIO を通る。スクリプトの Resources はデザインのリソースを読み、Invoker は起動したユーザー。
@@ -81,20 +82,20 @@ namespace LowCodeApp.Server.Jobs
             return result.Message;
         }
 
-        //ログイン ID (ログイン画面で入力するもの) からユーザーの Id を引く。見つからない・停止中のユーザーならジョブは失敗。
-        //ユーザーモジュールに LoginAccountContractField が無いアプリでは、書いた値をそのままユーザーの Id として使う
-        static async Task<string> FindUserIdAsync(string loginName)
+        //サービスアカウントの名前からユーザーの Id を引く (appsettings の ServiceAccounts で名前 → ログイン ID、ログイン ID → ユーザー)。
+        //名前が ServiceAccounts に無い・ユーザーが見つからない・停止中のユーザーならジョブは失敗。
+        //ユーザーモジュールに LoginAccountContractField が無いアプリでは、User に書いた値をそのままユーザーの Id として使う
+        static async Task<string> FindUserIdAsync(string account)
         {
+            var loginName = SystemConfig.Instance.ServiceAccounts.FirstOrDefault(e => string.Equals(e.Name, account, StringComparison.OrdinalIgnoreCase))?.User;
+            if (string.IsNullOrEmpty(loginName)) throw new InvalidOperationException($"appsettings の ServiceAccounts に '{account}' がありません");
+
             await using var data = new DataService(string.Empty);
             var accounts = LoginAccountStore.Create(data.Design.DesignData, data.DbAccess);
             if (accounts == null) return loginName;
             return (await accounts.FindByLoginNameAsync(loginName))?.UserId
-                ?? throw new InvalidOperationException($"JobRuntimes の User '{loginName}' が見つかりません");
+                ?? throw new InvalidOperationException($"ServiceAccounts の '{account}' の User '{loginName}' が見つかりません");
         }
-
-        //そのジョブを動かすランタイム (appsettings の JobRuntimes で Jobs にそのジョブを書いたもの。どこにも書いていなければ既定)
-        static JobRuntime GetRuntime(string name)
-            => SystemConfig.Instance.JobRuntimes.FirstOrDefault(e => e.Jobs.Contains(name, StringComparer.OrdinalIgnoreCase)) ?? new();
 
         //デザインを読めないとき (まだ配置されていない・差し替え中) は空 (ジョブの一覧を出すところでは落とさない)
         static IReadOnlyList<string> GetDesignerJobNames()
