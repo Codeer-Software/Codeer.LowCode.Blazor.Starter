@@ -80,13 +80,15 @@ string Run(JobArguments args)
 }
 ```
 
-- 読み書きは `IJob` と同じ `data.ModuleDataIO` を通る（権限は `Jobs:UserId` のユーザー、画面のボタンから起動したときは押したユーザー。編集履歴・意味検索の索引も付く）
+- 読み書きは `IJob` と同じ `data.ModuleDataIO` を通る（権限は起動したユーザー（コマンドラインからは `Jobs:UserId`、画面のボタンからは押したユーザー）。`Jobs:RunAs` に書いたジョブはそこに書いたユーザー。編集履歴・意味検索の索引も付く）
+- スクリプトの `CurrentUser` は読み書きの権限のユーザー（実行ユーザー）、`Invoker` は起動したユーザー。`Jobs:RunAs` に書いていないジョブでは同じユーザー
 - スクリプトの `Logger` は標準出力に出る（`Logger.Warn` / `Logger.Error` は行の先頭に `warn:` / `error:` が付く）。サーバー内実行（下の「実行先」）ではアプリのログに出る
 - `Fail("理由")` を呼んだとき、またはスクリプトの実行時エラーのときはジョブの失敗になり、終了コードは 1。理由は標準エラーに出る（画面のボタンから起動したときは画面に出る文言）
 - 書き込みはジョブの 1 回の実行全体が 1 つのトランザクション。正常に終われば確定し、失敗すれば取り消す。`DBService.Commit()` でそこまでを確定できる（その後に失敗しても確定した分は残る）。`Execute()` が失敗したときは、最後の確定（無ければ実行の始め）以降の書き込みが、前の `Execute()` で成功した分も含めて取り消される
 - `JobTriggerField` から起動したときは、ジョブに渡る JSON（下の「ジョブに渡る JSON」）が解かれて `args.Data`（画面の現在値）と `args.Submit`（保存ボタンが送るのと同じ内容）に入る。無ければ `null`
 - コマンドラインの引数（ジョブ名の後ろ）は `args.Options`（`string[]`）
-- メールの送信（`MailService.Send`）と Excel（テンプレートへの書き込み・xlsx / PDF の添付）、デザインのリソース（`Resources`）が使える。メールの設定（送信インフラ・`DebugRedirectAllTo`・送信履歴）は画面のメールと同じ `appsettings` の `Mail`。使えるようにしているのは `Jobs/JobRunner.cs` の `JobScripts.UseMail` / `UseExcel`。送ったメールはジョブが後で失敗しても取り消せないので、書き込みを `DBService.Commit()` で確定してから送る
+- メールの送信（`MailService.Send`）と Excel（テンプレートへの書き込み・xlsx / PDF の添付）、デザインのリソース（`Resources`）が使える。メールの設定（送信インフラ・`DebugRedirectAllTo`・送信履歴）は画面のメールと同じ `appsettings` の `Mail`。使えるようにしているのは `Jobs/JobRunner.cs` の `DesignJobs.UseMail` / `UseExcel`。送ったメールはジョブが後で失敗しても取り消せないので、書き込みを `DBService.Commit()` で確定してから送る
+- レコードの添付ファイルを `FileService`（`Save` / `GetMemoryStream`）で読み書きできる。置き場所は画面のアップロード・ダウンロードと同じ（`Jobs/JobRunner.cs` が `DataService.TemporaryFileManager` を渡している）
 - スクリプトの書き方（使える型・データの読み書き・`Fail`・他のスクリプトの呼び出し）は、デザイナの AI ワークスペースの `AIForDesigner/_specs/Jobs.md`
 
 ## 画面のボタンから起動する（JobTriggerField）
@@ -115,7 +117,7 @@ string Run(JobArguments args)
 - サーバーの再起動・デプロイで実行中のジョブは止まる（Job スクリプトなら確定前の書き込みは取り消される）
 - スクリプトの `Logger` はアプリのログに出る。標準出力は使わない
 - `SqlLog` などの設定は Web サーバーのものがそのまま効く
-- ジョブは押したユーザーの Id で自分の `DataService` を作って動く（権限・編集履歴・意味検索の索引は別プロセスと同じ）
+- ジョブは押したユーザーの Id（`Jobs:RunAs` に書いたジョブはそこに書いたユーザー）で自分の `DataService` を作って動く（権限・編集履歴・意味検索の索引は別プロセスと同じ）
 - 待つ / 待たない（`IsAsynchronous`）・同時実行の判定（`AllowsConcurrentRuns`）・状態の問い合わせは別プロセスと同じ。同時実行の判定は実行先をまたいでジョブ名で数える
 
 短く軽いジョブはサーバー内実行、長く重いジョブは別プロセスを勧めます。
@@ -217,8 +219,18 @@ Web と同じ `appsettings.json` / `appsettings.<環境>.json` / 環境変数を
 
 | キー | 意味 |
 |---|---|
-| `Jobs:UserId` | ジョブを実行するユーザーの Id（ユーザーモジュールの Id）。権限の条件はこのユーザーで判定される。空なら匿名（アプリにログインが要るデザインでは読み書きできない） |
+| `Jobs:UserId` | コマンドラインから動かすときの起動したユーザーの Id（ユーザーモジュールの Id）。`Jobs:RunAs` に書いていないジョブは、このユーザーの権限で動く。空なら匿名（アプリにログインが要るデザインでは読み書きできない） |
 | `Jobs:RunIn` | 画面のボタンから起動したジョブの実行先（ジョブ名 → 実行先）。`"Server"` でサーバー内実行。書いていないジョブは別プロセス（上の「実行先」）。Web サーバーが読む設定で、コマンドラインの起動には関係しない |
+| `Jobs:RunAs` | ジョブを動かすユーザー（ジョブ名 → ユーザーの Id）。書いたジョブは、起動したユーザーによらずこのユーザーの権限で読み書きする（`IJob` も Job スクリプトも、コマンドラインからも画面のボタンからも）。書いていないジョブは起動したユーザーの権限。`TemporaryFileTableInfo` に `OwnerColumn` を設定しているアプリでは、画面でアップロードした添付（`args.Submit` に載ってくるもの）をここに書いたジョブでは保存できない（アップロードした人と保存する人が違うため） |
+
+```json
+"Jobs": {
+  "UserId": "",
+  "RunAs": { "CloseOrders": "<ユーザーの Id>" }
+}
+```
+
+すべての権限を持つ特別なユーザーはありません。ジョブに要る権限は、`RunAs` に書いたユーザーの権限で調整します。画面のボタンから起動できるかは、`JobTriggerField` の書き込み権限だけで決まります（`RunAs` のユーザーは関係しない）。
 
 Visual Studio からは起動プロファイル `job`（`Properties/launchSettings.json`。引数 `job`。そのままではジョブの一覧が出るので、引数にジョブ名を足して実行します）で実行できます。
 

@@ -10,5 +10,11 @@
         /// "Server" = サーバー内実行 (Web サーバーのプロセスの中でそのまま動かす)。書いていないジョブは別プロセスで起動する。
         /// </summary>
         public Dictionary<string, string> RunIn { get; set; } = new();
+
+        /// <summary>
+        /// ジョブを動かすユーザー (ジョブ名 → ユーザーの Id)。
+        /// ここに書いたジョブは、起動したユーザーによらず、書いたユーザーの権限で読み書きする。書いていないジョブは起動したユーザーの権限で動く。
+        /// </summary>
+        public Dictionary<string, string> RunAs { get; set; } = new();
     }
 }

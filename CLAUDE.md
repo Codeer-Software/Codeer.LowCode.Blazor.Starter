@@ -102,7 +102,7 @@
   - `Extras/SemanticSearchTable.cs`（Cookie）— SemanticSearchField（意味検索）のサーバー側入口 `SemanticSearchService` をプロセスに 1 つ（`SemanticSearchTable.Service`）。埋め込みプロバイダは appsettings の `SemanticSearch.EmbeddingProvider` の呼び名（`AzureOpenAI` / 独自）で対応表（`CreateEmbeddingProvider`）から選ぶ。保存時の索引付けは `CustomizedModuleDataIO`、再索引は共通の API (`ExtrasApiTable` の `SemanticSearchApi`)、AI チャットの search_records は `AIChatAgentTable` が同じインスタンスを渡す。DB 側ベクトル検索なので対象モジュールのデータソースは PostgreSQL（pgvector）か SQL Server 2025
   - `Infrastructure/DataService.cs` — 1 リクエスト分の DB アクセス・現在ユーザー（`IAuthenticationContext`）
   - `Controllers/` — Web API。独自の API を足すときは `ExtrasController.cs` と同じ形（`[Authorize]`・`[AutoValidateAntiforgeryToken]` を付け、`DataService` を注入する）
-  - `Jobs/`（Cookie）— ジョブ（バッチ）モード。`dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...]` で Web ホストを立てずに `IJob` を 1 つ実行して終了コードを返す（`Jobs/README.md`。Azure WebJobs / タスクスケジューラから起動。実行ユーザーは appsettings の `Jobs:UserId`）。画面のボタンからは Extras の `JobTriggerField` で起動する（クライアントは共通の API `/api/extras` へ Feature=Job → `Controllers/ExtrasController.cs` → `ExtrasApiTable` の `JobApi` がデザインの `JobName` のジョブを押したユーザーで別プロセス起動。別プロセスの起動 (親 `JobProcess`) とジョブモード (子 `JobMode`) は Extras.Server の持ち物で、テンプレにあるのはジョブの一覧と `DataService` の組み立て (`Jobs/JobRunner.cs`) だけ）
+  - `Jobs/`（Cookie）— ジョブ（バッチ）モード。`dotnet LowCodeApp.Server.dll job <ジョブ名> [引数...]` で Web ホストを立てずに `IJob` を 1 つ実行して終了コードを返す（`Jobs/README.md`。Azure WebJobs / タスクスケジューラから起動。起動したユーザーは appsettings の `Jobs:UserId`。ジョブごとに動かすユーザーを決めるなら `Jobs:RunAs`）。画面のボタンからは Extras の `JobTriggerField` で起動する（クライアントは共通の API `/api/extras` へ Feature=Job → `Controllers/ExtrasController.cs` → `ExtrasApiTable` の `JobApi` がデザインの `JobName` のジョブを押したユーザーで別プロセス起動。別プロセスの起動 (親 `JobProcess`) とジョブモード (子 `JobMode`) は Extras.Server の持ち物で、テンプレにあるのはジョブの一覧と `DataService` の組み立て (`Jobs/JobRunner.cs`) だけ）
 - `LowCodeApp.Client`: Blazor WebAssembly。`Pages/LowCodePage.razor` がローコードページのホスト
 - `LowCodeApp.Client.Shared`: クライアント共通サービス（`AppInfoService`/`ModuleDataService`/`NavigationServiceBase`）。
   Web・デスクトップ・モバイルで共有。**独自フィールド型・ProCode コンポーネント・スクリプト用サービスはここに置く**
@@ -158,7 +158,7 @@ Source/Hosts/Common/LowCodeApp.Designer/bin/Debug/net10.0-windows/LowCodeApp.Des
 | `LoginLockout`（Cookie） | `{ MaxFailedAttempts: 10, LockoutMinutes: 5, MaxLockoutMinutes: 1440 }` | パスワードログインの総当たり対策。ログインの失敗（パスワード・二要素認証のコードの不一致。メールのワンタイムコードを送った回も数える）がアカウントごとに続けて `MaxFailedAttempts` 回で、そのアカウントを最後の失敗から `LockoutMinutes` 分受け付けない（ロック中は 429）。ロックが繰り返されるたびに長さは倍（上限 `MaxLockoutMinutes`）、サインインできたら元に戻る。存在しないログイン名も同じように数える（429 でアカウントの有無が分からないように）。`MaxFailedAttempts` を 0 で無効。回数は `IDistributedCache` に置く（複数インスタンスなら共有キャッシュに。Extras の `docs/Authentication.md`） |
 | `TotpLogin`（Cookie） | `{ Issuer }` | 認証アプリの二要素認証の表示名。有効・無効はデザイン（`LoginAccountContractField` の TOTP 列）で決まる（Extras の `docs/TwoFactorLogin.md`） |
 | `EmailOtpLogin`（Cookie） | すべて任意 | メールのワンタイムコードの二要素認証（`MailInfraName` / `Subject` / `Body` / `CodeLifetimeMinutes` / `MaxAttempts`）。有効・無効はデザイン（`LoginAccountContractField` の `TwoFactorEmail`）で決まる |
-| `Jobs`（Cookie） | `{ UserId }` | ジョブモード（`Server/Jobs/README.md`）を実行するユーザーの Id。権限の条件はこのユーザーで判定される。空なら匿名 |
+| `Jobs`（Cookie） | `{ UserId, RunIn, RunAs }` | ジョブ（`Server/Jobs/README.md`）。`UserId` = コマンドラインから動かすときの起動したユーザーの Id（空なら匿名）。`RunIn` = 画面のボタンから起動したジョブの実行先（ジョブ名 → `"Server"` でサーバー内実行）。`RunAs` = ジョブを動かすユーザー（ジョブ名 → ユーザーの Id。書いたジョブはそのユーザーの権限、書いていないジョブは起動したユーザーの権限で読み書きする） |
 | `Logging` / `AllowedHosts` | | ASP.NET Core 標準 |
 
 **DB を SQLite から PostgreSQL 等に変える手順**: ① `appsettings.json` の `DataSources[].DataSourceType` を変える ② `appsettings.Development.json` の接続文字列を差し替える
