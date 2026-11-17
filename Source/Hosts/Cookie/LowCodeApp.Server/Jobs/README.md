@@ -49,7 +49,7 @@ namespace LowCodeApp.Server.Jobs
 - 失敗は例外を投げる。終了コードが 1 になり、例外のメッセージが標準エラー（画面のボタンから起動したときは 1 行目が画面に出る文言）、例外の全文が標準出力に出る
 - ジョブの書き込みは `data.ModuleDataIO` で行う。生 SQL では編集履歴・意味検索の索引が付かない
 
-## デザインの Job スクリプト
+## デザイナで作った Job
 
 C# を書かずに、デザインプロジェクトの `Jobs/` にスクリプトを置いてジョブにできます。ホストのビルドは要らず、デザインを送信（App.zip）すれば動きます。
 
@@ -82,14 +82,28 @@ string Run(JobArguments args)
 
 - 読み書きは `IJob` と同じ `data.ModuleDataIO` を通る（権限は起動したユーザー（コマンドラインからは `Jobs:UserId`、画面のボタンからは押したユーザー）。`Jobs:RunAs` に書いたジョブはそこに書いたユーザー。編集履歴・意味検索の索引も付く）
 - スクリプトの `CurrentUser` は読み書きの権限のユーザー（実行ユーザー）、`Invoker` は起動したユーザー。`Jobs:RunAs` に書いていないジョブでは同じユーザー
-- スクリプトの `Logger` は標準出力に出る（`Logger.Warn` / `Logger.Error` は行の先頭に `warn:` / `error:` が付く）。サーバー内実行（下の「実行先」）ではアプリのログに出る
+- スクリプトの `Logger` は標準出力に出る（`Logger.Warn` / `Logger.Error` は行の先頭に `warn:` / `error:` が付く）。プロセス内実行（下の「実行先」）ではアプリのログに出る
 - `Fail("理由")` を呼んだとき、またはスクリプトの実行時エラーのときはジョブの失敗になり、終了コードは 1。理由は標準エラーに出る（画面のボタンから起動したときは画面に出る文言）
 - 書き込みはジョブの 1 回の実行全体が 1 つのトランザクション。正常に終われば確定し、失敗すれば取り消す。`DBService.Commit()` でそこまでを確定できる（その後に失敗しても確定した分は残る）。`Execute()` が失敗したときは、最後の確定（無ければ実行の始め）以降の書き込みが、前の `Execute()` で成功した分も含めて取り消される
 - `JobTriggerField` から起動したときは、ジョブに渡る JSON（下の「ジョブに渡る JSON」）が解かれて `args.Data`（画面の現在値）と `args.Submit`（保存ボタンが送るのと同じ内容）に入る。無ければ `null`
 - コマンドラインの引数（ジョブ名の後ろ）は `args.Options`（`string[]`）
-- メールの送信（`MailService.Send`）と Excel（テンプレートへの書き込み・xlsx / PDF の添付）、デザインのリソース（`Resources`）が使える。メールの設定（送信インフラ・`DebugRedirectAllTo`・送信履歴）は画面のメールと同じ `appsettings` の `Mail`。使えるようにしているのは `Jobs/JobRunner.cs` の `DesignJobs.UseMail` / `UseExcel`。送ったメールはジョブが後で失敗しても取り消せないので、書き込みを `DBService.Commit()` で確定してから送る
+- メールの送信（`MailService.Send`）と Excel（テンプレートへの書き込み・xlsx / PDF の添付）、デザインのリソース（`Resources`）が使える。メールの設定（送信インフラ・`DebugRedirectAllTo`・送信履歴）は画面のメールと同じ `appsettings` の `Mail`。使えるようにしているのは `Jobs/JobRunner.cs` の `MailApi.UseInJobScripts` / `ExcelApi.UseInJobScripts`。送ったメールはジョブが後で失敗しても取り消せないので、書き込みを `DBService.Commit()` で確定してから送る
 - レコードの添付ファイルを `FileService`（`Save` / `GetMemoryStream`）で読み書きできる。置き場所は画面のアップロード・ダウンロードと同じ（`Jobs/JobRunner.cs` が `DataService.TemporaryFileManager` を渡している）
 - スクリプトの書き方（使える型・データの読み書き・`Fail`・他のスクリプトの呼び出し）は、デザイナの AI ワークスペースの `AIForDesigner/_specs/Jobs.md`
+
+### 自分のサービスを Job スクリプトから使う
+
+自分のクラスを Job スクリプトのサービスにするときは、同じ `JobExecutor.AddScriptTypes(...)` を 2 か所に書きます。クラスはサーバーとデザイナの両方から参照できる `LowCodeApp.Client.Shared` に置きます。
+
+- サーバー: `Jobs/JobRunner.cs` の static コンストラクタ（ジョブの実行に使う）
+- デザイナ: `LowCodeApp.Designer` の `App.xaml.cs` の `OnStartup`、`base.OnStartup(e)` より前（設計チェック・入力補完に使う）
+
+```csharp
+// どちらにも同じ 1 行 (using Codeer.LowCode.Blazor.Jobs;)。サービスはこの中で new する (実行ごとに呼ばれる)
+JobExecutor.AddScriptTypes(manager => manager.AddService(new MyService()));
+```
+
+- Job と同じ接続・同じトランザクション・同じユーザーで読み書きするサービスは、`[ScriptInject]` で受けた `Services` から `JobExecutor.GetModuleDataIO(services)` で `ModuleDataIO` を取れる（Job の実行でなければ `null`）
 
 ## 画面のボタンから起動する（JobTriggerField）
 
@@ -100,17 +114,17 @@ string Run(JobArguments args)
 | 実行先 | 動き方 |
 |---|---|
 | 別プロセス（既定） | サーバーがこのモードを別プロセスとして起動する（`job <ジョブ名> --stdin`） |
-| サーバー内実行 | Web サーバーのプロセスの中でそのまま動かす |
+| プロセス内実行 | Web サーバーのプロセスの中でそのまま動かす |
 
-`appsettings.json` の `Jobs:RunIn` に `"ジョブ名": "Server"` と書いたジョブがサーバー内実行になります。書いていないジョブは別プロセスです。`IJob` も Job スクリプトもどちらでも動きます。
+`appsettings.json` の `Jobs:RunIn` に `"ジョブ名": "InProcess"` と書いたジョブがプロセス内実行になります。書いていないジョブは別プロセスです。`IJob` も Job スクリプトもどちらでも動きます。
 
 ```json
 "Jobs": {
-  "RunIn": { "CloseOrders": "Server" }
+  "RunIn": { "CloseOrders": "InProcess" }
 }
 ```
 
-サーバー内実行の性質:
+プロセス内実行の性質:
 
 - 起動が速い（プロセスを起こさない）
 - Web サーバーと同じプロセスなので、メモリと CPU を画面の処理と分け合う
@@ -120,20 +134,21 @@ string Run(JobArguments args)
 - ジョブは押したユーザーの Id（`Jobs:RunAs` に書いたジョブはそこに書いたユーザー）で自分の `DataService` を作って動く（権限・編集履歴・意味検索の索引は別プロセスと同じ）
 - 待つ / 待たない（`IsAsynchronous`）・同時実行の判定（`AllowsConcurrentRuns`）・状態の問い合わせは別プロセスと同じ。同時実行の判定は実行先をまたいでジョブ名で数える
 
-短く軽いジョブはサーバー内実行、長く重いジョブは別プロセスを勧めます。
+短く軽いジョブはプロセス内実行、長く重いジョブは別プロセスを勧めます。
 
 ### 仕組み（どこに何があるか）
 
 - クライアント: Extras の `JobTriggerField` が共通の API（`ExtrasTransport.EndPoint` = `/api/extras`。`Controllers/ExtrasController.cs`）に `JobRunRequest { ModuleName, FieldName, Arguments }` を送り（Feature `Job` / Action `Run`）、`JobRunResponse { Succeeded, Error, Started, JobId, Message }` を受け取る（どちらも `Codeer.LowCode.Blazor.Extras.Jobs`）
-- サーバー: `Extras/ExtrasApiTable.cs` に並べた Extras.Server の `JobApi` が、そのモジュールとフィールドに書けるユーザーか（`AuthorizationChecker.CheckFieldUserWriteAsync`。`ExecuteSqlField` の実行と同じ軸）を確かめ、**デザインの `JobTriggerField`** の `JobName` のジョブを `IsAsynchronous` に従って起動する（クライアントからジョブ名や待つかどうかは受け取らない）。実行先は `JobApi` に渡した `JobRunner.RunsInServer` で決まり、サーバー内実行は `JobRunner.RunAsync` を呼ぶ。`AllowsConcurrentRuns` が `false`（既定）なら、同じ名前のジョブが実行中のときは起動せず `Error`（「ジョブ 'X' は実行中です」）を返す（`JobProcess` がジョブ名で判定する。同期・非同期とも、実行先によらず）。起動の前に要求の DB 接続をプールへ返す（同期でジョブを待つ間に接続を握らない）
+- サーバー: `Extras/ExtrasApiTable.cs` に並べた Extras.Server の `JobApi` が、そのモジュールとフィールドに書けるユーザーか（`AuthorizationChecker.CheckFieldUserWriteAsync`。`ExecuteSqlField` の実行と同じ軸）を確かめ、**デザインの `JobTriggerField`** の `JobName` のジョブを `IsAsynchronous` に従って起動する（クライアントからジョブ名や待つかどうかは受け取らない）。動かすのは `JobApi` に渡した `JobRunner.RunFromScreenAsync` で、`Jobs:RunIn` が `"InProcess"` のジョブはこのプロセスの中で動かし（プロセス内実行）、それ以外は `JobProcess.RunInNewProcessAsync`（別プロセス）を呼ぶ。`AllowsConcurrentRuns` が `false`（既定）なら、同じ名前のジョブが実行中のときは起動せず `Error`（「ジョブ 'X' は実行中です」）を返す（`JobProcess` がジョブ名で判定する。同期・非同期とも、実行先によらず）。起動の前に要求の DB 接続をプールへ返す（同期でジョブを待つ間に接続を握らない）
   - `JobName` のジョブが無ければ起動せず `Succeeded = false` と `Error`（「ジョブ 'X' がありません」）を返す（同期・非同期とも）
   - 同期: 終わるまで待ち、成功なら `Succeeded = true` と `Message`（`IJob.RunAsync` または Job スクリプトの `Run` の戻り値。画面の成功の通知になる）、失敗なら `Error`（例外のメッセージ）を返す
   - 非同期: 起動したら `Started = true` と `JobId` を返す（画面は「開始しました」を通知し、フィールドの `JobId` / `JobIds` に持つ）。状態はスクリプトがフィールドの `GetJobStatus()` で問い合わせ、共通の API（Action `Status`）が `JobStatusResponse { Status, Message, Error }` を返す。状態の置き場は `JobProcess.Cache`（`IDistributedCache`。`Program.cs` でつないでいる。テンプレートはメモリキャッシュなのでサーバーを再起動すると消える。複数インスタンスでは Redis 等の共有キャッシュに差し替える）。終わった結果は終了から 30 分（`JobProcess.FinishedRetention`）で消え、消えた後は応答なし（`GetJobStatus` は null）。状態を返すのは起動したユーザーにだけ
-- 別プロセスの起動（親）とジョブモード（子）は Codeer.LowCode.Blazor.Extras.Server の `JobProcess` と `JobMode` が対で持つ（引数の並び `job <ジョブ名> --stdin`・画面の内容は標準入力・押したユーザーの Id は環境変数 `Jobs__UserId`・終了コード・UTF-8・結果の文言の取り出し）。このテンプレートにあるのは、ジョブの一覧（`IJob` とデザインの Job スクリプト）と実行先の判定と `DataService` の組み立てと Job スクリプトの実行（`Jobs/JobRunner.cs`）と、`Program.cs` の `job` の分岐だけ。約束の詳細は Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`
-- サーバー内実行では、画面の内容は `args[0]`、押したユーザーの Id は `JobRunner.RunAsync` の引数で渡る（ジョブから見た `args` と権限は別プロセスと同じ）
-- 失敗（同期・非同期とも）はサーバーのログにも出る（`Program.cs` で `JobProcess.LoggerFactory` をつないでいる。別プロセスは標準エラーの全文と標準出力をまとめて、サーバー内実行は例外の全文を出す）
+- 別プロセスの起動（親）とジョブモード（子）は Codeer.LowCode.Blazor.Extras.Server の `JobProcess` と `JobMode` が対で持つ（引数の並び `job <ジョブ名> --stdin`・画面の内容は標準入力・押したユーザーの Id は環境変数 `Jobs__UserId`・終了コード・UTF-8・結果の文言の取り出し）。このテンプレートにあるのは、ジョブの一覧（`IJob` とデザイナで作った Job）と実行先の判定と `DataService` の組み立てと Job スクリプトの実行（`Jobs/JobRunner.cs`）と、`Program.cs` の `job` の分岐だけ。約束の詳細は Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`
+- プロセス内実行では、画面の内容は `args[0]`、押したユーザーの Id は `JobRunner.RunFromScreenAsync` の引数で渡る（ジョブから見た `args` と権限は別プロセスと同じ）
+- 失敗（同期・非同期とも）はサーバーのログにも出る（`Program.cs` で `JobProcess.LoggerFactory` をつないでいる。別プロセスは標準エラーの全文と標準出力をまとめて、プロセス内実行は例外の全文を出す）。別プロセスを起動できないとき（実行ファイルが無い等）もジョブの失敗になる（非同期では状態が `Error`）
 - 別プロセスで起動する実行ファイルは `LowCodeApp.Server.dll` の隣の `LowCodeApp.Server.exe`（apphost。IIS の下や PATH に `dotnet` が無いサーバーでも動く）、無ければ `dotnet LowCodeApp.Server.dll`。変えるときは `JobProcess.HostExecutable` / `EntryDll` / `DotnetPath`
 - 手で動かすときは `echo {"data":{},"submit":null} | dotnet LowCodeApp.Server.dll job CloseOrders --stdin`
+- 別の場所（Azure Functions など）で動かしたくなったら `JobRunner.RunFromScreenAsync` を直す
 
 ### ジョブに渡る JSON
 
@@ -165,8 +180,8 @@ if (json.RootElement.TryGetProperty("data", out var current))
 - `AllowsConcurrentRuns` が `false` のときの実行中の判定は 1 台のサーバーの中だけ（複数台では止まらない）。複数台で排他が要るならジョブが自分で取る。非同期の状態は共有キャッシュにすれば複数台でも問い合わせられる
 - ジョブが保存するときは `data.ModuleDataIO` で（編集履歴・意味検索の索引が付く）
 - 別プロセスでは、成功したジョブの標準出力はどこにも残らない（画面の通知に使うのは最後の 1 行だけ。失敗したときは上のとおり全文がサーバーのログに出る）。進捗を残すならジョブで ILogger や DB に書き、受け取った JSON や秘密情報を標準出力に出さない
-- サーバー内実行では標準出力は使わない（`IJob` が `Console` に書いた分は Web サーバーの標準出力に混ざる）。進捗はスクリプトの `Logger`（アプリのログ）か DB に書く
-- サーバー内実行のジョブは Web サーバーの再起動・デプロイで止まる。非同期の状態は、テンプレートのメモリキャッシュなら消え、共有キャッシュなら `Running` のまま残る
+- プロセス内実行では標準出力は使わない（`IJob` が `Console` に書いた分は Web サーバーの標準出力に混ざる）。進捗はスクリプトの `Logger`（アプリのログ）か DB に書く
+- プロセス内実行のジョブは Web サーバーの再起動・デプロイで止まる。非同期の状態は、テンプレートのメモリキャッシュなら消え、共有キャッシュなら `Running` のまま残る
 
 ## モジュールを C# のクラスで扱う
 
@@ -220,7 +235,7 @@ Web と同じ `appsettings.json` / `appsettings.<環境>.json` / 環境変数を
 | キー | 意味 |
 |---|---|
 | `Jobs:UserId` | コマンドラインから動かすときの起動したユーザーの Id（ユーザーモジュールの Id）。`Jobs:RunAs` に書いていないジョブは、このユーザーの権限で動く。空なら匿名（アプリにログインが要るデザインでは読み書きできない） |
-| `Jobs:RunIn` | 画面のボタンから起動したジョブの実行先（ジョブ名 → 実行先）。`"Server"` でサーバー内実行。書いていないジョブは別プロセス（上の「実行先」）。Web サーバーが読む設定で、コマンドラインの起動には関係しない |
+| `Jobs:RunIn` | 画面のボタンから起動したジョブの実行先（ジョブ名 → 実行先）。`"InProcess"` でプロセス内実行。書いていないジョブは別プロセス（上の「実行先」）。Web サーバーが読む設定で、コマンドラインの起動には関係しない |
 | `Jobs:RunAs` | ジョブを動かすユーザー（ジョブ名 → ユーザーの Id）。書いたジョブは、起動したユーザーによらずこのユーザーの権限で読み書きする（`IJob` も Job スクリプトも、コマンドラインからも画面のボタンからも）。書いていないジョブは起動したユーザーの権限。`TemporaryFileTableInfo` に `OwnerColumn` を設定しているアプリでは、画面でアップロードした添付（`args.Submit` に載ってくるもの）をここに書いたジョブでは保存できない（アップロードした人と保存する人が違うため） |
 
 ```json

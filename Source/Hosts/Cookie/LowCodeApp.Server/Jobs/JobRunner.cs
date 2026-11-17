@@ -1,28 +1,32 @@
 using Codeer.LowCode.Blazor.DbAccess;
+using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
+using Codeer.LowCode.Blazor.Extras.Server.Mail;
+using Codeer.LowCode.Blazor.Jobs;
 using LowCodeApp.Server.Extras;
 using LowCodeApp.Server.Infrastructure;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace LowCodeApp.Server.Jobs
 {
     /// <summary>
     /// このアプリのジョブの一覧と実行。dotnet LowCodeApp.Server.dll job &lt;ジョブ名&gt; [引数...] で呼ばれる (別プロセス)。
-    /// 画面のボタンから起動するジョブは、appsettings の Jobs:RunIn で "Server" にすると Web サーバーのプロセスの中で動く (サーバー内実行)。
-    /// ジョブは 2 種類: このアセンブリの IJob (C#) と、デザインの Job (Jobs/名前.job.cs)。同じ名前なら IJob を動かす。
+    /// 画面のボタンから起動するジョブは、appsettings の Jobs:RunIn で "InProcess" にすると Web サーバーのプロセスの中で動く (プロセス内実行)。
+    /// ジョブは 2 種類: このアセンブリの IJob (C#) と、デザイナで作った Job (Jobs/名前.job.cs)。同じ名前なら IJob を動かす。
     /// </summary>
     public static class JobRunner
     {
-        //デザインの Job のスクリプトから MailService (メール) と Excel を使えるようにする。メールの設定は画面のメールと同じ (appsettings の Mail と MailSenderTable)
+        //デザイナで作った Job のスクリプトから MailService (メール) と Excel を使えるようにする。メールの設定は画面のメールと同じ (appsettings の Mail と MailSenderTable)。
+        //自分のサービスを Job のスクリプトで使うときも、ここで登録する (Jobs/README.md)
         static JobRunner()
         {
-            DesignJobs.UseMail(SystemConfig.Instance.Mail, MailSenderTable.Create);
-            DesignJobs.UseExcel();
+            MailApi.UseInJobScripts(SystemConfig.Instance.Mail, MailSenderTable.Create);
+            ExcelApi.UseInJobScripts();
         }
 
-        /// <summary>動かせるジョブの名前 (IJob とデザインの Job)。</summary>
+        /// <summary>動かせるジョブの名前 (IJob とデザイナで作った Job)。</summary>
         public static IReadOnlyList<string> Names
-            => CreateJobs().Select(e => e.Name)
-                .Union(DesignJobs.GetNames(() => AppDesign.Store.GetDesignData()), StringComparer.OrdinalIgnoreCase).ToList();
+            => CreateJobs().Select(e => e.Name).Union(GetDesignerJobNames(), StringComparer.OrdinalIgnoreCase).ToList();
 
         /// <summary>ジョブを 1 つ動かす (別プロセス)。name は Names のどれか、args はジョブ名の後ろの引数。戻り値は成功したときの文言 (画面に出る)、失敗は例外。</summary>
         public static async Task<string?> RunAsync(IConfiguration config, string name, string[] args)
@@ -34,15 +38,21 @@ namespace LowCodeApp.Server.Jobs
             if (config.GetSection("SqlLog").Get<bool>()) DbAccessor.SqlLog = Console.WriteLine;
 
             //起動したユーザー (空なら匿名)。画面のボタンから起動したときは押したユーザー。Jobs:RunAs に無いジョブは、このユーザーの権限で動く
-            return await RunAsync(name, args, config["Jobs:UserId"] ?? string.Empty);
+            //スクリプトの Logger は標準出力に出す
+            return await RunAsync(name, args, config["Jobs:UserId"] ?? string.Empty, new ScriptLogger(null));
         }
 
-        /// <summary>そのジョブをサーバー内実行にするか (appsettings の Jobs:RunIn が "Server")。</summary>
-        public static bool RunsInServer(string name)
-            => SystemConfig.Instance.Jobs.RunIn.Any(e => string.Equals(e.Key, name, StringComparison.OrdinalIgnoreCase) && string.Equals(e.Value, "Server", StringComparison.OrdinalIgnoreCase));
+        /// <summary>
+        /// 画面のボタンから起動されたジョブを動かす。appsettings の Jobs:RunIn が "InProcess" のジョブはこのプロセスの中で (プロセス内実行)、書いていないジョブは別プロセスで動かす。
+        /// input は画面の内容 (ジョブの args[0])、userId はボタンを押したユーザー。プロセス内実行では、スクリプトの Logger はアプリのログに出す。
+        /// </summary>
+        public static Task<string?> RunFromScreenAsync(string name, string input, string userId)
+            => SystemConfig.Instance.Jobs.RunIn.Any(e => string.Equals(e.Key, name, StringComparison.OrdinalIgnoreCase) && string.Equals(e.Value, "InProcess", StringComparison.OrdinalIgnoreCase))
+                ? RunAsync(name, [input], userId, new ScriptLogger(JobProcess.LoggerFactory?.CreateLogger(typeof(JobRunner)) ?? NullLogger.Instance))
+                : JobProcess.RunInNewProcessAsync(name, input, userId);
 
-        /// <summary>ジョブを 1 つ動かす。userId は起動したユーザー (サーバー内実行では画面のボタンを押したユーザー)。戻り値は成功したときの文言、失敗は例外。</summary>
-        public static async Task<string?> RunAsync(string name, string[] args, string userId)
+        //ジョブを 1 つ動かす。userId は起動したユーザー。戻り値は成功したときの文言、失敗は例外
+        static async Task<string?> RunAsync(string name, string[] args, string userId, ScriptLogger logger)
         {
             if (!File.Exists(Path.Combine(SystemConfig.Instance.DesignFileDirectory, "App.zip")))
             {
@@ -55,9 +65,46 @@ namespace LowCodeApp.Server.Jobs
             var job = CreateJobs().FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
             if (job != null) return await job.RunAsync(data, args);
 
-            //IJob に無い名前はデザインの Job。読み書きは IJob と同じ data.ModuleDataIO を通る。スクリプトの Resources はデザインのリソースを読み、Invoker は起動したユーザー。
+            //IJob に無い名前はデザイナで作った Job。読み書きは IJob と同じ data.ModuleDataIO を通る。スクリプトの Resources はデザインのリソースを読み、Invoker は起動したユーザー。
             //FileService (添付ファイルの読み書き) の置き場所は画面のアップロード・ダウンロードと同じ
-            return await DesignJobs.RunAsync(data.ModuleDataIO, data.Design.DesignData, name, args, AppDesign.Store.GetResource, userId, data.TemporaryFileManager);
+            var result = await JobExecutor.RunAsync(new JobExecutionContext
+            {
+                ModuleDataIO = data.ModuleDataIO,
+                DesignData = data.Design.DesignData,
+                GetResource = AppDesign.Store.GetResource,
+                InvokerUserId = userId,
+                FileStorage = data.TemporaryFileManager,
+            }, name, args, logger);
+            if (!result.Succeeded) throw new InvalidOperationException(result.Error);
+            return result.Message;
+        }
+
+        //デザインを読めないとき (まだ配置されていない・差し替え中) は空 (ジョブの一覧を出すところでは落とさない)
+        static IReadOnlyList<string> GetDesignerJobNames()
+        {
+            try
+            {
+                return JobExecutor.GetJobNames(AppDesign.Store.GetDesignData());
+            }
+            catch
+            {
+                return [];
+            }
+        }
+
+        //スクリプトの Logger の出し先。logger が null なら標準出力 (ジョブモード。Warn / Error は行の先頭に warn: / error: を付ける)
+        sealed class ScriptLogger(ILogger? logger) : Codeer.LowCode.Blazor.RequestInterfaces.ILogger
+        {
+            public Task Log(string message) => Write(LogLevel.Information, message, message);
+            public Task Warn(string message) => Write(LogLevel.Warning, message, $"warn: {message}");
+            public Task Error(string message) => Write(LogLevel.Error, message, $"error: {message}");
+
+            Task Write(LogLevel level, string message, string consoleLine)
+            {
+                if (logger == null) Console.WriteLine(consoleLine);
+                else logger.Log(level, "{Message}", message);
+                return Task.CompletedTask;
+            }
         }
 
         static IEnumerable<IJob> CreateJobs()

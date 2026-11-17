@@ -7,7 +7,7 @@
     {
         /// <summary>
         /// 画面のボタン (JobTriggerField) から起動したジョブの実行先 (ジョブ名 → 実行先)。
-        /// "Server" = サーバー内実行 (Web サーバーのプロセスの中でそのまま動かす)。書いていないジョブは別プロセスで起動する。
+        /// "InProcess" = プロセス内実行 (Web サーバーのプロセスの中でそのまま動かす)。書いていないジョブは別プロセスで起動する。振り分けるのは JobRunner.RunFromScreenAsync。
         /// </summary>
         public Dictionary<string, string> RunIn { get; set; } = new();
 
