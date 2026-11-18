@@ -30,8 +30,8 @@ namespace LowCodeApp.Server.Jobs
         public static IReadOnlyList<string> Names
             => CreateJobs().Select(e => e.Name).Union(GetDesignerJobNames(), StringComparer.OrdinalIgnoreCase).ToList();
 
-        /// <summary>ジョブを 1 つ動かす (別プロセス)。name は Names のどれか、args はジョブ名の後ろの引数。戻り値は成功したときの文言 (画面に出る)、失敗は例外。</summary>
-        public static async Task<string?> RunAsync(IConfiguration config, string name, string[] args)
+        /// <summary>ジョブを 1 つ動かす (別プロセス)。name は Names のどれか、args はジョブ名の後ろの引数。戻り値は成功したときの文言 (画面に出る) と Job スクリプトが返したデータ、失敗は例外。</summary>
+        public static async Task<JobRunResult> RunAsync(IConfiguration config, string name, string[] args)
         {
             using var loggerFactory = LoggerFactory.Create(builder => builder.AddSimpleConsole(options => options.SingleLine = true));
             //意味検索の警告ログ (埋め込みの失敗など) を標準出力に出す
@@ -49,13 +49,13 @@ namespace LowCodeApp.Server.Jobs
         /// 画面のボタンから起動されたジョブを動かす。processType (デザインの JobTriggerField の ProcessType) が InProcess ならこのプロセスの中で (プロセス内実行)、それ以外は別プロセスで動かす。
         /// input は画面の内容 (ジョブの args[0])、userId はボタンを押したユーザー。プロセス内実行では、スクリプトの Logger はアプリのログに出す。
         /// </summary>
-        public static Task<string?> RunFromScreenAsync(string name, string input, string userId, JobTriggerProcessType processType)
+        public static Task<JobRunResult> RunFromScreenAsync(string name, string input, string userId, JobTriggerProcessType processType)
             => processType == JobTriggerProcessType.InProcess
                 ? RunAsync(name, [input], userId, new ScriptLogger(JobProcess.LoggerFactory?.CreateLogger(typeof(JobRunner)) ?? NullLogger.Instance))
                 : JobProcess.RunInNewProcessAsync(name, input, userId);
 
-        //ジョブを 1 つ動かす。userId は起動したユーザー。戻り値は成功したときの文言、失敗は例外
-        static async Task<string?> RunAsync(string name, string[] args, string userId, ScriptLogger logger)
+        //ジョブを 1 つ動かす。userId は起動したユーザー。戻り値は成功したときの文言と Job スクリプトが返したデータ (IJob は文言だけ)、失敗は例外
+        static async Task<JobRunResult> RunAsync(string name, string[] args, string userId, ScriptLogger logger)
         {
             if (!File.Exists(Path.Combine(SystemConfig.Instance.DesignFileDirectory, "App.zip")))
             {
@@ -66,7 +66,7 @@ namespace LowCodeApp.Server.Jobs
             var job = CreateJobs().FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
             var account = job != null ? job.ServiceAccount : JobExecutor.GetJobDesign(AppDesign.Store.GetDesignData(), name)?.ServiceAccount;
             await using var data = new DataService(string.IsNullOrEmpty(account) ? userId : await FindUserIdAsync(account));
-            if (job != null) return await job.RunAsync(data, args);
+            if (job != null) return new JobRunResult { Message = await job.RunAsync(data, args) };
 
             //IJob に無い名前はデザイナで作った Job。読み書きは IJob と同じ data.ModuleDataIO を通る。スクリプトの Resources はデザインのリソースを読み、Invoker は起動したユーザー。
             //FileService (添付ファイルの読み書き) の置き場所は画面のアップロード・ダウンロードと同じ
@@ -79,7 +79,7 @@ namespace LowCodeApp.Server.Jobs
                 FileStorage = data.TemporaryFileManager,
             }, name, args, logger);
             if (!result.Succeeded) throw new InvalidOperationException(result.Error);
-            return result.Message;
+            return new JobRunResult { Message = result.Message, ResultJson = result.ResultJson };
         }
 
         //サービスアカウントの名前からユーザーの Id を引く (appsettings の ServiceAccounts で名前 → ログイン ID、ログイン ID → ユーザー)。

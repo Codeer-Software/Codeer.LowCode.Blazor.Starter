@@ -63,7 +63,6 @@ string Run(JobArguments args)
     var search = new ModuleSearcher<Order>();
     search.AddEquals(e => e.Status.Value, "Open");
     var rows = search.ExecuteRaw();
-    var submit = new ModuleSubmitter();
     foreach (var row in rows)
     {
         var change = new Order.Data();
@@ -71,10 +70,8 @@ string Run(JobArguments args)
         change.Id.Value = row.Id.Value;
         change.Status = new TextFieldData();
         change.Status.Value = "Closed";
-        submit.Update(change);
+        DBService.Update(change);
     }
-    var result = submit.Execute();
-    if (!result.Succeeded) Fail(result.Error);
     Logger.Log($"{rows.Count} 件");
     return $"{rows.Count} 件を締めました";
 }
@@ -83,12 +80,16 @@ string Run(JobArguments args)
 - 読み書きは `IJob` と同じ `data.ModuleDataIO` を通る（権限は起動したユーザー（画面のボタンからは押したユーザー、コマンドラインからは匿名）。サービスアカウントを指したジョブはそのユーザー（下の「設定」）。編集履歴・意味検索の索引も付く）
 - スクリプトの `CurrentUser` は読み書きの権限のユーザー（実行ユーザー）、`Invoker` は起動したユーザー。サービスアカウントを指していないジョブでは同じユーザー
 - スクリプトの `Logger` は標準出力に出る（`Logger.Warn` / `Logger.Error` は行の先頭に `warn:` / `error:` が付く）。プロセス内実行（下の「実行先」）ではアプリのログに出る
-- `Fail("理由")` を呼んだとき、またはスクリプトの実行時エラーのときはジョブの失敗になり、終了コードは 1。理由は標準エラーに出る（画面のボタンから起動したときは画面に出る文言）
-- 書き込みはジョブの 1 回の実行全体が 1 つのトランザクション。正常に終われば確定し、失敗すれば取り消す。`DBService.Commit()` でそこまでを確定できる（その後に失敗しても確定した分は残る）。`Execute()` が失敗したときは、最後の確定（無ければ実行の始め）以降の書き込みが、前の `Execute()` で成功した分も含めて取り消される
+- `Fail("理由")` を呼んだとき、スクリプトの実行時エラーのとき、保存が失敗したときはジョブの失敗になり、終了コードは 1。理由は標準エラーに出る（画面のボタンから起動したときは画面に出る文言）
+- 書き込みは `DBService.Add` / `Update` / `Delete`（呼んだその場で保存する。`Add` の後は `data.Id` が採番された Id になる）。タイミングが新規作成時・更新時・削除時の ExecuteSql はこれらで一緒に走る。「単独」だけ `DBService.ExecuteStandaloneSql(data)` で呼ぶ
+- `Update` は載せた項目だけを書く。楽観ロックのあるモジュールの `Update` / `Delete` では、読んだ行の楽観ロックの項目も載せる（`change.OptimisticLocking = row.OptimisticLocking;`。載せずに更新するとジョブの失敗になる）
+- 書き込みはジョブの 1 回の実行全体が 1 つのトランザクション。正常に終われば確定し、失敗すれば取り消す。`DBService.Commit()` でそこまでを確定できる（その後に失敗しても確定した分は残る）
 - `JobTriggerField` から起動したときは、ジョブに渡る JSON（下の「ジョブに渡る JSON」）が解かれて `args.Data`（画面の現在値）と `args.Submit`（保存ボタンが送るのと同じ内容）に入る。無ければ `null`
 - コマンドラインの引数（ジョブ名の後ろ）は `args.Options`（`string[]`）
+- 起動した画面にデータを返すときは、`JsonObject` を作って `args.Result` に入れる（`JobTriggerField` の `Result` で読める。成功したときだけ返る）。別プロセスでは標準出力の最後の行の前に `#job-result:` で始まる 1 行で書かれる。`IJob` が返せるのは文言だけ
 - メールの送信（`MailService.Send`）と Excel（テンプレートへの書き込み・xlsx / PDF の添付）、デザインのリソース（`Resources`）が使える。メールの設定（送信インフラ・`DebugRedirectAllTo`・送信履歴）は画面のメールと同じ `appsettings` の `Mail`。使えるようにしているのは `Jobs/JobRunner.cs` の `MailApi.UseInJobScripts` / `ExcelApi.UseInJobScripts`。送ったメールはジョブが後で失敗しても取り消せないので、書き込みを `DBService.Commit()` で確定してから送る
 - レコードの添付ファイルを `FileService`（`Save` / `GetMemoryStream`）で読み書きできる。置き場所は画面のアップロード・ダウンロードと同じ（`Jobs/JobRunner.cs` が `DataService.TemporaryFileManager` を渡している）
+- 作ったファイルを画面に渡すときは `FileService.SaveTemporary` で起動したユーザーの一時ファイルにし、戻り値の `FileGuid` / `FileName` を `args.Result` で返す。画面のスクリプトが FileField の `SetTemporaryFile` でその項目に入れる（保存せずダウンロードだけなら `FileService.DownloadTemporaryFile(モジュール名, 項目名, FileGuid, FileName)`）
 - スクリプトの書き方（使える型・データの読み書き・`Fail`・他のスクリプトの呼び出し）は、デザイナの AI ワークスペースの `AIForDesigner/_specs/Jobs.md`
 
 ### 自分のサービスを Job スクリプトから使う
@@ -132,12 +133,12 @@ JobExecutor.AddScriptTypes(manager => manager.AddService(new MyService()));
 
 ### 仕組み（どこに何があるか）
 
-- クライアント: Extras の `JobTriggerField` が共通の API（`ExtrasTransport.EndPoint` = `/api/extras`。`Controllers/ExtrasController.cs`）に `JobRunRequest { ModuleName, FieldName, Arguments }` を送り（Feature `Job` / Action `Run`）、`JobRunResponse { Succeeded, Error, Started, JobId, Message }` を受け取る（どちらも `Codeer.LowCode.Blazor.Extras.Jobs`）
+- クライアント: Extras の `JobTriggerField` が共通の API（`ExtrasTransport.EndPoint` = `/api/extras`。`Controllers/ExtrasController.cs`）に `JobRunRequest { ModuleName, FieldName, Arguments }` を送り（Feature `Job` / Action `Run`）、`JobRunResponse { Succeeded, Error, Started, JobId, Message, ResultJson }` を受け取る（どちらも `Codeer.LowCode.Blazor.Extras.Jobs`）
 - サーバー: `Extras/ExtrasApiTable.cs` に並べた Extras.Server の `JobApi` が、そのモジュールとフィールドに書けるユーザーか（`AuthorizationChecker.CheckFieldUserWriteAsync`。`ExecuteSqlField` の実行と同じ軸）を確かめ、**デザインの `JobTriggerField`** の `JobName` のジョブを `IsAsynchronous` に従って起動する（クライアントからジョブ名や待つかどうかは受け取らない）。動かすのは `JobApi` に渡した `JobRunner.RunFromScreenAsync` で、デザインの `JobTriggerField` の `ProcessType` が `InProcess` ならこのプロセスの中で動かし（プロセス内実行）、それ以外は `JobProcess.RunInNewProcessAsync`（別プロセス）を呼ぶ。`AllowsConcurrentRuns` が `false`（既定）なら、同じ名前のジョブが実行中のときは起動せず `Error`（「ジョブ 'X' は実行中です」）を返す（`JobProcess` がジョブ名で判定する。同期・非同期とも、実行先によらず）。起動の前に要求の DB 接続をプールへ返す（同期でジョブを待つ間に接続を握らない）
   - `JobName` のジョブが無ければ起動せず `Succeeded = false` と `Error`（「ジョブ 'X' がありません」）を返す（同期・非同期とも）
-  - 同期: 終わるまで待ち、成功なら `Succeeded = true` と `Message`（`IJob.RunAsync` または Job スクリプトの `Run` の戻り値。画面の成功の通知になる）、失敗なら `Error`（例外のメッセージ）を返す
-  - 非同期: 起動したら `Started = true` と `JobId` を返す（画面は「開始しました」を通知し、フィールドの `JobId` / `JobIds` に持つ）。状態はスクリプトがフィールドの `GetJobStatus()` で問い合わせ、共通の API（Action `Status`）が `JobStatusResponse { Status, Message, Error }` を返す。状態の置き場は `JobProcess.Cache`（`IDistributedCache`。`Program.cs` でつないでいる。テンプレートはメモリキャッシュなのでサーバーを再起動すると消える。複数インスタンスでは Redis 等の共有キャッシュに差し替える）。終わった結果は終了から 30 分（`JobProcess.FinishedRetention`）で消え、消えた後は応答なし（`GetJobStatus` は null）。状態を返すのは起動したユーザーにだけ
-- 別プロセスの起動（親）とジョブモード（子）は Codeer.LowCode.Blazor.Extras.Server の `JobProcess` と `JobMode` が対で持つ（引数の並び `job <ジョブ名> --stdin`・画面の内容は標準入力・押したユーザーの Id は環境変数 `Jobs__UserId`・終了コード・UTF-8・結果の文言の取り出し）。このテンプレートにあるのは、ジョブの一覧（`IJob` とデザイナで作った Job）と実行先の判定と `DataService` の組み立てと Job スクリプトの実行（`Jobs/JobRunner.cs`）と、`Program.cs` の `job` の分岐だけ。約束の詳細は Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`
+  - 同期: 終わるまで待ち、成功なら `Succeeded = true` と `Message`（`IJob.RunAsync` または Job スクリプトの `Run` の戻り値。画面の成功の通知になる）と `ResultJson`（Job スクリプトの `args.Result`。無ければ null）、失敗なら `Error`（例外のメッセージ）を返す
+  - 非同期: 起動したら `Started = true` と `JobId` を返す（画面は「開始しました」を通知し、フィールドの `JobId` / `JobIds` に持つ）。状態はスクリプトがフィールドの `GetJobStatus()` で問い合わせ、共通の API（Action `Status`）が `JobStatusResponse { Status, Message, Error, ResultJson }` を返す。状態の置き場は `JobProcess.Cache`（`IDistributedCache`。`Program.cs` でつないでいる。テンプレートはメモリキャッシュなのでサーバーを再起動すると消える。複数インスタンスでは Redis 等の共有キャッシュに差し替える）。終わった結果は終了から 30 分（`JobProcess.FinishedRetention`）で消え、消えた後は応答なし（`GetJobStatus` は null）。状態を返すのは起動したユーザーにだけ
+- 別プロセスの起動（親）とジョブモード（子）は Codeer.LowCode.Blazor.Extras.Server の `JobProcess` と `JobMode` が対で持つ（引数の並び `job <ジョブ名> --stdin`・画面の内容は標準入力・押したユーザーの Id は環境変数 `Jobs__UserId`・終了コード・UTF-8・結果の文言と返したデータの取り出し）。このテンプレートにあるのは、ジョブの一覧（`IJob` とデザイナで作った Job）と実行先の判定と `DataService` の組み立てと Job スクリプトの実行（`Jobs/JobRunner.cs`）と、`Program.cs` の `job` の分岐だけ。約束の詳細は Codeer.LowCode.Blazor.Extras の `docs/Jobs.md`
 - プロセス内実行では、画面の内容は `args[0]`、押したユーザーの Id は `JobRunner.RunFromScreenAsync` の引数で渡る（ジョブから見た `args` と権限は別プロセスと同じ）
 - 失敗（同期・非同期とも）はサーバーのログにも出る（`Program.cs` で `JobProcess.LoggerFactory` をつないでいる。別プロセスは標準エラーの全文と標準出力をまとめて、プロセス内実行は例外の全文を出す）。別プロセスを起動できないとき（実行ファイルが無い等）もジョブの失敗になる（非同期では状態が `Error`）
 - 別プロセスで起動する実行ファイルは `LowCodeApp.Server.dll` の隣の `LowCodeApp.Server.exe`（apphost。IIS の下や PATH に `dotnet` が無いサーバーでも動く）、無ければ `dotnet LowCodeApp.Server.dll`。変えるときは `JobProcess.HostExecutable` / `EntryDll` / `DotnetPath`
