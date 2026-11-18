@@ -231,7 +231,7 @@ Web と同じ `appsettings.json` / `appsettings.<環境>.json` / 環境変数を
 | キー | 意味 |
 |---|---|
 | `ServiceAccounts` の `Name` | サービスアカウントの名前。ジョブはこの名前で指す（`IJob` は `ServiceAccount` プロパティ、デザイナで作った Job はデザイナの Job のプロパティ `ServiceAccount`）。指した名前が `ServiceAccounts` に無ければ、ジョブは失敗する |
-| `ServiceAccounts` の `User` | そのユーザーのログイン ID（ログイン画面で入力するもの）。サービスアカウントを指したジョブは、起動したユーザーによらずこのユーザーの権限で読み書きする（`IJob` も Job スクリプトも、コマンドラインからも画面のボタンからも）。そのログイン ID のユーザーが見つからない・停止中なら、ジョブは失敗する。`TemporaryFileTableInfo` に `OwnerColumn` を設定しているアプリでは、画面でアップロードした添付（`args.Submit` に載ってくるもの）をサービスアカウントを指したジョブでは保存できない（アップロードした人と保存する人が違うため） |
+| `ServiceAccounts` の `User` | そのユーザーのログイン ID（ログイン画面で入力するもの）。サービスアカウントを指したジョブは、起動したユーザーによらずこのユーザーの権限で読み書きする（`IJob` も Job スクリプトも、コマンドラインからも画面のボタンからも）。そのログイン ID のユーザーが見つからない・停止中なら、ジョブは失敗する。`TemporaryFileTableInfo` に `OwnerColumn` を設定しているアプリでは、画面でアップロードした添付（`args.Data` や JSON の `submit` に載ってくるもの）をサービスアカウントを指したジョブでは保存できない（アップロードした人と保存する人が違うため） |
 
 ```json
 "ServiceAccounts": [
