@@ -46,7 +46,7 @@ SystemConfig.Instance.WebApi = WebApiSettings.Load(builder.Configuration.GetSect
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
 
-if (isJob) return await JobMode.RunAsync(args[1..], JobRunner.Names, (name, jobArgs) => JobRunner.RunAsync(builder.Configuration, name, jobArgs));
+if (isJob) return await JobRuntime.RunAsync(args[1..], JobRuntimeHost.Names, (name, jobArgs) => JobRuntimeHost.RunAsync(builder.Configuration, name, jobArgs));
 
 builder.UseCookieAuthentication();
 
@@ -91,9 +91,9 @@ var app = builder.Build();
 //意味検索の警告ログ (埋め込みの失敗など) をアプリのログに出す
 SemanticSearchTable.Service.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 //画面のボタン (JobTriggerField) から起動したジョブの失敗をアプリのログに出す
-JobProcess.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+JobTriggerTracker.LoggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 //非同期で起動したジョブの状態の置き場 (複数インスタンスでは共有キャッシュに差し替える。CookieAuthentication.cs の AddDistributedMemoryCache)
-JobProcess.Cache = app.Services.GetRequiredService<IDistributedCache>();
+JobTriggerTracker.Cache = app.Services.GetRequiredService<IDistributedCache>();
 
 //SQL のデバッグログ (実行した SQL とパラメータ)。appsettings の SqlLog で有効化
 if (builder.Configuration.GetSection("SqlLog").Get<bool>())
