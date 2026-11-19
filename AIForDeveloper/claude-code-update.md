@@ -147,6 +147,24 @@ dotnet build "<ROOT>\Source\LowCodeApp.sln"
 
 - パッケージだけを上げてコンパイルエラーになったときは、最新のテンプレートの対応する箇所に答えがあることが多い。直すために必要な変更だけを
   最新の版から選び、**ユーザーに見せて確認してから**入れる（「ビルドを通すには <ファイル> の <箇所> を最新の形にする必要があります」）
+- 型の名前が変わってコンパイルエラー（`CS0246` / `CS0103` など）になったときは、下の表で新しい名前に置き換える（引数・動作は同じ）:
+
+  | パッケージ | 旧 | 新 |
+  |---|---|---|
+  | Extras.Server 0.34.0 | `JobApi` | `JobTriggerApi` |
+  | Extras.Server 0.34.0 | `JobMode`（`StandardInputArgument` など） | `JobRuntime`（メンバーの名前は同じ） |
+  | Extras.Server 0.34.0 | `JobMode.RunAsync` | `JobRuntime.RunFromCommandLineAsync` |
+  | Extras.Server 0.34.0 | `JobMode.Success` / `Failure` / `JobNotFound` | `JobRuntime.ExitCodeSuccess` / `ExitCodeFailure` / `ExitCodeJobNotFound` |
+  | Extras.Server 0.34.0 | `JobProcess.LoggerFactory` / `Cache` / `FinishedRetention` / `RunAsync` / `StartAsync` / `GetStatusAsync` | `JobTriggerTracker.` の同じ名前 |
+  | Extras.Server 0.34.0 | `JobProcess.HostExecutable` / `EntryDll` / `DotnetPath` / `UserIdEnvironmentVariable` | `JobRuntime.` の同じ名前 |
+  | Extras.Server 0.34.0 | `JobResult` | `JobRuntimeProcessResult` |
+  | Extras 0.34.0 | `JobApiNames` / `JobRunRequest` / `JobRunResponse` / `JobStatus` / `JobStatusRequest` / `JobStatusResponse` | `JobTriggerApiNames` / `JobTriggerRunRequest` / `JobTriggerRunResponse` / `JobTriggerStatus` / `JobTriggerStatusRequest` / `JobTriggerStatusResponse` |
+  | Extras 0.34.0 | 名前空間 `Codeer.LowCode.Blazor.Extras.Jobs` | `Codeer.LowCode.Blazor.Extras.JobTrigger`（`JobScriptTypes` だけは `Codeer.LowCode.Blazor.Extras.ScriptObjects`） |
+
+  画面のスクリプト（デザインの `*.mod.cs`）で `JobStatus.Running` などと書いていたら `JobTriggerStatus.Running` に直す（デザイナの designcheck で見つかる）。
+- テンプレートのファイル名が変わったもの: `Server/Jobs/JobRunner.cs`（クラス `JobRunner`）→ `Server/Jobs/JobRuntimeHost.cs`（クラス `JobRuntimeHost`）。
+  `update-diff` では旧ファイルが `delete` / `deleteModified`、新ファイルが `add` になる。`deleteModified`（ユーザーが変えていた）なら、ユーザーの変更を新しいファイルへ移してから旧ファイルを消す（残すと使われないクラスが残る）。
+  パッケージだけ上げたときは旧ファイルはそのままでよい（上の表で直すのは `Program.cs` と `Extras/ExtrasApiTable.cs`）
 - `Obsolete` の警告は止めずに報告だけする（動作する。テンプレートの新しい書き方は最新の版を見れば分かる）
 - 直せないときは退避（`Local\Update\backup`）から戻して、何が起きたかを伝える
 

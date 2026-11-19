@@ -12,6 +12,12 @@ namespace LowCodeApp.Server.Jobs
         string Name { get; }
 
         /// <summary>
+        /// このジョブを動かすサービスアカウントの名前 (appsettings の ServiceAccounts の Name)。
+        /// 空なら起動したユーザーの権限で動く (画面のボタンからは押したユーザー、コマンドラインからは匿名)。
+        /// </summary>
+        string ServiceAccount => string.Empty;
+
+        /// <summary>
         /// data はこのジョブ 1 回分の DB アクセス (Web のリクエストと同じ DataService)。args はジョブ名の後ろのコマンドライン引数。
         /// 戻り値は成功したときに画面に出す文言 (JobTriggerField から起動したとき。null なら既定の文言)。
         /// </summary>

@@ -25,8 +25,8 @@ namespace LowCodeApp.Server.Extras
             {
                 //メール (MailField / BulkMailField / Mail スクリプトオブジェクト)。送信インフラの対応表は MailSenderTable
                 new MailApi(SystemConfig.Instance.Mail, MailSenderTable.Create),
-                //ジョブ (JobTriggerField)。動かせるジョブは Jobs/JobRunner
-                new JobApi(JobRunner.Names),
+                //ジョブ (JobTriggerField)。動かせるジョブと実行先 (別プロセス / プロセス内実行) は Jobs/JobRuntimeHost
+                new JobTriggerApi(() => JobRuntimeHost.Names, JobRuntimeHost.RunFromScreenAsync),
                 //外部 Web API (WebApiField)。接続先は appsettings の WebApi
                 new WebApiApi(SystemConfig.Instance.WebApi),
                 //承認フロー (ApprovalFlowField)

@@ -59,6 +59,8 @@ namespace LowCodeApp.Server.Infrastructure
         public EmailOtpLoginSettings EmailOtpLogin { get; set; } = new();
         //監査ログ。出力先は Extras/AuditSinkTable
         public AuditLogSettings AuditLog { get; set; } = new();
+        //ジョブが名前で指すサービスアカウント (ジョブを動かすユーザー。Jobs/README.md)
+        public LowCodeApp.Server.Jobs.ServiceAccount[] ServiceAccounts { get; set; } = [];
         //外部 Web API (WebApiField) の接続先
         public WebApiSettings WebApi { get; set; } = new();
         public SystemConfigForFront ForFront() => new SystemConfigForFront { CanScriptDebug = CanScriptDebug, UseHotReload = UseHotReload };
