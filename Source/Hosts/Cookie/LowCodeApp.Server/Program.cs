@@ -33,6 +33,7 @@ if (isJob) Console.OutputEncoding = Encoding.UTF8;
 var builder = isJob
     ? WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory })
     : WebApplication.CreateBuilder(args);
+ExceptionHandlerUtils.IsDevelopment = builder.Environment.IsDevelopment();
 
 LicenseManager.DomainLicense = builder.Configuration.GetSection("DomainLicense").Get<string>() ?? string.Empty;
 LicenseManager.IsAutoUpdate = builder.Configuration.GetSection("IsLicenseAutoUpdate").Get<bool>();

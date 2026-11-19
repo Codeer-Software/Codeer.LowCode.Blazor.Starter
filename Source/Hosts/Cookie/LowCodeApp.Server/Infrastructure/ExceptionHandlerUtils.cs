@@ -1,6 +1,7 @@
 using Codeer.LowCode.Blazor;
 using Codeer.LowCode.Blazor.DataIO;
 using Codeer.LowCode.Blazor.DbAccess;
+using Codeer.LowCode.Blazor.Jobs;
 using Microsoft.AspNetCore.Diagnostics;
 using System.Net;
 
@@ -12,6 +13,9 @@ namespace LowCodeApp.Server.Infrastructure
     /// </summary>
     public static class ExceptionHandlerUtils
     {
+        /// <summary>開発時か (Program.cs が入れる)。リクエストの外で動くジョブが、原文を返してよいかを決めるのに使う。</summary>
+        public static bool IsDevelopment { get; set; }
+
         //未処理の例外 (一覧の読み出しなど)。原文は UseExceptionHandler がログに出す
         public static void UseExceptionHandlerSendToFront(this WebApplication app)
         {
@@ -41,6 +45,16 @@ namespace LowCodeApp.Server.Infrastructure
                 result.ExceptionMessage = ToClientMessage(result.Exception!, context);
             }
             return results;
+        }
+
+        //デザイナで作った Job の失敗 (画面の通知と、コマンドラインの標準エラーに出る文言)。方針は保存の失敗と同じ。
+        //原文 (スクリプトの位置・DB の例外) はスクリプトの Logger の出力にある (コマンドラインは標準出力、プロセス内実行はアプリのログ)
+        public static string ToClientMessage(this JobExecutionResult result)
+        {
+            if (result.Exception is LowCodeException) return result.Exception.Message;
+            if (result.Exception != null && DbErrors.IsUniqueViolation(result.Exception)) return "同じ値のデータが既にあります。";
+            if (IsDevelopment) return result.Error ?? string.Empty;
+            return "ジョブでエラーが発生しました。";
         }
 
         //利用者の操作で普通に起きる失敗 (ログに残すものではない)

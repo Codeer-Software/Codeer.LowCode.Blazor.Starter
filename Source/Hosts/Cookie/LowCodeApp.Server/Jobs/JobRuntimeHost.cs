@@ -59,7 +59,8 @@ namespace LowCodeApp.Server.Jobs
         {
             if (!File.Exists(Path.Combine(SystemConfig.Instance.DesignFileDirectory, "App.zip")))
             {
-                throw new FileNotFoundException($"DesignFileDirectory に App.zip がありません: {SystemConfig.Instance.DesignFileDirectory}");
+                //この文言は画面にも出るので、サーバーのパスは入れない
+                throw new FileNotFoundException("DesignFileDirectory に App.zip がありません");
             }
 
             //サービスアカウントを指しているジョブ (IJob は ServiceAccount、デザイナで作った Job はデザイナの Job のプロパティ) は、起動したユーザーによらず、そのユーザーの権限で読み書きする
@@ -78,7 +79,8 @@ namespace LowCodeApp.Server.Jobs
                 InvokerUserId = userId,
                 FileStorage = data.TemporaryFileManager,
             }, name, args, logger);
-            if (!result.Succeeded) throw new InvalidOperationException(result.Error);
+            //失敗の文言は画面に出る。Fail の理由と本体の文言 (検証・楽観ロック・権限) はそのまま、それ以外は開発時だけ原文
+            if (!result.Succeeded) throw new InvalidOperationException(result.ToClientMessage());
             return new JobRuntimeResult { Message = result.Message, ResultJson = result.ResultJson };
         }
 
@@ -94,7 +96,7 @@ namespace LowCodeApp.Server.Jobs
             var accounts = LoginAccountStore.Create(data.Design.DesignData, data.DbAccess);
             if (accounts == null) return loginName;
             return (await accounts.FindByLoginNameAsync(loginName))?.UserId
-                ?? throw new InvalidOperationException($"ServiceAccounts の '{account}' の User '{loginName}' が見つかりません");
+                ?? throw new InvalidOperationException($"ServiceAccounts の '{account}' の User が見つかりません");
         }
 
         //デザインを読めないとき (まだ配置されていない・差し替え中) は空 (ジョブの一覧を出すところでは落とさない)
