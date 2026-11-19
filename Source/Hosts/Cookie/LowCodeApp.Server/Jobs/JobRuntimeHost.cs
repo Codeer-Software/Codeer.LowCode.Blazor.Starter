@@ -31,7 +31,7 @@ namespace LowCodeApp.Server.Jobs
             => CreateJobs().Select(e => e.Name).Union(GetDesignerJobNames(), StringComparer.OrdinalIgnoreCase).ToList();
 
         /// <summary>ジョブを 1 つ動かす (別プロセス)。name は Names のどれか、args はジョブ名の後ろの引数。戻り値は成功したときの文言 (画面に出る) と Job スクリプトが返したデータ、失敗は例外。</summary>
-        public static async Task<JobRuntimeResult> RunAsync(IConfiguration config, string name, string[] args)
+        public static async Task<JobRuntimeResult> RunFromCommandLineAsync(IConfiguration config, string name, string[] args)
         {
             using var loggerFactory = LoggerFactory.Create(builder => builder.AddSimpleConsole(options => options.SingleLine = true));
             //意味検索の警告ログ (埋め込みの失敗など) を標準出力に出す

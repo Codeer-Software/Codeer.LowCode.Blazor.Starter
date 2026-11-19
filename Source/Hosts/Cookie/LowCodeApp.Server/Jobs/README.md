@@ -133,7 +133,7 @@ JobExecutor.AddScriptTypes(manager => manager.AddService(new MyService()));
 
 ### 仕組み（どこに何があるか）
 
-- クライアント: Extras の `JobTriggerField` が共通の API（`ExtrasTransport.EndPoint` = `/api/extras`。`Controllers/ExtrasController.cs`）に `JobTriggerRunRequest { ModuleName, FieldName, Arguments }` を送り（Feature `Job` / Action `Run`）、`JobTriggerRunResponse { Succeeded, Error, Started, JobId, Message, ResultJson }` を受け取る（どちらも `Codeer.LowCode.Blazor.Extras.Jobs`）
+- クライアント: Extras の `JobTriggerField` が共通の API（`ExtrasTransport.EndPoint` = `/api/extras`。`Controllers/ExtrasController.cs`）に `JobTriggerRunRequest { ModuleName, FieldName, Arguments }` を送り（Feature `Job` / Action `Run`）、`JobTriggerRunResponse { Succeeded, Error, Started, JobId, Message, ResultJson }` を受け取る（どちらも `Codeer.LowCode.Blazor.Extras.JobTrigger`）
 - サーバー: `Extras/ExtrasApiTable.cs` に並べた Extras.Server の `JobTriggerApi` が、そのモジュールとフィールドに書けるユーザーか（`AuthorizationChecker.CheckFieldUserWriteAsync`。`ExecuteSqlField` の実行と同じ軸）を確かめ、**デザインの `JobTriggerField`** の `JobName` のジョブを `IsAsynchronous` に従って起動する（クライアントからジョブ名や待つかどうかは受け取らない）。動かすのは `JobTriggerApi` に渡した `JobRuntimeHost.RunFromScreenAsync` で、デザインの `JobTriggerField` の `ProcessType` が `InProcess` ならこのプロセスの中で動かし（プロセス内実行）、それ以外は `JobRuntime.RunInNewProcessAsync`（別プロセス）を呼ぶ。`AllowsConcurrentRuns` が `false`（既定）なら、同じ名前のジョブが実行中のときは起動せず `Error`（「ジョブ 'X' は実行中です」）を返す（`JobTriggerTracker` がジョブ名で判定する。同期・非同期とも、実行先によらず）。起動の前に要求の DB 接続をプールへ返す（同期でジョブを待つ間に接続を握らない）
   - `JobName` のジョブが無ければ起動せず `Succeeded = false` と `Error`（「ジョブ 'X' がありません」）を返す（同期・非同期とも）
   - 同期: 終わるまで待ち、成功なら `Succeeded = true` と `Message`（`IJob.RunAsync` または Job スクリプトの `Run` の戻り値。画面の成功の通知になる）と `ResultJson`（Job スクリプトの `args.Result`。無ければ null）、失敗なら `Error`（例外のメッセージ）を返す

@@ -46,7 +46,7 @@ SystemConfig.Instance.WebApi = WebApiSettings.Load(builder.Configuration.GetSect
 
 GlobalFontSettings.FontResolver = new CustomFontResolver(SystemConfig.Instance.FontFileDirectory);
 
-if (isJob) return await JobRuntime.RunAsync(args[1..], JobRuntimeHost.Names, (name, jobArgs) => JobRuntimeHost.RunAsync(builder.Configuration, name, jobArgs));
+if (isJob) return await JobRuntime.RunFromCommandLineAsync(args[1..], JobRuntimeHost.Names, (name, jobArgs) => JobRuntimeHost.RunFromCommandLineAsync(builder.Configuration, name, jobArgs));
 
 builder.UseCookieAuthentication();
 
