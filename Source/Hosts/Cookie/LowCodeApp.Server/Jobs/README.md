@@ -65,11 +65,8 @@ string Run(JobArguments args)
     var rows = search.ExecuteRaw();
     foreach (var row in rows)
     {
-        var change = new Order.Data();
-        change.Id = new IdFieldData();
-        change.Id.Value = row.Id.Value;
-        change.Status = new TextFieldData();
-        change.Status.Value = "Closed";
+        var change = row.CreateUpdateData();
+        change.Status = new TextFieldData("Closed");
         DBService.Update(change);
     }
     Logger.Log($"{rows.Count} 件");
@@ -82,7 +79,8 @@ string Run(JobArguments args)
 - スクリプトの `Logger` は標準出力に出る（`Logger.Warn` / `Logger.Error` は行の先頭に `warn:` / `error:` が付く）。プロセス内実行（下の「実行先」）ではアプリのログに出る
 - `Fail("理由")` を呼んだとき、スクリプトの実行時エラーのとき、保存が失敗したときはジョブの失敗になり、終了コードは 1。理由は標準エラーに出る（画面のボタンから起動したときは画面に出る文言）。そのまま出るのは `Fail` の理由と、本体の文言（検証・楽観ロックの競合・権限）だけ。それ以外（実行時エラー・DB のエラー）は、開発時は原文（スクリプトの位置つき）、本番は「ジョブでエラーが発生しました。」になり、原文は `Logger` の出力（コマンドラインは標準出力、プロセス内実行はアプリのログ）に出る（`Infrastructure/ExceptionHandlerUtils.cs`。画面の保存の失敗と同じ方針）
 - 書き込みは `DBService.Add` / `Update` / `Delete`（呼んだその場で保存する。`Add` の後は `data.Id` が採番された Id になる）。タイミングが新規作成時・更新時・削除時の ExecuteSql はこれらで一緒に走る。「単独」だけ `DBService.ExecuteStandaloneSql(data)` で呼ぶ
-- `Update` は載せた項目だけを書く。楽観ロックのあるモジュールの `Update` / `Delete` では、読んだ行の楽観ロックの項目も載せる（`change.OptimisticLocking = row.OptimisticLocking;`。載せずに更新するとジョブの失敗になる）
+- `Update` は載せた項目だけを書く。更新・削除のデータは、読んだ行の `row.CreateUpdateData()`（Id と楽観ロックの版だけを写した新しいデータ）に、変える項目を `change.項目 = new TextFieldData(値);` のように足して作る。追加は `new モジュール名.Data()` から
+- 楽観ロックのあるモジュールの `Update` / `Delete` では、読んだ行の楽観ロックの項目も載せる（`CreateUpdateData()` が写す。自分で作ったデータなら `change.OptimisticLocking = row.OptimisticLocking;`。載せずに更新するとジョブの失敗になる）
 - 書き込みはジョブの 1 回の実行全体が 1 つのトランザクション。正常に終われば確定し、失敗すれば取り消す。`DBService.Commit()` でそこまでを確定できる（その後に失敗しても確定した分は残る）
 - `JobTriggerField` から起動したときは、ジョブに渡る JSON（下の「ジョブに渡る JSON」）の `data` が解かれて `args.Data`（画面の現在値）に入る。無ければ `null`（`submit` は Job スクリプトには渡らない）
 - コマンドラインの引数（ジョブ名の後ろ）は Job スクリプトには渡らない（引数が要る処理は `IJob` で書く）
