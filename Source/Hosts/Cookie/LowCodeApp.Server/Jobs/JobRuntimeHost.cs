@@ -1,6 +1,5 @@
 using Codeer.LowCode.Blazor.DbAccess;
 using Codeer.LowCode.Blazor.Extras.Designs;
-using Codeer.LowCode.Blazor.Extras.Server.Auth;
 using Codeer.LowCode.Blazor.Extras.Server.Excel;
 using Codeer.LowCode.Blazor.Extras.Server.Jobs;
 using Codeer.LowCode.Blazor.Extras.Server.Mail;
@@ -42,7 +41,7 @@ namespace LowCodeApp.Server.Jobs
             //起動したユーザー。画面のボタンから別プロセスで起動されたときは、押したユーザーの Id が環境変数 Jobs__UserId (= 設定の Jobs:UserId) で渡ってくる。
             //コマンドラインからは空 (匿名)。サービスアカウントを指していないジョブは、このユーザーの権限で動く
             //スクリプトの Logger は標準出力に出す
-            return await RunAsync(name, args, config["Jobs:UserId"] ?? string.Empty, new ScriptLogger(null));
+            return await RunAsync(name, args, config["Jobs:UserId"] ?? string.Empty, new JobScriptLogger());
         }
 
         /// <summary>
@@ -51,11 +50,11 @@ namespace LowCodeApp.Server.Jobs
         /// </summary>
         public static Task<JobRuntimeResult> RunFromScreenAsync(string name, string input, string userId, JobTriggerProcessType processType)
             => processType == JobTriggerProcessType.InProcess
-                ? RunAsync(name, [input], userId, new ScriptLogger(JobTriggerTracker.LoggerFactory?.CreateLogger(typeof(JobRuntimeHost)) ?? NullLogger.Instance))
+                ? RunAsync(name, [input], userId, new JobScriptLogger(JobTriggerTracker.LoggerFactory?.CreateLogger(typeof(JobRuntimeHost)) ?? NullLogger.Instance))
                 : JobRuntime.RunInNewProcessAsync(name, input, userId);
 
         //ジョブを 1 つ動かす。userId は起動したユーザー。戻り値は成功したときの文言と Job スクリプトが返したデータ (IJob は文言だけ)、失敗は例外
-        static async Task<JobRuntimeResult> RunAsync(string name, string[] args, string userId, ScriptLogger logger)
+        static async Task<JobRuntimeResult> RunAsync(string name, string[] args, string userId, JobScriptLogger logger)
         {
             if (!File.Exists(Path.Combine(SystemConfig.Instance.DesignFileDirectory, "App.zip")))
             {
@@ -89,14 +88,8 @@ namespace LowCodeApp.Server.Jobs
         //ユーザーモジュールに LoginAccountContractField が無いアプリでは、User に書いた値をそのままユーザーの Id として使う
         static async Task<string> FindUserIdAsync(string account)
         {
-            var loginName = SystemConfig.Instance.ServiceAccounts.FirstOrDefault(e => string.Equals(e.Name, account, StringComparison.OrdinalIgnoreCase))?.User;
-            if (string.IsNullOrEmpty(loginName)) throw new InvalidOperationException($"appsettings の ServiceAccounts に '{account}' がありません");
-
             await using var data = new DataService(string.Empty);
-            var accounts = LoginAccountStore.Create(data.Design.DesignData, data.DbAccess);
-            if (accounts == null) return loginName;
-            return (await accounts.FindByLoginNameAsync(loginName))?.UserId
-                ?? throw new InvalidOperationException($"ServiceAccounts の '{account}' の User が見つかりません");
+            return await ServiceAccount.FindUserIdAsync(SystemConfig.Instance.ServiceAccounts, account, data.Design.DesignData, data.DbAccess);
         }
 
         //デザインを読めないとき (まだ配置されていない・差し替え中) は空 (ジョブの一覧を出すところでは落とさない)
@@ -109,21 +102,6 @@ namespace LowCodeApp.Server.Jobs
             catch
             {
                 return [];
-            }
-        }
-
-        //スクリプトの Logger の出し先。logger が null なら標準出力 (ジョブモード。Warn / Error は行の先頭に warn: / error: を付ける)
-        sealed class ScriptLogger(ILogger? logger) : Codeer.LowCode.Blazor.RequestInterfaces.ILogger
-        {
-            public Task Log(string message) => Write(LogLevel.Information, message, message);
-            public Task Warn(string message) => Write(LogLevel.Warning, message, $"warn: {message}");
-            public Task Error(string message) => Write(LogLevel.Error, message, $"error: {message}");
-
-            Task Write(LogLevel level, string message, string consoleLine)
-            {
-                if (logger == null) Console.WriteLine(consoleLine);
-                else logger.Log(level, "{Message}", message);
-                return Task.CompletedTask;
             }
         }
 

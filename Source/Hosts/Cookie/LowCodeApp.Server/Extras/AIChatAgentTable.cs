@@ -1,9 +1,9 @@
 using Codeer.LowCode.Blazor.DbAccess;
-using Codeer.LowCode.Blazor.DesignLogic;
 using Codeer.LowCode.Blazor.Extras.Server.AI;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.ModuleDataAccess;
 using Codeer.LowCode.Blazor.Extras.Server.AI.Chat.RawDataAccess;
+using LowCodeApp.Client.Shared.Services;
 using LowCodeApp.Server.Infrastructure;
 using System.Collections.Concurrent;
 
@@ -47,7 +47,7 @@ namespace LowCodeApp.Server.Extras
                 chatClientFactory,
                 () => new DbAccessor(config.DataSources),
                 () => AppDesign.Store.GetDesignData(),
-                folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
+                folder => AIChatDocument.ReadResources(config.DesignFileDirectory, folder),
                 options,
                 semanticSearch: SemanticSearchTable.Service);
         }
@@ -66,16 +66,12 @@ namespace LowCodeApp.Server.Extras
                     return Task.FromResult(new ModuleDataAccessScope(dataService.ModuleDataIO, dataService, dataService.DbAccess));
                 },
                 () => AppDesign.Store.GetDesignData(),
-                folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
+                folder => AIChatDocument.ReadResources(config.DesignFileDirectory, folder),
                 config.AIChat.ModuleDataAccess,
                 //SemanticSearchField を置いたモジュールを意味検索 (search_records) で探せるようにする
                 semanticSearch: SemanticSearchTable.Service,
                 //AI に見せる設計は、そのユーザーへ画面用に送るデザイン (ブラウザが受け取るものと同じ範囲。DB の表名・列名は入っていない)
-                designForFront: async userId =>
-                {
-                    await using var dataService = new DataService(userId);
-                    return dataService.Design.ForFrontDesignData(await dataService.ModuleDataIO.AuthorizationChecker.GetCurrentUserAsync());
-                });
+                designForFront: currentUser => AppDesign.Store.GetCurrent().ForFrontDesignData(new PageLinkUrlResolver(), currentUser));
         }
     }
 }
