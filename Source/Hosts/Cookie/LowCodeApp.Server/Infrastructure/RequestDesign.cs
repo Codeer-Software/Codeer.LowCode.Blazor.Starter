@@ -18,5 +18,8 @@ namespace LowCodeApp.Server.Infrastructure
 
         //フロントへ渡すデザイン (ユーザーごとのページフレームの解決つき)
         public byte[] ForFront(ModuleData? currentUser) => _design.ForFront(new PageLinkUrlResolver(), currentUser);
+
+        //フロントへ渡すデザインを DesignData にしたもの (AI チャットが AI に見せる設計に使う。Extras/AIChatAgentTable.cs)
+        public DesignData ForFrontDesignData(ModuleData? currentUser) => _design.ForFrontDesignData(new PageLinkUrlResolver(), currentUser);
     }
 }

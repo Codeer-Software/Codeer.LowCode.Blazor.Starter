@@ -69,7 +69,13 @@ namespace LowCodeApp.Server.Extras
                 folder => DesignDataFileManager.GetResourceTexts(config.DesignFileDirectory, folder, ".md", ".txt").Select(e => new AIChatDocument(e.Name, e.Text)).ToList(),
                 config.AIChat.ModuleDataAccess,
                 //SemanticSearchField を置いたモジュールを意味検索 (search_records) で探せるようにする
-                semanticSearch: SemanticSearchTable.Service);
+                semanticSearch: SemanticSearchTable.Service,
+                //AI に見せる設計は、そのユーザーへ画面用に送るデザイン (ブラウザが受け取るものと同じ範囲。DB の表名・列名は入っていない)
+                designForFront: async userId =>
+                {
+                    await using var dataService = new DataService(userId);
+                    return dataService.Design.ForFrontDesignData(await dataService.ModuleDataIO.AuthorizationChecker.GetCurrentUserAsync());
+                });
         }
     }
 }
