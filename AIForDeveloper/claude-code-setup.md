@@ -169,7 +169,7 @@ Get-Content "<ROOT>\Local\developer-workspace.json"
 同じ内容の Codex 用 `<ROOT>\.codex\hooks.json`・`<ROOT>\.codex\rules\codeer-lowcode.rules` ができる。フックのスクリプトは `<ROOT>\AIForDeveloper\hooks\` にある（コミット済み）。
 デザイナ exe の場所が変わったとき（ビルド構成の変更・フォルダの移動）や、パッケージを更新したときは同じコマンドを実行し直す（既存の `settings.local.json` は hooks 節と CLI 許可だけが更新され、ユーザーが足した許可は残る）。判定: JSON に `"error"` が無く `written` に `HostCustomization.md` が含まれる。
 
-> 許可とフックの設定は **次のセッションから効く**。今のセッションではデザイナの CLI のたびに確認が出るが、そのまま続けてよい（再起動は要らない）。
+> Claude Code では、許可とフックの設定は **作った時点から同じセッションで効く**（再起動は要らない。ユーザーに「次のセッションから」と案内しない）。作った後もデザイナの CLI のたびに確認が出るなら設定が読まれていないので、再起動して会話を引き継ぐようユーザーに頼む（ターミナルなら `claude --continue`）。
 > Codex なら完了メッセージで「このフォルダを信頼済みのプロジェクトにしてください（`.codex\` の設定は信頼済みのときだけ読まれる）。フックは `/hooks` で内容を確認して信頼すると動きます」と伝える。
 
 ## Step 6. デザインプロジェクトをテンプレートから作る
