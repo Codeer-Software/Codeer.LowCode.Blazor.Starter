@@ -25,6 +25,10 @@ AI の動作は決定的ではなく、ソフトウェアのインストール�
   （.NET SDK が無ければ winget と dot.net も）の許可を一度に求める（途中で 1 つずつ止まらないため）
 - **起動するものは 1 コマンドに 1 つ。** サーバー・デザイナ・ブラウザの起動は別々のコマンドで実行する（承認で止まったものが分かり、他は進められる）。
   起動が拒否されたら、そのものだけ起動をユーザーに頼み、残りの手順は続ける
+- **実行環境の制限を、コードやビルドの設定を変えて避けない。** サンドボックスの中で動くエージェント（Codex など）では、レジストリ・ユーザープロファイル・証明書ストアに
+  届かず、手順どおりのコマンドが失敗することがある（症状は「うまくいかないとき」）。そのときは、この手順に無い書き換え（`Program.cs` などホストの C#・csproj・`appsettings*.json` への追加、
+  独自の targets やビルドのプロパティ）で回避しない。失敗したコマンドだけを制限の外で実行する。制限の外で実行する承認を求められない設定なら、
+  そのコマンドをユーザーに通常の PowerShell で実行してもらい、結果を確かめてから続ける（フォルダへの書き込みの許可と、制限の外での実行の承認は別のもの）
 - エージェントは Claude Code（ターミナル・デスクトップアプリの Code タブ・VS Code の拡張）、Codex、GitHub Copilot（VS Code のエージェント・Copilot CLI）のどれでもよい。ユーザーに「〇〇で起動する」と伝えるときは、いま動いているエージェントの言い方にする: Claude Code のターミナルなら「そのフォルダで `claude`」、Codex の CLI なら「そのフォルダで `codex`」、Copilot CLI なら「そのフォルダで `copilot`」、デスクトップアプリ・VS Code なら「そのフォルダを選んで（開いて）新しいセッション（チャット）を始める」の意味。ターミナルかアプリか分からなければ両方の言い方を 1 行ずつ添える
 
 ### 聞いてよいこと（この 1 つだけ・既定値を提示して Yes/No で答えられる形で）
@@ -346,6 +350,7 @@ ROOT に `.vscode/`（`launch.json` / `tasks.json` / `extensions.json`）が同�
 | `developer-workspace` / `ai-workspace` で `--out` の JSON ができない（ウィンドウが開く） | デザイナのパッケージが古い（`developer-workspace` は Codeer.LowCode.Blazor.Designer.Standard 0.8.3 以降）。このリポジトリを最新から取得していれば起きない |
 | ログインできない（Cookie） | サンプル DB に `admin` がいるはず。`appsettings.Development.json` の `ConnectionStrings.Main` が `<ROOT>\Local\Data\main.db` を指しているか、そのファイルが存在するか、デザインの `designer.settings.Development.json` も同じパスかを確認 |
 | `dotnet build` が `MSB4166`（子ノードが途中で終了）や、はっきりしたエラー無しで失敗する | 並列ビルドを止めて再実行する: `dotnet build "<ROOT>\Source\Hosts\Cookie\LowCodeApp.sln" -m:1 -nodeReuse:false`（以降のビルドも同じオプションで） |
+| サンドボックスの中で動くエージェントで、`export-app` が `Requested registry access is not allowed.`、`dotnet build` が `MSB4216`（タスク ホストを作成できない）、サーバーが `KeyRingProvider` の `UnauthorizedAccessException`（`Access to the path is denied`）を出す | エージェントの実行環境の制限で、アプリの不具合ではない。コードやビルドの設定は変えず、そのコマンドを制限の外で実行する（「進め方の原則」の「実行環境の制限を、コードやビルドの設定を変えて避けない」）。`export-app` が途中まで書き出していたら、出力先を空にしてからやり直す。サーバーは制限の外で起動し直したあと、ログイン画面の表示だけでなく実際のログインまで確かめる |
 | `winget` が見つからない | Step 1 の dotnet-install.ps1 経路 |
 | PowerShell で `&` でデザイナ exe を呼ぶと即戻って何も起きない | 正常（GUI サブシステム）。必ず `Start-Process -Wait` + `--out` |
 | Excel / PDF 出力でフォントのエラー | サーバーの `appsettings.Development.json` の `FontFileDirectory` が指すフォルダ（Step 4 で `<ROOT>\Local\Font` にしている）に、PDF 出力で使うフォント（export-app が置く Noto Sans JP の `.ttf`）があるか確認する。無ければ Step 2 の zip をもう一度展開し、その中の Common ホストの `Font` フォルダからコピーする（ROOT にはテンプレートの元のフォルダは無い） |
